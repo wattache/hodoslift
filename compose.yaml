@@ -1,0 +1,40 @@
+# LE BAC À SABLE, EN UNE COMMANDE (FRE-61).
+#
+# ⚠️ CE CONTENEUR ÉTAIT MONTÉ À LA MAIN. Le harnais e2e réel s'arrête net si
+# `ff-training` ne répond pas — et rien, nulle part, ne savait le créer. Sur une
+# machine neuve la stack ne démarrait pas, et la procédure de remplissage était
+# un paragraphe de commentaire à recopier.
+#
+# ⚠️ LE VOLUME EST `external`, ET C'EST DÉLIBÉRÉ. Il porte les données réelles
+# semées en août ; le déclarer ici sans plus ferait créer un volume NEUF et vide
+# au premier `up`, c'est-à-dire perdre le bac à sable en croyant le décrire.
+# Pour l'adopter : `docker rm -f ff-training` puis `docker compose up -d` — le
+# conteneur change, la donnée reste.
+#
+#   docker volume create ff-training-data   # seulement sur une machine neuve
+#
+# Le port 55433 et le nom `ff-training` sont ceux qu'attendent
+# `eitri/scripts/e2e-reel.sh` et `mprocs.yaml` : les changer casserait les deux.
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: ff-training
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ff
+    ports:
+      - "55433:5432"
+    volumes:
+      - ff-training-data:/var/lib/postgresql/data
+    healthcheck:
+      # Le harnais teste `pg_isready` avant de démarrer quoi que ce soit :
+      # autant que Docker connaisse la même définition de « prêt ».
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ff"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  ff-training-data:
+    external: true

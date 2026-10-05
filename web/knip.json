@@ -1,0 +1,27 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "src/main.tsx",
+    "scripts/*.mjs",
+    "landing/build-coachs.mjs",
+    "public/sw.js",
+    "e2e/*.spec.ts",
+    "e2e-reel/*.spec.ts",
+    "src/**/*.test.{ts,tsx}"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx}",
+    "scripts/*.mjs",
+    "landing/*.mjs"
+  ],
+  "ignore": [
+    "src/api/brokkr.gen.ts",
+    "landing/coachs.js",
+    "src/gen/**"
+  ],
+  "ignoreExportsUsedInFile": true,
+  "ignoreDependencies": [
+    "@tailwindcss/vite",
+    "tailwindcss"
+  ]
+}

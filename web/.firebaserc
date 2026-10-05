@@ -1,0 +1,22 @@
+{
+  "projects": {
+    "default": "french-forge-600"
+  },
+  "targets": {
+    "french-forge-600": {
+      "hosting": {
+        "app": [
+          "french-forge-600"
+        ],
+        "landing": [
+          "french-forge-landing"
+        ]
+      },
+      "storage": {
+        "app": [
+          "french-forge-600-athlete-avatars"
+        ]
+      }
+    }
+  }
+}

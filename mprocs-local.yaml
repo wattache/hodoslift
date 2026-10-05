@@ -1,0 +1,59 @@
+# La stack locale sur le BAC À SABLE : `make dev-local` à la racine.
+# Raccourcis mprocs : ↑/↓ = changer de proc · r = restart · s = stop · x = kill · q = quitter
+#
+# ⚠️ LA SEULE DIFFÉRENCE AVEC `mprocs.yaml`, C'EST LA BASE — et c'est toute la
+# raison d'être de ce fichier. `make dev` fait parler brokkr à NEON, c'est-à-dire
+# à la PRODUCTION : chaque geste de l'écran y écrit pour de vrai. Ici, brokkr
+# parle au conteneur `ff-training` (port 55433), une COPIE. Rien de ce qu'on y
+# fait n'atteint les athlètes.
+#
+# C'est la configuration à prendre pour ÉPROUVER une migration ou une feature
+# qui écrit : la copie se refait en trois minutes (`make bac-a-sable-remplir`),
+# la production ne se refait pas.
+#
+# ⚠️ L'AUTHENTIFICATION RESTE RÉELLE (Firebase), et c'est voulu : le bac à sable
+# est une copie de la production, les `uid` y sont les mêmes. On se connecte avec
+# son vrai compte et on retrouve ses vrais athlètes — sur des données jetables.
+# L'émulateur d'auth appartient au harnais e2e, qui a d'autres besoins.
+#
+# ⚠️ CE FICHIER NE DÉCLARE PAS LE CONTENU DE LA COPIE. `make dev-local` démarre
+# le conteneur mais ne le REMPLIT pas : un bac à sable vide donne une app vide,
+# et un bac à sable vieux donne une app en retard. `make bac-a-sable-remplir`
+# est le geste qui le met à jour, et il reste délibéré — il télécharge de vraies
+# données de santé sur le poste.
+
+procs:
+  eitri:
+    shell: "npm run dev"
+    cwd: web
+    env:
+      # Même surcharge que dans `mprocs.yaml` : le front parle au brokkr d'à
+      # côté, et non à celui de production que désigne son `.env.local`.
+      VITE_BROKKR_URL: "http://localhost:8080"
+      VITE_SINDRI_URL: "http://localhost:8081"
+    # Vite → http://localhost:5173
+
+  brokkr:
+    shell: "make dev 2>&1 | tee /tmp/brokkr-dev-local.log"
+    cwd: api-python
+    env:
+      PYTHONUNBUFFERED: "1"
+      # ⚠️ LA VARIABLE L'EMPORTE SUR LE `.env` DU DÉPÔT, qui pointe sur Neon.
+      # C'est le comportement de `pydantic-settings` (`app/config.py`), et c'est
+      # ce qui rend cette bascule sûre : rien à commenter, rien à remettre en
+      # place après coup, donc rien à oublier de remettre en place.
+      #
+      # `+psycopg` comme partout ailleurs : SQLAlchemy 2 refuse le pilote par
+      # défaut, absent de ce projet.
+      DATABASE_URL: "postgresql+psycopg://postgres:local@localhost:55433/ff"
+    # FastAPI/uvicorn --reload → http://localhost:8080, sur la COPIE.
+    # Le journal va dans /tmp/brokkr-dev-local.log — un nom distinct de celui de
+    # `mprocs.yaml`, pour qu'on sache toujours quelle base on lisait.
+
+  sindri:
+    # Le frère de brokkr en Go (Connect) — sert la bibliothèque. Même base que
+    # brokkr ici (`make dev` lit le `.env` de brokkr), :8081.
+    shell: "make dev 2>&1 | tee /tmp/sindri-dev-local.log"
+    cwd: api
+    env:
+      DATABASE_URL: "postgresql+psycopg://postgres:local@localhost:55433/ff"

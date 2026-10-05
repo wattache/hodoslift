@@ -1,0 +1,42 @@
+rules_version = '2';
+
+// ⚠️ REFUS INTÉGRAL. Ce fichier portait 44 autorisations client — athlètes,
+// programmes, macrocycles, blocs, semaines, compétitions, journaux, événements.
+// Aucune ne protège plus quoi que ce soit :
+//
+//  * la v2 est éteinte (16/08) — plus aucun client legacy n'écrit en direct ;
+//  * eitri passe intégralement par brokkr : il n'importe de Firebase que `auth`
+//    et rien d'autre, vérifié en lisant ses imports ;
+//  * l'arbre d'entraînement a quitté Firestore pour Postgres (FRE-12) — six de
+//    ces règles gardaient une donnée qui n'est plus là ;
+//  * les photos d'athlètes ont été retirées, donc `storage.rules` n'interroge
+//    plus `athletes/*`, et brokkr n'y écrit plus rien.
+//
+// ⚠️ CE QUE CE REFUS NE TOUCHE PAS, ET QU'IL NE FAUT PAS RETIRER « par
+// cohérence » : FIREBASE AUTH. C'est un service DISTINCT de Firestore.
+// `verify_id_token` en dépend, et l'IAM `datastore.user` de la SA brokkr reste
+// nécessaire pour cette raison — c'est consigné dans `nidavellir/brokkr.tf`.
+//
+// ⚠️ ET LE SDK ADMIN IGNORE CES RÈGLES. Fermer ici n'empêcherait donc pas brokkr
+// d'accéder aux données s'il en avait encore besoin. Ce refus protège d'une
+// écriture CLIENT — laquelle atterrirait aujourd'hui dans un magasin que plus
+// rien ne lit : ce ne serait pas une mutation invisible, ce serait une perte
+// silencieuse pour celui qui la ferait.
+//
+// ⚠️ LES DONNÉES RESTENT EN PLACE, ET C'EST DÉSORMAIS UN CHOIX ASSUMÉ (26/08).
+// L'arbre gelé d'avant bascule est toujours là, et c'est la seule copie de cet
+// état. On a d'abord voulu l'exporter vers GCS avant de supprimer la base ;
+// l'argument ne tenait pas — une base gelée est DÉJÀ une archive, même stockage
+// répliqué, même durabilité. Un export achète de la portabilité, pas de la
+// sûreté, et ça n'aura d'intérêt qu'au jour où l'on quittera GCP.
+//
+// Ce qui manquait vraiment était le VERROU : la base pouvait être supprimée d'un
+// clic. PITR coupé (il ne protège que d'une écriture, et il n'y en a plus) et
+// `DELETE_PROTECTION_ENABLED` — cf. FRE-72.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

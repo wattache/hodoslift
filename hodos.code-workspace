@@ -1,0 +1,76 @@
+{
+  "folders": [
+    { "name": "🏔  hodos (racine)",       "path": "." },
+    { "name": "🌐 web",               "path": "web" },
+    { "name": "⚙️  api-python",        "path": "api-python" },
+    { "name": "🦫 api (Go)",          "path": "api" },
+    { "name": "☁️  infra",             "path": "infra" }
+  ],
+  "settings": {
+    // --- Terminaux nommés : menu déroulant du "+" dans le panneau Terminal ---
+    // `${workspaceFolder}` = le premier dossier, la racine du monorepo.
+    "terminal.integrated.profiles.osx": {
+      "🚀 dev (mprocs)": {
+        "path": "zsh",
+        "args": ["-lic", "cd ${workspaceFolder} && exec mprocs"],
+        "icon": "run-all",
+        "color": "terminal.ansiRed"
+      },
+      "🤖 claude": {
+        "path": "zsh",
+        "args": ["-lic", "cd ${workspaceFolder} && { command -v claude >/dev/null && exec claude || { echo '⚠️  CLI claude absent — installe-le : npm i -g @anthropic-ai/claude-code'; exec zsh; }; }"],
+        "icon": "sparkle",
+        "color": "terminal.ansiBlue"
+      },
+      "🌐 web": {
+        "path": "zsh",
+        "args": ["-lic", "cd ${workspaceFolder}/web && exec zsh"],
+        "icon": "globe",
+        "color": "terminal.ansiGreen"
+      },
+      "⚙️ api-python (shell)": {
+        "path": "zsh",
+        "args": ["-lic", "cd ${workspaceFolder}/api-python && exec zsh"],
+        "icon": "server-process",
+        "color": "terminal.ansiCyan"
+      },
+      "☁️ infra": {
+        "path": "zsh",
+        "args": ["-lic", "cd ${workspaceFolder}/infra && exec zsh"],
+        "icon": "cloud",
+        "color": "terminal.ansiYellow"
+      }
+    },
+    "terminal.integrated.tabs.enabled": true,
+    // Python côté api-python : le venv uv, créé par `make install` à la racine.
+    "python.defaultInterpreterPath": "${workspaceFolder}/api-python/.venv/bin/python",
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/.venv": true,
+      "**/__pycache__": true
+    }
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        // Lanceur unique : mprocs démarre web (:5173), api-python (:8080) et api (:8081).
+        "label": "🚀 dev — web + api-python + api (mprocs)",
+        "type": "shell",
+        "command": "mprocs",
+        "options": { "cwd": "${workspaceFolder}" },
+        "group": { "kind": "build", "isDefault": true },
+        "presentation": { "panel": "dedicated", "reveal": "always" },
+        "problemMatcher": []
+      }
+    ]
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-python.python",
+      "charliermarsh.ruff",
+      "dbaeumer.vscode-eslint",
+      "hashicorp.terraform"
+    ]
+  }
+}

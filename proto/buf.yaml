@@ -1,0 +1,15 @@
+# Le contrat de Hodos : une source, deux consommateurs (sindri en Go, eitri en
+# TypeScript). `buf lint` garde le style, `buf breaking` garde la compatibilité.
+version: v2
+modules:
+  - path: .
+deps:
+  # Les règles de validation vivent DANS le contrat (min_len, uuid, enum
+  # défini…) : le front les lit, le serveur les applique, une seule définition.
+  - buf.build/bufbuild/protovalidate
+lint:
+  use:
+    - STANDARD
+breaking:
+  use:
+    - FILE

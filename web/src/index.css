@@ -1,0 +1,338 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* =============================================================================
+ * Design tokens — Eitri (identité dark/gold héritée du front v2).
+ * - OKLCH pour des tonalités dark cohérentes
+ * - Sidebar a son propre fond (plus dark que le background)
+ * - Couleurs blocs tokenisées : accumulation / intensification / realisation / deload
+ * ============================================================================*/
+
+:root {
+  --radius: 0.625rem;
+
+  --background: oklch(0.16 0.005 270);
+  --foreground: oklch(0.96 0.005 270);
+
+  --card: oklch(0.20 0.006 270);
+  --card-foreground: oklch(0.96 0.005 270);
+
+  --popover: oklch(0.20 0.006 270);
+  --popover-foreground: oklch(0.96 0.005 270);
+
+  --primary: oklch(0.76 0.13 82);
+  --primary-foreground: oklch(0.18 0.01 270);
+
+  --secondary: oklch(0.25 0.008 270);
+  --secondary-foreground: oklch(0.96 0.005 270);
+
+  --muted: oklch(0.23 0.007 270);
+  --muted-foreground: oklch(0.68 0.015 270);
+
+  --accent: oklch(0.27 0.01 270);
+  --accent-foreground: oklch(0.96 0.005 270);
+
+  --destructive: oklch(0.62 0.22 25);
+  --destructive-foreground: oklch(0.98 0 0);
+
+  --border: oklch(0.28 0.008 270);
+  --input: oklch(0.28 0.008 270);
+  --ring: oklch(0.76 0.13 82);
+
+  --gold: oklch(0.76 0.13 82);
+  --gold-foreground: oklch(0.18 0.01 270);
+
+  /* Blocs périodisation */
+  --block-accumulation: oklch(0.62 0.14 240);   /* bleu — volume */
+  --block-intensification: oklch(0.70 0.16 35); /* orange — tension */
+  --block-realisation: oklch(0.62 0.22 25);     /* rouge — peak */
+  --block-deload: oklch(0.62 0.02 270);         /* gris — deload */
+  /* Un événement de l'athlète (vacances, déplacement…) sur la frise : bleu-vert,
+     hors de la famille des blocs pour ne jamais se lire comme un type de bloc. */
+  --evenement: oklch(0.62 0.09 185);
+
+
+  /* --------------------------------------------------------------------- *
+   * SÉRIES DU GRAPHE JOURNALIER — palette catégorielle VALIDÉE, pas choisie.
+   *
+   * Passée au validateur de la compétence `dataviz` (bande de clarté, plancher
+   * de chroma, séparation sous dyschromatopsie, contraste sur la surface) dans
+   * les DEUX modes. Ne pas y toucher sans le rejouer.
+   *
+   * ⚠️ L'ORDRE DES TEINTES EST PORTEUR. La séparation se mesure sur les paires
+   * ADJACENTES : violet et bleu voisins tombaient à ΔE 1,7 en protanopie —
+   * indiscernables. Le vert les sépare. Réassigner une couleur à une autre
+   * série, c'est refaire la validation.
+   *
+   * Les anciens jetons de série ne convenaient pas : `--block-deload` est un
+   * quasi-gris (chroma 0,02, sous le plancher) et `--block-realisation` est
+   * la couleur DESTRUCTIVE — un statut réservé, jamais une identité de série.
+   * Toléré tant que les courbes vivaient sur des cartes séparées, où la couleur
+   * décorait ; faux dès qu'elles se superposent et doivent identifier.
+   * --------------------------------------------------------------------- */
+  --serie-poids:    oklch(0.60 0.14 82);
+  --serie-eau:      oklch(0.48 0.16 255);
+  --serie-forme:    oklch(0.55 0.14 160);
+  --serie-sommeil:  oklch(0.50 0.18 305);
+  --serie-calories: oklch(0.57 0.18 20);
+  --success: oklch(0.72 0.16 155);
+  --warning: oklch(0.78 0.15 75);
+
+  /* Accent métriques temps (tempo / repos) — bleu froid, distinct de l'or
+     (charge) et du vert/ambre/rouge (RPE). */
+  --metric: oklch(0.74 0.12 245);
+
+  /* Sidebar — fond plus dark que le background pour distinction visuelle */
+  --sidebar: oklch(0.14 0.005 270);
+  --sidebar-foreground: oklch(0.90 0.005 270);
+  --sidebar-primary: oklch(0.76 0.13 82);
+  --sidebar-primary-foreground: oklch(0.18 0.01 270);
+  --sidebar-accent: oklch(0.22 0.007 270);
+  --sidebar-accent-foreground: oklch(0.96 0.005 270);
+  --sidebar-border: oklch(0.24 0.008 270);
+  --sidebar-ring: oklch(0.76 0.13 82);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --background: oklch(0.98 0.004 270);
+  --foreground: oklch(0.21 0.006 270);
+
+  --card: oklch(0.995 0.002 270);
+  --card-foreground: oklch(0.21 0.006 270);
+
+  --popover: oklch(0.995 0.002 270);
+  --popover-foreground: oklch(0.21 0.006 270);
+
+  --primary: oklch(0.72 0.13 82);
+  --primary-foreground: oklch(0.98 0 0);
+
+  --secondary: oklch(0.95 0.004 270);
+  --secondary-foreground: oklch(0.21 0.006 270);
+
+  --muted: oklch(0.94 0.004 270);
+  --muted-foreground: oklch(0.48 0.01 270);
+
+  --accent: oklch(0.92 0.006 270);
+  --accent-foreground: oklch(0.21 0.006 270);
+
+  --destructive: oklch(0.61 0.22 25);
+  --destructive-foreground: oklch(0.98 0 0);
+
+  --border: oklch(0.88 0.006 270);
+  --input: oklch(0.88 0.006 270);
+  --ring: oklch(0.72 0.13 82);
+
+  /* Accents assombris/saturés en thème clair pour le contraste sur fond clair
+     (les valeurs ~0.72 d'origine étaient trop pâles sur du blanc). Thème sombre
+     inchangé (voir :root). */
+  --gold: oklch(0.64 0.14 82);
+  --gold-foreground: oklch(0.98 0 0);
+
+  --block-accumulation: oklch(0.56 0.15 240);
+  --block-intensification: oklch(0.68 0.17 35);
+  --block-realisation: oklch(0.58 0.21 25);
+  --block-deload: oklch(0.55 0.015 270);
+  --evenement: oklch(0.56 0.09 185);
+
+  --serie-poids:    oklch(0.655 0.14 82);
+  --serie-eau:      oklch(0.52 0.15 255);
+  --serie-forme:    oklch(0.62 0.14 160);
+  --serie-sommeil:  oklch(0.58 0.16 305);
+  --serie-calories: oklch(0.64 0.15 20);
+  --success: oklch(0.55 0.16 155);
+  --warning: oklch(0.62 0.16 75);
+  --metric: oklch(0.5 0.16 245);
+
+  --sidebar: oklch(0.965 0.004 270);
+  --sidebar-foreground: oklch(0.24 0.006 270);
+  --sidebar-primary: oklch(0.72 0.13 82);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.92 0.006 270);
+  --sidebar-accent-foreground: oklch(0.21 0.006 270);
+  --sidebar-border: oklch(0.88 0.006 270);
+  --sidebar-ring: oklch(0.72 0.13 82);
+}
+
+@theme inline {
+  /* ---------------------------------------------------------------------- *
+   * TYPOGRAPHIE — trois rôles, et c'est une DÉCISION, plus un défaut.
+   *
+   * ⚠️ CE FICHIER DÉCLARAIT « Inter » SANS JAMAIS LA CHARGER : aucun @font-face,
+   * aucun lien dans `index.html`. Tout l'écran tombait donc sur `system-ui` —
+   * SF sur un Mac, Segoe sur Windows, Roboto sur Android. C'est-à-dire : pas de
+   * décision typographique du tout, et le rendu qui change de machine en
+   * machine. C'est le premier signe auquel on reconnaît une interface qui n'a
+   * pas été dessinée.
+   *
+   * Les trois familles sont SERVIES PAR NOUS (paquets `@fontsource`, vendues
+   * dans le bundle) : pas de Google Fonts en direct, donc pas de requête vers
+   * un tiers depuis une app qui porte des données de santé, et un rendu
+   * identique hors ligne — ce que la PWA exige.
+   *
+   *   display — Barlow Condensed : les titres et les nombres qu'on lit de loin.
+   *             Condensée et carrée, elle reprend la lettre du logo FF ; à
+   *             l'usage, elle laisse tenir « TIRAGE HORIZONTAL · LARGE + PRONATION »
+   *             sur une ligne là où une grotesque normale coupe.
+   *   sans    — Barlow : même dessin, proportions normales. Une superfamille
+   *             plutôt que deux polices qui se ressemblent vaguement.
+   *   mono    — IBM Plex Mono : les CHIFFRES. Une charge, une série, un RPE se
+   *             comparent en colonne — il leur faut une chasse fixe, sinon
+   *             « 32.5 » et « 45 » ne s'alignent pas. C'est déjà l'usage du
+   *             code (`font-mono tabular-nums`), qui pointait jusqu'ici sur le
+   *             mono du système, différent partout.
+   * ---------------------------------------------------------------------- */
+  --font-sans: "Barlow", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Barlow Condensed", "Barlow", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
+
+  --color-block-accumulation: var(--block-accumulation);
+  --color-block-intensification: var(--block-intensification);
+  --color-block-realisation: var(--block-realisation);
+  --color-block-deload: var(--block-deload);
+  --color-serie-poids: var(--serie-poids);
+  --color-serie-eau: var(--serie-eau);
+  --color-serie-forme: var(--serie-forme);
+  --color-serie-sommeil: var(--serie-sommeil);
+  --color-serie-calories: var(--serie-calories);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-metric: var(--metric);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html, body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    /* `cv11`/`ss01` étaient des variantes PROPRES À INTER (le a et le l
+       alternatifs) : sans Inter chargée, elles ne faisaient rien. Barlow n'en a
+       pas — ce qui compte ici, ce sont les chiffres, réglés plus bas. */
+  }
+
+  body { margin: 0; min-height: 100vh; }
+
+  /* ⚠️ LES TITRES PRENNENT LA CONDENSÉE, tous, et c'est le cœur du parti pris.
+     Le tracking négatif venait du réglage par défaut d'Inter ; une condensée se
+     serre déjà par son dessin, la resserrer encore la rend illisible en
+     capitales. On l'ouvre légèrement à la place. */
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: 0.005em;
+  }
+
+  /* ⚠️ LES CHIFFRES SONT TABULAIRES PARTOUT OÙ ILS S'EMPILENT. `font-mono` sans
+     `tnum` laisse les figures se recentrer d'une ligne à l'autre : une colonne
+     de charges (45 / 32.5 / 27.5) se met à danser, et c'est exactement ce qu'un
+     carnet d'entraînement ne doit pas faire. La règle est posée UNE fois ici
+     plutôt que répétée en `tabular-nums` sur chaque élément — les occurrences
+     existantes deviennent redondantes, pas fausses. */
+  .font-mono, [class*="font-mono"] {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Indicateur natif des champs date : sombre par défaut → invisible sur fond
+   sombre. On le teinte en or (filtre, car l'image native n'accepte pas `color`). */
+.date-field-input::-webkit-calendar-picker-indicator {
+  filter: invert(64%) sepia(51%) saturate(451%) hue-rotate(9deg) brightness(91%) contrast(88%);
+  cursor: pointer;
+}
+
+/* ===========================================================================
+ * LE PLANCHER DU DOIGT (10/09)
+ *
+ * ⚠️ RIEN N'AVAIT ÉTÉ DIMENSIONNÉ POUR UNE MAIN. Mesuré sur dix routes à 320 et
+ * 390 px, pointeur grossier : 216 cibles sur 242 mesuraient moins de 44 px, et
+ * les pires 12 × 12 — le crayon « renommer » de la bibliothèque. C'est l'écran
+ * de l'athlète à la salle, entre deux séries, les mains moites.
+ *
+ * ⚠️ UNE RÈGLE, PAS CENT RETOUCHES, et c'est délibéré. Le défaut n'est pas dans
+ * dix composants : il est dans l'absence de plancher. Une correction au cas par
+ * cas se serait périmée au premier bouton neuf ; celle-ci s'applique à ce qui
+ * n'existe pas encore.
+ *
+ * ⚠️ `pointer: coarse`, DONC LE BUREAU N'EST PAS TOUCHÉ. La densité du tableau
+ * du coach est un choix, pas un oubli — il travaille à la souris, sur grand
+ * écran, avec beaucoup de lignes à la fois.
+ *
+ * ⚠️ LA HAUTEUR SEULE EST GARANTIE, PAS LA LARGEUR. 30 cibles restent étroites
+ * (29 à 38 px) : les en-têtes du tableau RM, les numéros de semaine, les
+ * pastilles « 14j / 30j / 90j ». Les élargir casserait des rangées qui doivent
+ * tenir sur une ligne — et dans une rangée, c'est la hauteur que le pouce
+ * cherche. Vérifié : zéro débordement horizontal ajouté, sur 20 combinaisons.
+ * =========================================================================== */
+
+@media (pointer: coarse) {
+  button,
+  [role="button"],
+  select,
+  summary,
+  a[href] {
+    min-height: 44px;
+  }
+
+  /* Les boutons qui ne portent QU'UNE icône sont carrés : la largeur compte
+     autant que la hauteur. `+ .sr-only` rattrape ceux dont le libellé est
+     réservé aux lecteurs d'écran — le déclencheur de la barre latérale, présent
+     sur les dix routes, en fait partie. */
+  button:has(> svg:only-child),
+  button:has(> svg + .sr-only),
+  [role="button"]:has(> svg:only-child) {
+    min-width: 44px;
+  }
+}
+
+/* ⚠️ CE QUI NE SE RÉVÈLE QU'AU SURVOL N'EXISTE PAS SUR UN ÉCRAN TACTILE. Le
+ * crayon « renommer » de la bibliothèque est en `opacity-0` jusqu'au survol :
+ * sur un téléphone, il est simplement invisible, et le geste inatteignable.
+ * Rien ne le signalait — un test de rendu le voit présent dans le DOM. */
+@media (hover: none) {
+  [class*="group-hover:opacity-100"] {
+    opacity: 1 !important;
+  }
+}

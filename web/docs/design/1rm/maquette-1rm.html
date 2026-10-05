@@ -1,0 +1,185 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&amp;family=Barlow+Condensed:wght@600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Barlow',system-ui,sans-serif}
+.mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+.cond{font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:0.5px;text-transform:uppercase}
+</style>
+
+<style>html,body{margin:0}#root{display:inline-block}</style><style>@font-face{font-family:'Barlow';src:local('DejaVu Sans');}@font-face{font-family:'Barlow Condensed';src:local('DejaVu Sans Condensed');}@font-face{font-family:'IBM Plex Mono';src:local('DejaVu Sans Mono');}</style></head><body><div id="root"></div>
+<script>
+class DCLogic {
+  constructor(props){ this.props = props || {}; this.state = {}; }
+  setState(o){ Object.assign(this.state, o); window.__rerender(); }
+  forceUpdate(){ window.__rerender(); }
+}
+const SVGTAGS = new Set(['svg','path','g','circle','ellipse','rect','line','text','polygon','polyline','defs','use']);
+const EVT = { onclick:'click', onmouseenter:'mouseenter', onmouseleave:'mouseleave', onchange:'input', oninput:'input' };
+function lookup(path, ctx){
+  if (path === 'true') return true;
+  if (path === 'false') return false;
+  let cur = ctx;
+  for (const part of path.split('.')) {
+    if (cur == null) return undefined;
+    cur = cur[part];
+  }
+  return cur;
+}
+function interp(str, ctx){
+  return str.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (m, p) => {
+    const v = lookup(p, ctx);
+    return v == null ? '' : String(v);
+  });
+}
+function whole(str){ const m = str.match(/^\{\{\s*([^}]+?)\s*\}\}$/); return m ? m[1] : null; }
+function renderNodes(nodes, ctx, parent, svg){
+  for (const node of nodes) {
+    if (node.nodeType === 3) {
+      const t = interp(node.nodeValue, ctx);
+      if (t.trim()) parent.appendChild(document.createTextNode(t));
+      continue;
+    }
+    if (node.nodeType !== 1) continue;
+    const tag = node.tagName.toLowerCase();
+    if (tag === 'sc-for') {
+      const list = lookup(whole(node.getAttribute('list')) || '', ctx) || [];
+      const as = node.getAttribute('as') || 'item';
+      list.forEach((item, i) => {
+        const c = Object.create(ctx); c[as] = item; c.$index = i;
+        renderNodes([...node.childNodes], c, parent, svg);
+      });
+      continue;
+    }
+    if (tag === 'sc-if') {
+      const v = lookup(whole(node.getAttribute('value')) || '', ctx);
+      if (v) renderNodes([...node.childNodes], ctx, parent, svg);
+      continue;
+    }
+    const isSvg = svg || SVGTAGS.has(tag);
+    const el = isSvg ? document.createElementNS('http://www.w3.org/2000/svg', tag)
+                     : document.createElement(tag);
+    for (const attr of [...node.attributes]) {
+      const name = attr.name, raw = attr.value;
+      const w = whole(raw);
+      if (EVT[name.toLowerCase()]) {
+        const fn = w ? lookup(w, ctx) : null;
+        if (typeof fn === 'function') el.addEventListener(EVT[name.toLowerCase()], fn);
+        continue;
+      }
+      if (name.startsWith('hint-')) continue;
+      if (name === 'disabled') { if (w ? lookup(w, ctx) : true) el.setAttribute('disabled', ''); continue; }
+      if (name === 'value' && tag === 'input') { el.value = w ? (lookup(w, ctx) ?? '') : raw; continue; }
+      el.setAttribute(name, interp(raw, ctx));
+    }
+    renderNodes([...node.childNodes], ctx, el, isSvg);
+    parent.appendChild(el);
+  }
+}
+window.__boot = function(markup){
+  const holder = document.createElement('div');
+  holder.innerHTML = markup;
+  const tpl = [...holder.childNodes];
+  const inst = new Component({});
+  window.__inst = inst;
+  window.__rerender = function(){
+    const root = document.getElementById('root');
+    root.innerHTML = '';
+    renderNodes(tpl, inst.renderVals(), root, false);
+  };
+  window.__rerender();
+};
+</script>
+<script>
+var DATA = [
+ {mvt:'Squat', pdc:0, prog:180, seances:8, p10:176.6, p25:179.2, p50:182.2, p75:185.2, p90:187.9,
+  pts:[[186],[194.7],[174],[179.9],[174],[171.1],[188.5],[180],[186],[192.5],[179.8]]},
+ {mvt:'Dips', pdc:82.3, prog:162.3, seances:6, p10:168.2, p25:171.1, p50:174.5, p75:177.9, p90:181.1,
+  pts:[[176.9],[185.4],[174],[177.1],[176.5],[176.6],[170],[180.1],[161.4],[173.8]]},
+ {mvt:'Tractions', pdc:83.3, prog:145.8, seances:1, p10:129.3, p25:135.8, p50:143.4, p75:151.5, p90:159.1,
+  pts:[[143.4]]},
+ {mvt:'Muscle up', pdc:82.1, prog:97.1, seances:6, p10:96.8, p25:98.5, p50:100.4, p75:102.4, p90:104.2,
+  pts:[[101.2],[101.5],[96.4],[100.2],[99.6],[102.4],[101.5]]}
+];
+var SOMBRE = {
+  page:'#131316', carte:'#1B1A1F', bulle:'#17161A', bord:'#2A2930', bordDoux:'#232228',
+  encre:'#EEECF2', encre2:'#A9A5B0', encre3:'#7C7886',
+  accent:'#D4A843', accentDoux:'rgba(212,168,67,0.28)', accentTexte:'#D4A843',
+  pointFill:'#6E6A76', alerte:'#E0A93C', alerteBord:'#5A4A22',
+  boutonFond:'#232228', boutonBord:'#2F2E35'
+};
+var CLAIR = {
+  page:'#EFEDE8', carte:'#FFFFFF', bulle:'#F6F4F0', bord:'#DCD8D0', bordDoux:'#E8E5DF',
+  encre:'#1B1A1F', encre2:'#55525C', encre3:'#7A7682',
+  accent:'#B98713', accentDoux:'rgba(185,135,19,0.22)', accentTexte:'#8A6410',
+  pointFill:'#A9A5B0', alerte:'#9A6B10', alerteBord:'#D9C089',
+  boutonFond:'#F2F0EB', boutonBord:'#DCD8D0'
+};
+// Pas d'axe absolu : chaque frise est centrée sur son estimation.
+// Mais UNE SEULE échelle en px/kg pour toutes — c'est elle qui rend l'incertitude comparable.
+var PX_PAR_KG = 15, PX_PAR_KG_TEL = 8.5;
+var L = 520, LT = 320, CX = 260, CXT = 160;
+function fr(n, d) { return n.toFixed(d === undefined ? 1 : d).replace('.', ','); }
+function signe(n) { return (n > 0 ? '+' : '') + fr(n); }
+function borne(v, min, max) { return Math.max(min, Math.min(max, v)); }
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { theme: 'sombre' }; }
+  renderVals() {
+    var self = this, st = this.state;
+    var t = st.theme === 'sombre' ? SOMBRE : CLAIR;
+
+    var lignes = DATA.map(function (d) {
+      var fragile = d.seances === 1;
+      var delta = d.prog ? d.p50 - d.prog : null;
+      // x(kg) : écart à l'estimation, à l'échelle commune, borné à la fenêtre de la frise.
+      var x = function (kg) { return borne(CX + (kg - d.p50) * PX_PAR_KG, 6, L - 6); };
+      var xt = function (kg) { return borne(CXT + (kg - d.p50) * PX_PAR_KG_TEL, 5, LT - 5); };
+      // Dispersion verticale déterministe : les séries ne se cachent pas l'une l'autre.
+      var pos = function (f, centre) {
+        return d.pts.map(function (p, j) { return { x: f(p[0]), y: centre + [0, -5, 5][j % 3] }; });
+      };
+      return {
+        mvt: d.mvt, fragile: fragile, estime: true, absent: false,
+        // Les charges écrites sur la frise : l'estimation au-dessus du trait, les bornes aux bouts.
+        p50: fr(d.p50), p10: fr(d.p10), p90: fr(d.p90),
+        // Le lest est la deuxième colonne : l'athlète pense en lest, la frise parle en total.
+        lest: d.pdc > 0 ? signe(d.p50 - d.pdc) + ' kg de lest' : 'à la barre',
+        lestCouleur: d.pdc > 0 ? t.encre : t.encre2,
+        meta: d.seances + (d.seances > 1 ? ' séances' : ' séance') + (d.prog ? ' · prog ' + fr(d.prog, 0) : ''),
+        avecProg: !!d.prog,
+        delta: delta === null ? '' : signe(delta),
+        deltaCouleur: delta === null ? t.encre3 : (delta >= 0 ? t.accentTexte : t.alerte),
+        x10: x(d.p10), x25: x(d.p25), x50: x(d.p50), x90: x(d.p90), xProg: x(d.prog),
+        largeurBoite: x(d.p75) - x(d.p25),
+        t10: xt(d.p10), t25: xt(d.p25), t50: xt(d.p50), t90: xt(d.p90), tProg: xt(d.prog),
+        largeurBoiteTel: xt(d.p75) - xt(d.p25),
+        // Fragile : la boîte est en contour tireté — un intervalle qu'on ne remplit pas.
+        boiteFond: fragile ? 'none' : t.accentDoux,
+        boiteBord: fragile ? t.accent : 'none',
+        boiteTrait: fragile ? 1.6 : 0,
+        boiteTirets: fragile ? '4 3' : '',
+        points: pos(x, 34), pointsTel: pos(xt, 26),
+        aria: d.mvt + ' : 1RM estimé ' + fr(d.p50) + ' kg au total, 80 % des cas entre '
+          + fr(d.p10) + ' et ' + fr(d.p90) + ' kg, sur ' + d.seances + ' séance'
+          + (d.seances > 1 ? 's' : '') + (d.prog ? ', 1RM de programmation ' + fr(d.prog, 0) + ' kg' : ''),
+        raison: ''
+      };
+    });
+
+    return {
+      t: t, lignes: lignes,
+      echelle: { px: 10 * PX_PAR_KG + 2, fin: 10 * PX_PAR_KG + 1,
+                 pxTel: 10 * PX_PAR_KG_TEL + 2, finTel: 10 * PX_PAR_KG_TEL + 1 },
+      themes: [{ id: 'sombre', nom: 'Sombre' }, { id: 'clair', nom: 'Clair' }].map(function (th) {
+        var on = st.theme === th.id;
+        return { nom: th.nom, on: on,
+          bord: on ? t.accent : t.boutonBord, fond: on ? t.accentDoux : t.boutonFond,
+          texte: on ? t.encre : t.encre2,
+          pick: function () { self.setState({ theme: th.id }); } };
+      })
+    };
+  }
+}
+
+window.__boot("\n\n<div style=\"width: 1340px; height: 820px; box-sizing: border-box; padding: 20px 22px; background: {{t.page}}; color: {{t.encre}}; display: flex; flex-direction: column; gap: 14px;\">\n\n<header style=\"display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;\">\n<div style=\"display: flex; flex-direction: column; gap: 2px;\">\n<h1 class=\"cond\" style=\"margin: 0; font-size: 25px;\">Carte 1RM estim\u00e9s \u2014 mouvement \u00b7 lest \u00b7 frise</h1>\n<p style=\"margin: 0; font-size: 12.5px; color: {{t.encre2}};\">Chaque frise est centr\u00e9e sur son estimation, et toutes partagent la m\u00eame \u00e9chelle en kg : une frise plus large, c'est plus d'incertitude. Les charges sont \u00e9crites dessus.</p>\n</div>\n<div style=\"display: flex; gap: 6px;\" role=\"group\" aria-label=\"Th\u00e8me\">\n<sc-for list=\"{{themes}}\" as=\"th\" hint-placeholder-count=\"2\">\n<button type=\"button\" onClick=\"{{th.pick}}\" aria-pressed=\"{{th.on}}\" style=\"height: 32px; padding: 0 14px; border-radius: 8px; border: 1px solid {{th.bord}}; background: {{th.fond}}; color: {{th.texte}}; font-size: 13px; font-weight: 600; cursor: pointer;\">{{th.nom}}</button>\n</sc-for>\n</div>\n</header>\n\n<div style=\"flex-grow: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 375px; gap: 18px; align-items: start;\">\n\n<div style=\"display: flex; flex-direction: column; gap: 14px; min-width: 0;\">\n\n<!-- CARTE PRINCIPALE -->\n<section style=\"background: {{t.carte}}; border: 1px solid {{t.bord}}; border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px;\" aria-label=\"1RM estim\u00e9s\">\n<div style=\"display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;\">\n<h2 class=\"cond\" style=\"margin: 0; font-size: 19px;\">1RM estim\u00e9s</h2>\n<div style=\"display: flex; align-items: center; gap: 14px; font-size: 11px; color: {{t.encre3}};\">\n<span style=\"display: flex; align-items: center; gap: 6px;\">\n<svg width=\"60\" height=\"12\" viewBox=\"0 0 60 12\" aria-hidden>\n<line x1=\"2\" y1=\"6\" x2=\"58\" y2=\"6\" stroke=\"{{t.accent}}\" stroke-width=\"2\" stroke-linecap=\"round\" opacity=\"0.5\"></line>\n<rect x=\"16\" y=\"1\" width=\"28\" height=\"10\" rx=\"3\" fill=\"{{t.accentDoux}}\"></rect>\n<line x1=\"30\" y1=\"0\" x2=\"30\" y2=\"12\" stroke=\"{{t.encre}}\" stroke-width=\"2.5\"></line>\n</svg>\nestimation \u00b7 50 % des cas \u00b7 80 %\n</span>\n<span style=\"display: flex; align-items: center; gap: 5px;\">\n<svg width=\"10\" height=\"12\" viewBox=\"0 0 10 12\" aria-hidden><line x1=\"5\" y1=\"0\" x2=\"5\" y2=\"12\" stroke=\"{{t.encre3}}\" stroke-width=\"1.5\" stroke-dasharray=\"3 2\"></line></svg>\n1RM de programmation\n</span>\n<span style=\"display: flex; align-items: center; gap: 5px;\">\n<svg width=\"10\" height=\"10\" viewBox=\"0 0 10 10\" aria-hidden><circle cx=\"5\" cy=\"5\" r=\"3\" fill=\"{{t.pointFill}}\" stroke=\"{{t.carte}}\" stroke-width=\"2\"></circle></svg>\nune s\u00e9rie\n</span>\n</div>\n</div>\n\n<div style=\"display: flex; flex-direction: column;\">\n<sc-for list=\"{{lignes}}\" as=\"l\" hint-placeholder-count=\"4\">\n<div style=\"display: flex; align-items: center; gap: 14px; padding: 7px 0; border-top: 1px solid {{t.bordDoux}};\">\n\n<!-- 1. MOUVEMENT -->\n<div style=\"width: 132px; flex-shrink: 0; display: flex; flex-direction: column; gap: 2px;\">\n<span class=\"cond\" style=\"font-size: 16px; color: {{t.encre}};\">{{l.mvt}}</span>\n<sc-if value=\"{{l.fragile}}\" hint-placeholder-val=\"{{ false }}\">\n<span style=\"align-self: flex-start; padding: 1px 7px; border-radius: 999px; border: 1px solid {{t.alerteBord}}; color: {{t.alerte}}; font-size: 10.5px; font-weight: 600;\">1 s\u00e9ance</span>\n</sc-if>\n</div>\n\n<!-- 2. LEST -->\n<div style=\"width: 176px; flex-shrink: 0; display: flex; flex-direction: column; gap: 2px;\">\n<span class=\"mono\" style=\"font-size: 12.5px; color: {{l.lestCouleur}}; white-space: nowrap;\">{{l.lest}}</span>\n<span class=\"mono\" style=\"font-size: 10.5px; color: {{t.encre3}}; white-space: nowrap;\">{{l.meta}}<sc-if value=\"{{l.avecProg}}\" hint-placeholder-val=\"{{ true }}\"> \u00b7 <span style=\"color: {{l.deltaCouleur}};\">{{l.delta}}</span></sc-if></span>\n</div>\n\n<!-- 3. FRISE -->\n<div style=\"flex-grow: 1; min-width: 0;\">\n<sc-if value=\"{{l.absent}}\" hint-placeholder-val=\"{{ false }}\">\n<div style=\"height: 64px; display: flex; flex-direction: column; justify-content: center; gap: 7px;\">\n<div style=\"height: 10px; border-radius: 5px; border: 1px dashed {{t.bord}};\"></div>\n<p style=\"margin: 0; font-size: 12.5px; color: {{t.encre2}};\">{{l.raison}}</p>\n</div>\n</sc-if>\n<sc-if value=\"{{l.estime}}\" hint-placeholder-val=\"{{ true }}\">\n<div style=\"width: 520px; margin: 0 auto; position: relative; height: 64px;\">\n<svg width=\"520\" height=\"64\" viewBox=\"0 0 520 64\" role=\"img\" aria-label=\"{{l.aria}}\" style=\"display: block;\">\n<line x1=\"{{l.x10}}\" y1=\"34\" x2=\"{{l.x90}}\" y2=\"34\" stroke=\"{{t.accent}}\" stroke-width=\"2\" stroke-linecap=\"round\" opacity=\"0.55\"></line>\n<rect x=\"{{l.x25}}\" y=\"26\" width=\"{{l.largeurBoite}}\" height=\"16\" rx=\"4\" fill=\"{{l.boiteFond}}\" stroke=\"{{l.boiteBord}}\" stroke-width=\"{{l.boiteTrait}}\" stroke-dasharray=\"{{l.boiteTirets}}\"></rect>\n<sc-for list=\"{{l.points}}\" as=\"p\" hint-placeholder-count=\"10\">\n<circle cx=\"{{p.x}}\" cy=\"{{p.y}}\" r=\"3.2\" fill=\"{{t.pointFill}}\" stroke=\"{{t.carte}}\" stroke-width=\"2\"></circle>\n</sc-for>\n<sc-if value=\"{{l.avecProg}}\" hint-placeholder-val=\"{{ true }}\">\n<line x1=\"{{l.xProg}}\" y1=\"19\" x2=\"{{l.xProg}}\" y2=\"49\" stroke=\"{{t.encre3}}\" stroke-width=\"1.5\" stroke-dasharray=\"3 2\"></line>\n</sc-if>\n<line x1=\"{{l.x50}}\" y1=\"22\" x2=\"{{l.x50}}\" y2=\"46\" stroke=\"{{t.encre}}\" stroke-width=\"3\" stroke-linecap=\"round\"></line>\n</svg>\n<span class=\"mono\" style=\"position: absolute; top: 0; left: {{l.x50}}px; transform: translateX(-50%); white-space: nowrap; font-size: 15px; font-weight: 600; color: {{t.encre}};\">{{l.p50}} <span style=\"font-size: 10px; color: {{t.encre3}};\">kg</span></span>\n<span class=\"mono\" style=\"position: absolute; top: 48px; left: {{l.x10}}px; transform: translateX(-50%); font-size: 11px; color: {{t.encre3}};\">{{l.p10}}</span>\n<span class=\"mono\" style=\"position: absolute; top: 48px; left: {{l.x90}}px; transform: translateX(-50%); font-size: 11px; color: {{t.encre3}};\">{{l.p90}}</span>\n</div>\n</sc-if>\n</div>\n</div>\n</sc-for>\n\n<!-- \u00c9CHELLE COMMUNE -->\n<div style=\"display: flex; align-items: center; gap: 14px; padding-top: 8px; border-top: 1px solid {{t.bordDoux}};\">\n<div style=\"width: 322px; flex-shrink: 0; font-size: 11px; color: {{t.encre3}};\">M\u00eame \u00e9chelle sur les quatre frises</div>\n<div style=\"display: flex; align-items: center; gap: 8px;\">\n<svg width=\"{{echelle.px}}\" height=\"10\" viewBox=\"0 0 {{echelle.px}} 10\" aria-hidden style=\"display: block;\">\n<line x1=\"1\" y1=\"5\" x2=\"{{echelle.fin}}\" y2=\"5\" stroke=\"{{t.encre3}}\" stroke-width=\"1\"></line>\n<line x1=\"1\" y1=\"1\" x2=\"1\" y2=\"9\" stroke=\"{{t.encre3}}\" stroke-width=\"1\"></line>\n<line x1=\"{{echelle.fin}}\" y1=\"1\" x2=\"{{echelle.fin}}\" y2=\"9\" stroke=\"{{t.encre3}}\" stroke-width=\"1\"></line>\n</svg>\n<span class=\"mono\" style=\"font-size: 11px; color: {{t.encre3}};\">10 kg</span>\n</div>\n</div>\n</div>\n\n<p style=\"margin: 0; font-size: 11.5px; color: {{t.encre3}};\">Charge totale, barre comprise \u00b7 estim\u00e9 depuis tes s\u00e9ries et ton RPE \u00b7 au 01/10/2026</p>\n</section>\n\n<!-- VARIANTE : DIPS ABSENT -->\n<section style=\"background: {{t.carte}}; border: 1px solid {{t.bord}}; border-radius: 14px; padding: 14px 18px; display: flex; flex-direction: column; gap: 8px;\">\n<div style=\"display: flex; align-items: baseline; justify-content: space-between; gap: 10px;\">\n<h2 class=\"cond\" style=\"margin: 0; font-size: 15px;\">Variante \u2014 Dips sans estimation</h2>\n<span class=\"mono\" style=\"font-size: 10px; letter-spacing: 1px; color: {{t.encre3}};\">\u00c9TAT \u00ab ABSENT \u00bb</span>\n</div>\n<div style=\"display: flex; align-items: center; gap: 14px; padding: 9px 0; border-top: 1px solid {{t.bordDoux}};\">\n<div style=\"width: 132px; flex-shrink: 0;\"><span class=\"cond\" style=\"font-size: 16px;\">Dips</span></div>\n<div style=\"width: 176px; flex-shrink: 0; display: flex; flex-direction: column; gap: 2px;\">\n<span class=\"mono\" style=\"font-size: 12.5px; color: {{t.encre3}};\">pas d'estimation</span>\n<span class=\"mono\" style=\"font-size: 10.5px; color: {{t.encre3}};\">0 s\u00e9ance retenue</span>\n</div>\n<div style=\"flex-grow: 1; display: flex; flex-direction: column; gap: 7px;\">\n<div style=\"height: 10px; border-radius: 5px; border: 1px dashed {{t.bord}};\"></div>\n<p style=\"margin: 0; font-size: 12.5px; color: {{t.encre2}};\">Seulement des dips DS sur la p\u00e9riode : une descente ne dit pas un maximum.</p>\n</div>\n</div>\n</section>\n\n<!-- INFOBULLE -->\n<section style=\"background: {{t.carte}}; border: 1px solid {{t.bord}}; border-radius: 14px; padding: 14px 18px; display: flex; align-items: center; gap: 18px;\">\n<div style=\"display: flex; flex-direction: column; gap: 3px;\">\n<h2 class=\"cond\" style=\"margin: 0; font-size: 15px;\">Au survol d'une s\u00e9rie</h2>\n<p style=\"margin: 0; font-size: 12.5px; color: {{t.encre2}}; max-width: 330px;\">Les points sont discrets ; au survol ou au toucher, la s\u00e9rie se lit dans l'unit\u00e9 de l'athl\u00e8te.</p>\n</div>\n<div style=\"padding: 9px 12px; border-radius: 9px; background: {{t.bulle}}; border: 1px solid {{t.bord}}; display: flex; flex-direction: column; gap: 3px;\">\n<span class=\"mono\" style=\"font-size: 12.5px; color: {{t.encre}};\">26/09 \u00b7 +7,5 kg \u00d7 3 @8,5</span>\n<span class=\"mono\" style=\"font-size: 12.5px; color: {{t.accentTexte}};\">\u2192 1RM implicite +20,3 kg</span>\n<span class=\"mono\" style=\"font-size: 10.5px; color: {{t.encre3}};\">102,4 kg au total \u00b7 muscle up</span>\n</div>\n</section>\n\n</div>\n\n<!-- T\u00c9L\u00c9PHONE -->\n<section style=\"background: {{t.carte}}; border: 1px solid {{t.bord}}; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px;\">\n<div style=\"display: flex; align-items: baseline; justify-content: space-between;\">\n<h2 class=\"cond\" style=\"margin: 0; font-size: 17px;\">1RM estim\u00e9s</h2>\n<span class=\"mono\" style=\"font-size: 10px; letter-spacing: 1px; color: {{t.encre3}};\">375 PX</span>\n</div>\n<sc-for list=\"{{lignes}}\" as=\"l\" hint-placeholder-count=\"4\">\n<div style=\"display: flex; flex-direction: column; gap: 3px; padding: 8px 0; border-top: 1px solid {{t.bordDoux}};\">\n<div style=\"display: flex; align-items: baseline; gap: 7px; min-width: 0;\">\n<span class=\"cond\" style=\"font-size: 15px;\">{{l.mvt}}</span>\n<span class=\"mono\" style=\"font-size: 11px; color: {{l.lestCouleur}};\">{{l.lest}}</span>\n<sc-if value=\"{{l.fragile}}\" hint-placeholder-val=\"{{ false }}\">\n<span style=\"padding: 1px 6px; border-radius: 999px; border: 1px solid {{t.alerteBord}}; color: {{t.alerte}}; font-size: 10px; font-weight: 600;\">1 s\u00e9ance</span>\n</sc-if>\n</div>\n<sc-if value=\"{{l.estime}}\" hint-placeholder-val=\"{{ true }}\">\n<div style=\"position: relative; height: 52px;\">\n<svg width=\"320\" height=\"52\" viewBox=\"0 0 320 52\" role=\"img\" aria-label=\"{{l.aria}}\" style=\"display: block;\">\n<line x1=\"{{l.t10}}\" y1=\"26\" x2=\"{{l.t90}}\" y2=\"26\" stroke=\"{{t.accent}}\" stroke-width=\"2\" stroke-linecap=\"round\" opacity=\"0.55\"></line>\n<rect x=\"{{l.t25}}\" y=\"19\" width=\"{{l.largeurBoiteTel}}\" height=\"14\" rx=\"4\" fill=\"{{l.boiteFond}}\" stroke=\"{{l.boiteBord}}\" stroke-width=\"{{l.boiteTrait}}\" stroke-dasharray=\"{{l.boiteTirets}}\"></rect>\n<sc-for list=\"{{l.pointsTel}}\" as=\"p\" hint-placeholder-count=\"10\">\n<circle cx=\"{{p.x}}\" cy=\"{{p.y}}\" r=\"2.8\" fill=\"{{t.pointFill}}\" stroke=\"{{t.carte}}\" stroke-width=\"2\"></circle>\n</sc-for>\n<sc-if value=\"{{l.avecProg}}\" hint-placeholder-val=\"{{ true }}\">\n<line x1=\"{{l.tProg}}\" y1=\"13\" x2=\"{{l.tProg}}\" y2=\"39\" stroke=\"{{t.encre3}}\" stroke-width=\"1.5\" stroke-dasharray=\"3 2\"></line>\n</sc-if>\n<line x1=\"{{l.t50}}\" y1=\"16\" x2=\"{{l.t50}}\" y2=\"36\" stroke=\"{{t.encre}}\" stroke-width=\"3\" stroke-linecap=\"round\"></line>\n</svg>\n<span class=\"mono\" style=\"position: absolute; top: 0; left: {{l.t50}}px; transform: translateX(-50%); white-space: nowrap; font-size: 13.5px; font-weight: 600; color: {{t.encre}};\">{{l.p50}}</span>\n<span class=\"mono\" style=\"position: absolute; top: 39px; left: {{l.t10}}px; transform: translateX(-50%); font-size: 10px; color: {{t.encre3}};\">{{l.p10}}</span>\n<span class=\"mono\" style=\"position: absolute; top: 39px; left: {{l.t90}}px; transform: translateX(-50%); font-size: 10px; color: {{t.encre3}};\">{{l.p90}}</span>\n</div>\n<span class=\"mono\" style=\"font-size: 10.5px; color: {{t.encre3}};\">{{l.meta}}<sc-if value=\"{{l.avecProg}}\" hint-placeholder-val=\"{{ true }}\"> \u00b7 <span style=\"color: {{l.deltaCouleur}};\">{{l.delta}}</span></sc-if></span>\n</sc-if>\n<sc-if value=\"{{l.absent}}\" hint-placeholder-val=\"{{ false }}\">\n<p style=\"margin: 0; font-size: 12px; color: {{t.encre2}};\">{{l.raison}}</p>\n</sc-if>\n</div>\n</sc-for>\n<div style=\"display: flex; align-items: center; gap: 8px; padding-top: 8px; border-top: 1px solid {{t.bordDoux}};\">\n<svg width=\"{{echelle.pxTel}}\" height=\"10\" viewBox=\"0 0 {{echelle.pxTel}} 10\" aria-hidden style=\"display: block;\">\n<line x1=\"1\" y1=\"5\" x2=\"{{echelle.finTel}}\" y2=\"5\" stroke=\"{{t.encre3}}\" stroke-width=\"1\"></line>\n<line x1=\"1\" y1=\"1\" x2=\"1\" y2=\"9\" stroke=\"{{t.encre3}}\" stroke-width=\"1\"></line>\n<line x1=\"{{echelle.finTel}}\" y1=\"1\" x2=\"{{echelle.finTel}}\" y2=\"9\" stroke=\"{{t.encre3}}\" stroke-width=\"1\"></line>\n</svg>\n<span class=\"mono\" style=\"font-size: 10.5px; color: {{t.encre3}};\">10 kg \u00b7 m\u00eame \u00e9chelle partout</span>\n</div>\n<p style=\"margin: 4px 0 0; font-size: 11px; color: {{t.encre3}};\">Charge totale \u00b7 au 01/10/2026</p>\n</section>\n\n</div>\n</div>\n");
+</script></body></html>

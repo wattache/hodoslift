@@ -1,0 +1,32 @@
+# Toutes les variables ont un défaut qui correspond à l'environnement réel
+# (`variables.tf`) : un `terraform.tfvars` n'est nécessaire que pour en
+# surcharger une. Copier en terraform.tfvars (gitignoré) et ne garder que ce
+# qui change.
+
+# project_id = "french-forge-600"
+# region     = "europe-west4"
+
+# Dimensionnement Cloud Run de brokkr.
+# brokkr_min_instances = 1
+# brokkr_max_instances = 4
+
+# Bootstrap d'un environnement VIERGE seulement : l'image brokkr n'existe pas
+# encore, on amorce le service avec l'image hello (cf. README).
+# brokkr_image_override = "us-docker.pkg.dev/cloudrun/container/hello"
+
+# Où écrire la clé du SA brokkr pour le dev local (relatif à ce dossier).
+# brokkr_key_path = "../brokkr/.secrets/brokkr-sa.json"
+
+# Vide = brokkr n'envoie rien à Sentry (l'interrupteur, sans redéployer).
+# sentry_dsn = ""
+
+# Courrier transactionnel (FRE-166). À passer à `true` UNE FOIS les quatre
+# enregistrements posés dans Cloudflare — cf. README, section « Courrier
+# transactionnel ». Terraform vérifie alors le domaine, et échoue s'il ne l'est
+# pas.
+# scaleway_tem_dns_pose = true
+
+# Notifications push (28/09) : `cd brokkr && uv run python -m scripts.generer_cles_vapid`
+# imprime les deux. La privée est un SECRET ; ne la mettre que dans terraform.tfvars.
+# vapid_private_key = ""
+# vapid_public_key  = ""

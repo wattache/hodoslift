@@ -1,0 +1,59 @@
+# Démarre la stack locale : `mprocs` (ou `make dev`) à la racine.
+# Raccourcis mprocs : ↑/↓ = changer de proc · r = restart · s = stop · x = kill · q = quitter
+#
+# DEUX PROCS, ET C'EST TOUT — remis à plat le 2026-08-17.
+#
+# Ce fichier en a porté sept, pour de bonnes raisons devenues caduques :
+#   · `front` lançait la V2 avec un garde-fou de branche. La V2 est éteinte
+#     depuis le 16/08 et son dépôt est à l'arrêt ;
+#   · `eitri-local` gardait la branche `wachiam/fre-12-front-postgres`, fusionnée
+#     dans `main` et supprimée. Un garde-fou de branche n'a plus d'objet : il n'y
+#     a plus qu'un front, et il vit sur `main` ;
+#   · `e2e-auth` et `brokkr-e2e` montaient la stack de test à la main. Elle se
+#     monte désormais d'un geste — `scripts/e2e-reel.sh`, qui démarre ce
+#     qui manque, sème les comptes et joue les specs (~35 s à froid).
+#
+# ⚠️ CE QUI DISPARAÎT D'ICI N'EST PAS PERDU, juste rangé ailleurs. Le bac à
+# sable Postgres (conteneur `ff-training`, port 55433) et l'émulateur d'auth
+# appartiennent au harnais e2e et sont démarrés par son script. Ils restent
+# décrits dans `eitri/docs/e2e-reel.md`. Cette stack sera industrialisée plus
+# tard ; en attendant, elle n'a pas à encombrer le démarrage quotidien.
+
+procs:
+  eitri:
+    shell: "npm run dev"
+    cwd: web
+    env:
+      # ⚠️ SURCHARGE DÉLIBÉRÉE de `.env.local`, qui pointe sur brokkr en
+      # PRODUCTION. Vite donne la priorité aux variables de l'environnement :
+      # sous mprocs, le front parle donc au brokkr d'à côté, et la stack est
+      # cohérente. Lancé seul (`npm run dev` dans eitri/), il retrouve le
+      # comportement du fichier — pratique pour travailler le front sans back.
+      VITE_BROKKR_URL: "http://localhost:8080"
+      VITE_SINDRI_URL: "http://localhost:8081"
+    # Vite → http://localhost:5173 · connexion Firebase réelle.
+
+  brokkr:
+    # `tee` duplique la sortie dans /tmp/brokkr-dev.log : le TUI reste lisible,
+    # ET les logs (dont l'audit) deviennent lisibles depuis un autre shell —
+    # pratique pour debugger sans screenshotter le TUI. Tronqué à chaque start.
+    # PYTHONUNBUFFERED : sans TTY, Python bufferise et les lignes n'arriveraient
+    # dans le fichier que par paquets.
+    shell: "make dev 2>&1 | tee /tmp/brokkr-dev.log"
+    cwd: api-python
+    env:
+      PYTHONUNBUFFERED: "1"
+    # FastAPI/uvicorn --reload → http://localhost:8080
+    # `make dev` prend tout seul brokkr/.secrets/brokkr-sa.json (clé SA gérée
+    # par Terraform), et le DATABASE_URL du `.env` du dépôt.
+    #
+    # ⚠️ CE SONT LES VRAIES DONNÉES DE PRODUCTION — Postgres Neon, et Firestore
+    # pour l'authentification. Les scripts sont en dry-run par défaut ; ce qui
+    # passe par l'API, non. Pour travailler sur une copie, monter le bac à
+    # sable : `scripts/e2e-reel.sh` (cf. eitri/docs/e2e-reel.md).
+
+  sindri:
+    # Le frère de brokkr en Go (Connect) — sert la bibliothèque. Même base que
+    # brokkr ici (`make dev` lit le `.env` de brokkr), :8081.
+    shell: "make dev 2>&1 | tee /tmp/sindri-dev.log"
+    cwd: api

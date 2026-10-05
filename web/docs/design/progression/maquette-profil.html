@@ -1,0 +1,190 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8">
+
+
+<style>
+body{margin:0;background:#131316;font-family:'Barlow',system-ui,sans-serif;color:#EEECF2}
+a{color:#D4A843}a:hover{color:#E6C26A}
+.socle{display:flex;flex-direction:column;align-items:center;gap:1px;font-family:'IBM Plex Mono',monospace;line-height:1.3}
+</style>
+
+<style>html,body{margin:0}#root{display:inline-block}</style><style>@font-face{font-family:'Barlow';src:local('DejaVu Sans');}@font-face{font-family:'Barlow Condensed';src:local('DejaVu Sans Condensed');}@font-face{font-family:'IBM Plex Mono';src:local('DejaVu Sans Mono');}</style></head><body><div id="root"></div>
+<script>
+class DCLogic {
+  constructor(props){ this.props = props || {}; this.state = {}; }
+  setState(o){ Object.assign(this.state, o); window.__rerender(); }
+  forceUpdate(){ window.__rerender(); }
+}
+const SVGTAGS = new Set(['svg','path','g','circle','ellipse','rect','line','text','polygon','polyline','defs','use']);
+const EVT = { onclick:'click', onmouseenter:'mouseenter', onmouseleave:'mouseleave', onchange:'input', oninput:'input' };
+function lookup(path, ctx){
+  if (path === 'true') return true;
+  if (path === 'false') return false;
+  let cur = ctx;
+  for (const part of path.split('.')) {
+    if (cur == null) return undefined;
+    cur = cur[part];
+  }
+  return cur;
+}
+function interp(str, ctx){
+  return str.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (m, p) => {
+    const v = lookup(p, ctx);
+    return v == null ? '' : String(v);
+  });
+}
+function whole(str){ const m = str.match(/^\{\{\s*([^}]+?)\s*\}\}$/); return m ? m[1] : null; }
+function renderNodes(nodes, ctx, parent, svg){
+  for (const node of nodes) {
+    if (node.nodeType === 3) {
+      const t = interp(node.nodeValue, ctx);
+      if (t.trim()) parent.appendChild(document.createTextNode(t));
+      continue;
+    }
+    if (node.nodeType !== 1) continue;
+    const tag = node.tagName.toLowerCase();
+    if (tag === 'sc-for') {
+      const list = lookup(whole(node.getAttribute('list')) || '', ctx) || [];
+      const as = node.getAttribute('as') || 'item';
+      list.forEach((item, i) => {
+        const c = Object.create(ctx); c[as] = item; c.$index = i;
+        renderNodes([...node.childNodes], c, parent, svg);
+      });
+      continue;
+    }
+    if (tag === 'sc-if') {
+      const v = lookup(whole(node.getAttribute('value')) || '', ctx);
+      if (v) renderNodes([...node.childNodes], ctx, parent, svg);
+      continue;
+    }
+    const isSvg = svg || SVGTAGS.has(tag);
+    const el = isSvg ? document.createElementNS('http://www.w3.org/2000/svg', tag)
+                     : document.createElement(tag);
+    for (const attr of [...node.attributes]) {
+      const name = attr.name, raw = attr.value;
+      const w = whole(raw);
+      if (EVT[name.toLowerCase()]) {
+        const fn = w ? lookup(w, ctx) : null;
+        if (typeof fn === 'function') el.addEventListener(EVT[name.toLowerCase()], fn);
+        continue;
+      }
+      if (name.startsWith('hint-')) continue;
+      if (name === 'disabled') { if (w ? lookup(w, ctx) : true) el.setAttribute('disabled', ''); continue; }
+      if (name === 'value' && tag === 'input') { el.value = w ? (lookup(w, ctx) ?? '') : raw; continue; }
+      el.setAttribute(name, interp(raw, ctx));
+    }
+    renderNodes([...node.childNodes], ctx, el, isSvg);
+    parent.appendChild(el);
+  }
+}
+window.__boot = function(markup){
+  const holder = document.createElement('div');
+  holder.innerHTML = markup;
+  const tpl = [...holder.childNodes];
+  const inst = new Component({});
+  window.__inst = inst;
+  window.__rerender = function(){
+    const root = document.getElementById('root');
+    root.innerHTML = '';
+    renderNodes(tpl, inst.renderVals(), root, false);
+  };
+  window.__rerender();
+};
+</script>
+<script>
+var SEM = [
+  { label: 'S1', sets: 3, reps: '2', repsDone: '', kg: 60, kgDone: null, rpeCible: 8, rpeReel: 8, fait: true },
+  { label: 'S2', sets: 3, reps: '2', repsDone: '', kg: 62.5, kgDone: null, rpeCible: 8, rpeReel: 8, fait: true },
+  { label: 'S3', sets: 3, reps: '2', repsDone: '1', kg: 65, kgDone: 62.5, rpeCible: 8, rpeReel: 9, fait: true },
+  { label: 'S4', sets: 3, reps: '2', repsDone: '', kg: 67.5, kgDone: null, rpeCible: 8, rpeReel: null, fait: false }
+];
+var OPTIONS = [
+  { id: 'phrase', titre: 'Une phrase', sous: 'La réponse écrite, sans graphique' },
+  { id: 'courbe', titre: 'Courbe', sous: 'Le niveau d’un trait' },
+  { id: 'barres', titre: 'Barres', sous: 'Une barre par semaine' },
+  { id: 'marches', titre: 'Marches', sous: 'Ce que tu ajoutes chaque semaine' },
+  { id: 'chiffres', titre: 'Chiffres', sous: 'Le tableau, rien d’autre' }
+];
+function couleurRpe(r) {
+  if (r === null) return '#6E6A76';
+  if (r <= 7) return '#7FA58C';
+  if (r < 9) return '#E0A93C';
+  return '#D65A4A';
+}
+function fr(n) { return String(n).replace('.', ','); }
+function effective(s) { return s.kgDone !== null ? s.kgDone : s.kg; }
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { choix: 'phrase' }; }
+  renderVals() {
+    var self = this, st = this.state;
+    var toutes = SEM.map(effective).concat(SEM.map(function (s) { return s.kg; }));
+    var min = Math.min.apply(null, toutes), max = Math.max.apply(null, toutes);
+    var span = (max - min) || 1;
+    var n = SEM.length;
+    var xAt = function (i) { return 6 + ((i + 0.5) / n) * 324; };
+    var yAt = function (kg) { return 82 - ((kg - min) / span) * 58; };
+    var faits = SEM.filter(function (s) { return s.fait; });
+
+    var semaines = SEM.map(function (s, i) {
+      var eff = effective(s);
+      var prec = i > 0 ? effective(SEM[i - 1]) : null;
+      var d = prec === null ? null : eff - prec;
+      return {
+        label: s.label,
+        volume: s.sets + '×' + s.reps + (s.repsDone ? '→' + s.sets + '×' + s.repsDone : ''),
+        chargeTexte: s.kgDone !== null ? fr(s.kg) + '→' + fr(s.kgDone) : fr(s.kg),
+        rpeTexte: s.rpeReel === null ? fr(s.rpeCible) + ' visé'
+          : s.rpeReel !== s.rpeCible ? fr(s.rpeCible) + '→' + fr(s.rpeReel) : fr(s.rpeReel),
+        rpeCourt: s.rpeReel === null ? fr(s.rpeCible) : fr(s.rpeReel),
+        rpeCouleur: couleurRpe(s.rpeReel === null ? s.rpeCible : s.rpeReel),
+        couleurLabel: s.fait ? '#8A8691' : '#D4A843',
+        couleurValeur: s.fait ? (s.kgDone !== null ? '#E0A93C' : '#EEECF2') : '#D4A843',
+        ecart: d === null ? '—' : (d > 0 ? '+' + fr(d) : fr(d)),
+        ecartCouleur: d === null ? '#6E6A76' : d > 0 ? '#7FA58C' : '#E08A3C',
+        hauteur: Math.round(18 + ((eff - min) / span) * 66),
+        hauteurPrescrit: Math.round(18 + ((s.kg - min) / span) * 66),
+        contourPrescrit: s.kgDone !== null ? '1.5px dashed #8A8691' : (s.fait ? 'none' : '1.5px dashed #D4A843'),
+        barre: s.fait ? (s.kgDone !== null ? '#B98F35' : '#D4A843') : 'transparent',
+        hauteurMarche: Math.round(66 + ((eff - min) / span) * 50),
+        marcheFond: s.fait ? 'rgba(212,168,67,0.16)' : 'transparent',
+        marcheBord: s.fait ? '#5A4A22' : '#3A3940'
+      };
+    });
+
+    return {
+      semaines: semaines,
+      aria: 'Charge : 60 kg en S1, 62,5 en S2, 65 prévus et 62,5 faits en S3, 67,5 prévus en S4. 3 séries de 2 répétitions, une seule en S3. RPE 8, sauf 9 en S3.',
+      courbe: {
+        chemin: faits.map(function (s, i) { return (i ? 'L' : 'M') + xAt(i) + ' ' + yAt(effective(s)); }).join(' '),
+        prevu: 'M' + xAt(faits.length - 1) + ' ' + yAt(effective(faits[faits.length - 1])) + ' L' + xAt(n - 1) + ' ' + yAt(SEM[n - 1].kg),
+        points: SEM.map(function (s, i) { return { x: xAt(i), y: yAt(effective(s)), fill: s.fait ? '#D4A843' : '#1B1A1F' }; }),
+        ecarts: SEM.map(function (s, i) {
+          if (s.kgDone === null) return null;
+          return { x: xAt(i), y1: yAt(s.kg), y2: yAt(s.kgDone) };
+        }).filter(function (e) { return e; }),
+        valeurs: [0, 2, 3].map(function (i) {
+          var s = SEM[i];
+          return { x: xAt(i), y: yAt(effective(s)) + (s.kgDone !== null ? 18 : -10),
+            texte: fr(effective(s)), couleur: s.fait ? (s.kgDone !== null ? '#E0A93C' : '#EEECF2') : '#D4A843' };
+        })
+      },
+      tableau: [
+        { titre: 'S×R', cellules: semaines.map(function (s) { return { texte: s.volume, taille: '11px', graisse: '400', couleur: '#C9C5D0' }; }) },
+        { titre: 'Charge', cellules: semaines.map(function (s) { return { texte: s.chargeTexte, taille: '14px', graisse: '600', couleur: s.couleurValeur }; }) },
+        { titre: 'RPE', cellules: semaines.map(function (s) { return { texte: s.rpeTexte, taille: '11px', graisse: '600', couleur: s.rpeCouleur }; }) },
+        { titre: 'Écart', cellules: semaines.map(function (s) { return { texte: s.ecart, taille: '11px', graisse: '400', couleur: s.ecartCouleur }; }) }
+      ],
+      estPhrase: st.choix === 'phrase', estCourbe: st.choix === 'courbe', estBarres: st.choix === 'barres',
+      estMarches: st.choix === 'marches', estChiffres: st.choix === 'chiffres',
+      options: OPTIONS.map(function (o) {
+        var on = st.choix === o.id;
+        return { titre: o.titre, sous: o.sous, on: on,
+          bord: on ? '#D4A843' : '#2A2930', fond: on ? '#201E24' : '#1B1A1F',
+          puceBord: on ? '#D4A843' : '#3A3940', puceFond: on ? '#D4A843' : 'transparent',
+          pick: function () { self.setState({ choix: o.id }); } };
+      })
+    };
+  }
+}
+
+window.__boot("\n\n<div style=\"width: 390px; height: 800px; box-sizing: border-box; padding: 14px; background: #131316; display: flex; flex-direction: column; gap: 12px; overflow: hidden;\">\n\n<header style=\"display: flex; flex-direction: column; gap: 2px;\">\n<span style=\"font-size: 12px; color: #6E6A76;\">\u2190 Mon profil</span>\n<h1 style=\"margin: 0; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 22px; text-transform: uppercase; letter-spacing: 0.5px;\">Affichage de la progression</h1>\n<p style=\"margin: 2px 0 0; font-size: 13px; line-height: 1.4; color: #9A96A2;\">Tous les rendus disent la m\u00eame chose \u2014 s\u00e9ries \u00d7 reps, charge et RPE. Choisis la forme qui te parle.</p>\n</header>\n\n<section style=\"background: #1B1A1F; border: 1px solid #D4A843; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px;\">\n<div style=\"display: flex; align-items: baseline; justify-content: space-between;\">\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1.4px; color: #D4A843;\">APER\u00c7U \u00b7 PULL UP LEST\u00c9</span>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #6E6A76;\">4 SEMAINES</span>\n</div>\n\n<sc-if value=\"{{estPhrase}}\" hint-placeholder-val=\"{{ true }}\">\n<div style=\"display: flex; flex-direction: column; gap: 8px;\">\n<div style=\"display: flex; align-items: baseline; gap: 8px;\">\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 28px; font-weight: 600; color: #D4A843;\">60 \u2192 62,5</span>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #6E6A76;\">kg</span>\n<span style=\"height: 22px; padding: 0 8px; border-radius: 999px; background: rgba(127,165,140,0.16); color: #7FA58C; display: flex; align-items: center; font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600;\">+2,5</span>\n</div>\n<p style=\"margin: 0; font-size: 14px; line-height: 1.4; color: #C9C5D0;\">Deux mont\u00e9es, puis une semaine plus dure : 65 pr\u00e9vus, 62,5 faits, une rep de moins, RPE 9 au lieu de 8.</p>\n<div style=\"display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 9px; background: #17161A; border: 1px solid #232228;\">\n<span style=\"font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; color: #8A8691;\">Cette semaine</span>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: #EEECF2;\">3\u00d72</span>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 600; color: #D4A843;\">67,5 kg</span>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: #E0A93C;\">RPE 8</span>\n</div>\n</div>\n</sc-if>\n\n<sc-if value=\"{{estCourbe}}\" hint-placeholder-val=\"{{ false }}\">\n<div style=\"display: flex; flex-direction: column; gap: 6px;\">\n<svg width=\"336\" height=\"104\" viewBox=\"0 0 336 104\" role=\"img\" aria-label=\"{{aria}}\">\n<line x1=\"6\" y1=\"82\" x2=\"330\" y2=\"82\" stroke=\"#2F2E35\" stroke-width=\"1\"></line>\n<sc-for list=\"{{courbe.ecarts}}\" as=\"e\" hint-placeholder-count=\"1\">\n<line x1=\"{{e.x}}\" y1=\"{{e.y1}}\" x2=\"{{e.x}}\" y2=\"{{e.y2}}\" stroke=\"#8A8691\" stroke-width=\"1.2\" stroke-dasharray=\"2 3\"></line>\n<circle cx=\"{{e.x}}\" cy=\"{{e.y1}}\" r=\"4\" fill=\"#1B1A1F\" stroke=\"#8A8691\" stroke-width=\"1.5\"></circle>\n</sc-for>\n<path d=\"{{courbe.chemin}}\" fill=\"none\" stroke=\"#D4A843\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>\n<path d=\"{{courbe.prevu}}\" fill=\"none\" stroke=\"#D4A843\" stroke-width=\"2\" stroke-dasharray=\"4 4\" opacity=\"0.5\"></path>\n<sc-for list=\"{{courbe.points}}\" as=\"p\" hint-placeholder-count=\"4\">\n<circle cx=\"{{p.x}}\" cy=\"{{p.y}}\" r=\"5\" fill=\"{{p.fill}}\" stroke=\"#1B1A1F\" stroke-width=\"2\"></circle>\n</sc-for>\n<sc-for list=\"{{courbe.valeurs}}\" as=\"v\" hint-placeholder-count=\"3\">\n<text x=\"{{v.x}}\" y=\"{{v.y}}\" text-anchor=\"middle\" fill=\"{{v.couleur}}\" font-family=\"'IBM Plex Mono', monospace\" font-size=\"12\" font-weight=\"600\">{{v.texte}}</text>\n</sc-for>\n</svg>\n<div style=\"display: flex;\">\n<sc-for list=\"{{semaines}}\" as=\"s\" hint-placeholder-count=\"4\">\n<span class=\"socle\" style=\"flex-grow: 1;\">\n<span style=\"font-size: 11px; color: {{s.couleurLabel}};\">{{s.label}}</span>\n<span style=\"font-size: 11px; color: #C9C5D0;\">{{s.volume}}</span>\n<span style=\"font-size: 11px; color: {{s.rpeCouleur}};\">RPE {{s.rpeTexte}}</span>\n</span>\n</sc-for>\n</div>\n</div>\n</sc-if>\n\n<sc-if value=\"{{estBarres}}\" hint-placeholder-val=\"{{ false }}\">\n<div style=\"display: flex; flex-direction: column; gap: 6px;\">\n<div style=\"height: 96px; display: flex; align-items: flex-end; gap: 10px; border-bottom: 1px solid #2F2E35;\">\n<sc-for list=\"{{semaines}}\" as=\"s\" hint-placeholder-count=\"4\">\n<div style=\"flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;\">\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; color: {{s.couleurValeur}};\">{{s.chargeTexte}}</span>\n<div style=\"position: relative; width: 100%; height: {{s.hauteurPrescrit}}px; display: flex; align-items: flex-end;\">\n<span style=\"position: absolute; inset: 0; border: {{s.contourPrescrit}}; border-radius: 4px 4px 0 0;\"></span>\n<div style=\"position: relative; width: 100%; height: {{s.hauteur}}px; border-radius: 4px 4px 0 0; background: {{s.barre}};\"></div>\n</div>\n</div>\n</sc-for>\n</div>\n<div style=\"display: flex; gap: 10px;\">\n<sc-for list=\"{{semaines}}\" as=\"s\" hint-placeholder-count=\"4\">\n<span class=\"socle\" style=\"flex-grow: 1;\">\n<span style=\"font-size: 11px; color: {{s.couleurLabel}};\">{{s.label}}</span>\n<span style=\"font-size: 11px; color: #C9C5D0;\">{{s.volume}}</span>\n<span style=\"font-size: 11px; color: {{s.rpeCouleur}};\">RPE {{s.rpeTexte}}</span>\n</span>\n</sc-for>\n</div>\n</div>\n</sc-if>\n\n<sc-if value=\"{{estMarches}}\" hint-placeholder-val=\"{{ false }}\">\n<div style=\"height: 148px; margin-top: 6px; display: flex; align-items: flex-end; gap: 5px;\">\n<sc-for list=\"{{semaines}}\" as=\"s\" hint-placeholder-count=\"4\">\n<div style=\"flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;\">\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: {{s.ecartCouleur}};\">{{s.ecart}}</span>\n<div style=\"width: 100%; height: {{s.hauteurMarche}}px; border-radius: 5px; background: {{s.marcheFond}}; border: 1px solid {{s.marcheBord}}; display: flex; flex-direction: column; align-items: center; gap: 1px; padding-top: 5px;\">\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; color: {{s.couleurValeur}};\">{{s.chargeTexte}}</span>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #C9C5D0;\">{{s.volume}}</span>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: {{s.rpeCouleur}};\">RPE {{s.rpeCourt}}</span>\n</div>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: {{s.couleurLabel}};\">{{s.label}}</span>\n</div>\n</sc-for>\n</div>\n</sc-if>\n\n<sc-if value=\"{{estChiffres}}\" hint-placeholder-val=\"{{ false }}\">\n<div style=\"display: grid; grid-template-columns: 52px repeat(4, minmax(0, 1fr)); gap: 5px 2px; align-items: center;\">\n<span></span>\n<sc-for list=\"{{semaines}}\" as=\"s\" hint-placeholder-count=\"4\">\n<span style=\"text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: {{s.couleurLabel}};\">{{s.label}}</span>\n</sc-for>\n<sc-for list=\"{{tableau}}\" as=\"r\" hint-placeholder-count=\"4\">\n<span style=\"font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #8A8691;\">{{r.titre}}</span>\n<sc-for list=\"{{r.cellules}}\" as=\"c\" hint-placeholder-count=\"4\">\n<span style=\"text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: {{c.taille}}; font-weight: {{c.graisse}}; color: {{c.couleur}};\">{{c.texte}}</span>\n</sc-for>\n</sc-for>\n</div>\n</sc-if>\n</section>\n\n<div role=\"radiogroup\" aria-label=\"Affichage de la progression\" style=\"flex-grow: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px;\">\n<sc-for list=\"{{options}}\" as=\"o\" hint-placeholder-count=\"5\">\n<button type=\"button\" role=\"radio\" aria-checked=\"{{o.on}}\" onClick=\"{{o.pick}}\" style=\"text-align: left; padding: 11px 12px; border-radius: 11px; border: 1px solid {{o.bord}}; background: {{o.fond}}; display: flex; align-items: center; gap: 11px; cursor: pointer;\">\n<span style=\"width: 20px; height: 20px; flex-shrink: 0; border-radius: 999px; border: 2px solid {{o.puceBord}}; display: flex; align-items: center; justify-content: center;\">\n<span style=\"width: 10px; height: 10px; border-radius: 999px; background: {{o.puceFond}};\"></span>\n</span>\n<span style=\"flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px;\">\n<span style=\"font-size: 15px; font-weight: 600; color: #EEECF2;\">{{o.titre}}</span>\n<span style=\"font-size: 12px; color: #9A96A2;\">{{o.sous}}</span>\n</span>\n</button>\n</sc-for>\n</div>\n\n<p style=\"margin: 0; font-size: 12px; line-height: 1.4; color: #6E6A76;\">Ton coach a son propre r\u00e9glage \u2014 le tien ne change que ce que tu vois.</p>\n\n</div>\n");
+</script></body></html>

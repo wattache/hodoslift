@@ -1,0 +1,5 @@
+# Pages coach : générées par build-coachs.mjs à chaque `make landing`, à partir
+# de coachs.js qui est, lui, la source versionnée. Les commiter donnerait deux
+# vérités pour le même contenu — et c'est la copie périmée qu'on finirait par
+# lire pour savoir ce que dit le site.
+coachs/

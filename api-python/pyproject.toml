@@ -1,0 +1,66 @@
+[project]
+name = "brokkr"
+version = "0.1.0"
+description = "Le forgeron : l'API de French Forge Trainer — FastAPI, Postgres (Neon), Firebase Auth."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.138",
+    "uvicorn[standard]>=0.49",
+    "firebase-admin>=7.4",
+    "pydantic>=2.13",
+    "pydantic-settings>=2.14",
+    "sqlalchemy>=2.0",
+    "psycopg[binary]>=3.3.4",
+    # Téléversement des photos de coach vers le bucket public (FRE-30). Importé
+    # PARESSEUSEMENT dans app/storage.py — l'app démarre sans, les tests le
+    # monkeypatchent, mais la prod (Cloud Run) l'installe via ce lock.
+    "google-cloud-storage>=2.18",
+    # S3 chez Scaleway — le stockage des médias kiné (FRE-99). `boto3` parce que
+    # Scaleway Object Storage EST une API S3 : rien à écrire de spécifique, et la
+    # signature d'URL y est un calcul local, sans appel réseau.
+    "boto3>=1.35",
+    # Upload multipart (photo de coach — FRE-30). FastAPI l'exige AU CHARGEMENT dès
+    # qu'une route déclare UploadFile/File, pas seulement à l'appel.
+    "python-multipart>=0.0.20",
+    "sentry-sdk[fastapi]>=2.68.0",
+    "pywebpush>=2.5.0",
+]
+
+[tool.uv]
+# Application, pas une lib distribuable → uv n'essaie pas de "build" le projet.
+package = false
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    # Postgres RÉEL dans la suite (fixtures `pg_engine`/`pg` de tests/conftest.py).
+    # Image postgres:16 = la version de Neon, c'est tout l'intérêt : ce qui n'existe
+    # qu'en PG (jsonb, text[], FK, ON CONFLICT) cesse d'être vérifié à la main.
+    # Reste dans le groupe DEV : le Dockerfile fait `uv sync --frozen --no-dev`,
+    # l'image de prod ne l'embarque pas.
+    "ruff>=0.16.8",
+    "testcontainers[postgres]>=4.15.0",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+# Lint SEUL, pas de `ruff format` : reformater tout le dépôt est un diff sans
+# valeur. F = pyflakes (noms indéfinis, imports et variables morts), E9 = erreurs
+# de syntaxe. Ce sont les règles qui trouvent des FAUTES, pas du style.
+select = ["F", "E9"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "--cov=app --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["app"]
+
+[tool.coverage.report]
+fail_under = 90

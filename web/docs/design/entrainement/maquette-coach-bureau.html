@@ -1,0 +1,187 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8">
+
+
+<style>
+body{margin:0;background:#131316;font-family:'Barlow',system-ui,sans-serif;color:#EEECF2}
+a{color:#D4A843}a:hover{color:#E6C26A}
+input{font-family:'IBM Plex Mono',monospace}
+</style>
+
+<style>html,body{margin:0}#root{display:inline-block}</style><style>@font-face{font-family:'Barlow';src:local('DejaVu Sans');}@font-face{font-family:'Barlow Condensed';src:local('DejaVu Sans Condensed');}@font-face{font-family:'IBM Plex Mono';src:local('DejaVu Sans Mono');}</style></head><body><div id="root"></div>
+<script>
+class DCLogic {
+  constructor(props){ this.props = props || {}; this.state = {}; }
+  setState(o){ Object.assign(this.state, o); window.__rerender(); }
+  forceUpdate(){ window.__rerender(); }
+}
+const SVGTAGS = new Set(['svg','path','g','circle','ellipse','rect','line','text','polygon','polyline','defs','use']);
+const EVT = { onclick:'click', onmouseenter:'mouseenter', onmouseleave:'mouseleave', onchange:'input', oninput:'input' };
+function lookup(path, ctx){
+  if (path === 'true') return true;
+  if (path === 'false') return false;
+  let cur = ctx;
+  for (const part of path.split('.')) {
+    if (cur == null) return undefined;
+    cur = cur[part];
+  }
+  return cur;
+}
+function interp(str, ctx){
+  return str.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (m, p) => {
+    const v = lookup(p, ctx);
+    return v == null ? '' : String(v);
+  });
+}
+function whole(str){ const m = str.match(/^\{\{\s*([^}]+?)\s*\}\}$/); return m ? m[1] : null; }
+function renderNodes(nodes, ctx, parent, svg){
+  for (const node of nodes) {
+    if (node.nodeType === 3) {
+      const t = interp(node.nodeValue, ctx);
+      if (t.trim()) parent.appendChild(document.createTextNode(t));
+      continue;
+    }
+    if (node.nodeType !== 1) continue;
+    const tag = node.tagName.toLowerCase();
+    if (tag === 'sc-for') {
+      const list = lookup(whole(node.getAttribute('list')) || '', ctx) || [];
+      const as = node.getAttribute('as') || 'item';
+      list.forEach((item, i) => {
+        const c = Object.create(ctx); c[as] = item; c.$index = i;
+        renderNodes([...node.childNodes], c, parent, svg);
+      });
+      continue;
+    }
+    if (tag === 'sc-if') {
+      const v = lookup(whole(node.getAttribute('value')) || '', ctx);
+      if (v) renderNodes([...node.childNodes], ctx, parent, svg);
+      continue;
+    }
+    const isSvg = svg || SVGTAGS.has(tag);
+    const el = isSvg ? document.createElementNS('http://www.w3.org/2000/svg', tag)
+                     : document.createElement(tag);
+    for (const attr of [...node.attributes]) {
+      const name = attr.name, raw = attr.value;
+      const w = whole(raw);
+      if (EVT[name.toLowerCase()]) {
+        const fn = w ? lookup(w, ctx) : null;
+        if (typeof fn === 'function') el.addEventListener(EVT[name.toLowerCase()], fn);
+        continue;
+      }
+      if (name.startsWith('hint-')) continue;
+      if (name === 'disabled') { if (w ? lookup(w, ctx) : true) el.setAttribute('disabled', ''); continue; }
+      if (name === 'value' && tag === 'input') { el.value = w ? (lookup(w, ctx) ?? '') : raw; continue; }
+      el.setAttribute(name, interp(raw, ctx));
+    }
+    renderNodes([...node.childNodes], ctx, el, isSvg);
+    parent.appendChild(el);
+  }
+}
+window.__boot = function(markup){
+  const holder = document.createElement('div');
+  holder.innerHTML = markup;
+  const tpl = [...holder.childNodes];
+  const inst = new Component({});
+  window.__inst = inst;
+  window.__rerender = function(){
+    const root = document.getElementById('root');
+    root.innerHTML = '';
+    renderNodes(tpl, inst.renderVals(), root, false);
+  };
+  window.__rerender();
+};
+</script>
+<script>
+var ANSE_FERME = 'M7 11V7a5 5 0 0 1 10 0v4';
+var ANSE_OUVERT = 'M7 11V7a5 5 0 0 1 9.9-1';
+var CHEVRON_BAS = 'M6 9l6 6 6-6';
+var CHEVRON_HAUT = 'M18 15l-6-6-6 6';
+var LIGNES = [
+  { num: 1, nom: 'MUSCLE UP', variante: 'LESTÉ', badge: '', annexes: 'tempo 20X1 · repos 180 s',
+    series: '3', reps: '3', unite: 'rep', charge: '16', rpe: '8', verrouille: true, groupe: null,
+    reel: '3 × 3 · 16 kg', reelDetail: 'RPE ressenti 8 · conforme', ecart: false,
+    note: 'Bras tendus en sortie, pas de kipping.', retour: 'Dur sur la 3e, la sortie passe mieux qu’en S1',
+    champs: [
+      { label: 'Format', valeur: '', exemple: 'EMOM, AMRAP…' },
+      { label: 'Tempo', valeur: '20X1', exemple: '30X1' },
+      { label: 'Repos', valeur: '180', exemple: 'secondes' },
+      { label: 'Assistance', valeur: '', exemple: 'élastique…' },
+      { label: 'Nature', valeur: 'Entraînement', exemple: '' }
+    ] },
+  { num: 2, nom: 'PULL UP', variante: 'LESTÉ', badge: 'BI-SET', annexes: 'repos 150 s · tour de 2 mouvements',
+    series: '4', reps: '6/8', unite: 'rep', charge: '40', rpe: '7', verrouille: false, groupe: 'debut',
+    reel: '4 × 8 · 40 kg', reelDetail: 'RPE ressenti 7', ecart: false,
+    note: '', retour: '',
+    champs: [] },
+  { num: 3, nom: 'DIPS', variante: 'LESTÉ', badge: 'BI-SET', annexes: 'suite du tour',
+    series: '↑', reps: '8/10', unite: 'rep', charge: '50', rpe: '7', verrouille: false, groupe: 'fin',
+    reel: '4 × 10 · 50 kg', reelDetail: 'RPE ressenti 8', ecart: false,
+    note: '', retour: '',
+    champs: [] },
+  { num: 4, nom: 'SQUAT', variante: '', badge: '', annexes: 'tempo 31X1 · repos 180 s',
+    series: '5', reps: '5', unite: 'rep', charge: '120', rpe: '8', verrouille: false, groupe: null,
+    reel: '5 × 5 · 115 kg', reelDetail: '−5 kg sur les 2 dernières', ecart: true,
+    note: '', retour: '',
+    champs: [] },
+  { num: 5, nom: 'GAINAGE', variante: 'PLANCHE', badge: 'ÉCHAUFFEMENT', annexes: 'repos 60 s',
+    series: '3', reps: '20', unite: 'sec', charge: '', rpe: '', verrouille: false, groupe: null,
+    reel: '3 × 20 s', reelDetail: '', ecart: false,
+    note: '', retour: '',
+    champs: [] },
+  { num: 6, nom: 'FACE PULL', variante: '', badge: 'REHAB', annexes: 'repos 60 s · élastique',
+    series: '3', reps: '15', unite: 'rep', charge: '', rpe: '6', verrouille: false, groupe: null,
+    reel: '—', reelDetail: 'pas encore fait', ecart: false,
+    note: '', retour: '',
+    champs: [] }
+];
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { ouverte: 0, verrous: { 0: true }, tick: 0 };
+  }
+  renderVals() {
+    var self = this, st = this.state;
+    return {
+      lignes: LIGNES.map(function (l, i) {
+        var ouverte = st.ouverte === i;
+        var verrouille = st.verrous[i] !== undefined ? st.verrous[i] : l.verrouille;
+        var enSecondes = l.unite === 'sec';
+        return {
+          num: l.num, nom: l.nom, variante: l.variante, badge: l.badge,
+          badgeCouleur: l.badge === 'BI-SET' ? '#D4A843' : '#8A8691',
+          annexes: l.annexes,
+          series: l.series, reps: l.reps, charge: l.charge, rpe: l.rpe,
+          unite: enSecondes ? 'sec' : 'rep', enSecondes: enSecondes,
+          uniteBord: enSecondes ? '#5A4A22' : '#2F2E35',
+          uniteFond: enSecondes ? 'rgba(212,168,67,0.12)' : '#17161A',
+          uniteTexte: enSecondes ? '#D4A843' : '#8A8691',
+          verrouille: verrouille,
+          verrouTitre: verrouille ? "Charge verrouillée — l'athlète ne peut pas la changer" : 'Verrouiller la charge',
+          verrouBord: verrouille ? '#5A4A22' : '#2F2E35',
+          verrouFond: verrouille ? 'rgba(212,168,67,0.12)' : '#17161A',
+          verrouTexte: verrouille ? '#D4A843' : '#6E6A76',
+          anse: verrouille ? ANSE_FERME : ANSE_OUVERT,
+          chargeBord: verrouille ? '#5A4A22' : '#2F2E35',
+          reel: l.reel, reelDetail: l.reelDetail,
+          reelCouleur: l.reel === '—' ? '#4A4550' : l.ecart ? '#E08A3C' : '#8FD3A8',
+          rail: l.groupe ? '3px solid rgba(212,168,67,0.7)' : '3px solid transparent',
+          fond: ouverte ? '#201E24' : 'transparent',
+          ouverte: ouverte,
+          chevron: ouverte ? CHEVRON_HAUT : CHEVRON_BAS,
+          deplierBord: ouverte ? '#D4A843' : '#2F2E35',
+          deplierTexte: ouverte ? '#D4A843' : '#8A8691',
+          note: l.note, retour: l.retour || 'rien pour cette ligne',
+          champs: l.champs,
+          deplier: function () { self.setState({ ouverte: ouverte ? -1 : i }); },
+          verrou: function () {
+            var v = {}; for (var k in st.verrous) v[k] = st.verrous[k];
+            v[i] = !verrouille;
+            self.setState({ verrous: v, tick: st.tick + 1 });
+          }
+        };
+      })
+    };
+  }
+}
+
+window.__boot("\n\n<div style=\"width: 1320px; height: 900px; box-sizing: border-box; padding: 20px 24px; background: #131316; display: flex; flex-direction: column; gap: 14px;\">\n\n<header style=\"display: flex; align-items: center; justify-content: space-between; gap: 16px;\">\n<div style=\"display: flex; align-items: center; gap: 12px;\">\n<span style=\"height: 38px; padding: 0 14px 0 6px; border-radius: 999px; border: 1px solid #D4A843; display: flex; align-items: center; gap: 8px;\">\n<span style=\"width: 26px; height: 26px; border-radius: 999px; border: 1px solid #D4A843; color: #D4A843; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 10px;\">CE</span>\n<span style=\"font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 17px; letter-spacing: 0.5px; text-transform: uppercase; color: #D4A843;\">Chartier Enzo</span>\n</span>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 1px; color: #6E6A76;\">BLOC 3 \u00b7 SEMAINE 2 \u00b7 LUNDI 28 SEPT.</span>\n</div>\n<div style=\"display: flex; align-items: center; gap: 8px;\">\n<button type=\"button\" style=\"height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid #2F2E35; background: transparent; color: #A9A5B0; font-size: 13px; cursor: pointer;\">Toute en \u00e9chauffement</button>\n<button type=\"button\" style=\"height: 34px; padding: 0 14px; border-radius: 8px; border: none; background: #D4A843; color: #131316; font-size: 13px; font-weight: 600; cursor: pointer;\">+ Ligne</button>\n</div>\n</header>\n\n<section style=\"flex-grow: 1; min-height: 0; background: #1B1A1F; border: 1px solid #2A2930; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden;\">\n\n<div style=\"display: grid; grid-template-columns: 28px minmax(0, 1fr) 76px 92px 128px 84px 168px 40px; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid #2A2930; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: #8A8691;\">\n<span></span>\n<span>Exercice</span>\n<span style=\"text-align: center;\">S\u00e9ries</span>\n<span style=\"text-align: center;\">Reps</span>\n<span style=\"text-align: center;\">Charge</span>\n<span style=\"text-align: center;\">RPE cible</span>\n<span>R\u00e9el</span>\n<span></span>\n</div>\n\n<div style=\"flex-grow: 1; min-height: 0; display: flex; flex-direction: column;\">\n<sc-for list=\"{{lignes}}\" as=\"l\" hint-placeholder-count=\"6\">\n<div style=\"border-bottom: 1px solid #232228; background: {{l.fond}};\">\n<div style=\"display: grid; grid-template-columns: 28px minmax(0, 1fr) 76px 92px 128px 84px 168px 40px; gap: 10px; align-items: center; padding: 10px 14px; border-left: {{l.rail}};\">\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #6E6A76; text-align: center;\">{{l.num}}</span>\n\n<div style=\"min-width: 0; display: flex; flex-direction: column; gap: 3px;\">\n<div style=\"display: flex; align-items: baseline; gap: 8px; min-width: 0;\">\n<span style=\"font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\">{{l.nom}}</span>\n<sc-if value=\"{{l.variante}}\" hint-placeholder-val=\"{{ true }}\">\n<span style=\"flex-shrink: 0; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #8A8691;\">{{l.variante}}</span>\n</sc-if>\n<sc-if value=\"{{l.badge}}\" hint-placeholder-val=\"{{ false }}\">\n<span style=\"flex-shrink: 0; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: {{l.badgeCouleur}};\">{{l.badge}}</span>\n</sc-if>\n</div>\n<div style=\"display: flex; gap: 10px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6E6A76;\">\n<span>{{l.annexes}}</span>\n</div>\n</div>\n\n<input value=\"{{l.series}}\" aria-label=\"S\u00e9ries\" style=\"height: 34px; box-sizing: border-box; border-radius: 8px; border: 1px solid #2F2E35; background: #131316; color: #EEECF2; text-align: center; font-size: 14px;\">\n\n<div style=\"display: flex; align-items: center; gap: 4px;\">\n<input value=\"{{l.reps}}\" aria-label=\"R\u00e9p\u00e9titions\" style=\"height: 34px; width: 0; flex-grow: 1; box-sizing: border-box; border-radius: 8px; border: 1px solid #2F2E35; background: #131316; color: #EEECF2; text-align: center; font-size: 14px;\">\n<button type=\"button\" aria-pressed=\"{{l.enSecondes}}\" style=\"height: 34px; width: 30px; flex-shrink: 0; border-radius: 6px; border: 1px solid {{l.uniteBord}}; background: {{l.uniteFond}}; color: {{l.uniteTexte}}; font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer;\">{{l.unite}}</button>\n</div>\n\n<div style=\"display: flex; align-items: center; gap: 4px;\">\n<input value=\"{{l.charge}}\" aria-label=\"Charge en kg\" style=\"height: 34px; width: 0; flex-grow: 1; box-sizing: border-box; border-radius: 8px; border: 1px solid {{l.chargeBord}}; background: #131316; color: #D4A843; font-weight: 600; text-align: right; padding-right: 8px; font-size: 15px;\">\n<span style=\"flex-shrink: 0; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #6E6A76;\">kg</span>\n<button type=\"button\" onClick=\"{{l.verrou}}\" aria-pressed=\"{{l.verrouille}}\" aria-label=\"Verrouiller la charge\" title=\"{{l.verrouTitre}}\" style=\"height: 34px; width: 30px; flex-shrink: 0; border-radius: 6px; border: 1px solid {{l.verrouBord}}; background: {{l.verrouFond}}; color: {{l.verrouTexte}}; display: flex; align-items: center; justify-content: center; cursor: pointer;\">\n<svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"11\" width=\"18\" height=\"11\" rx=\"2\"></rect><path d=\"{{l.anse}}\"></path></svg>\n</button>\n</div>\n\n<input value=\"{{l.rpe}}\" aria-label=\"RPE cible\" style=\"height: 34px; box-sizing: border-box; border-radius: 8px; border: 1px solid #2F2E35; background: #131316; color: #EEECF2; text-align: center; font-size: 14px;\">\n\n<div style=\"display: flex; flex-direction: column; gap: 2px;\">\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: {{l.reelCouleur}};\">{{l.reel}}</span>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #6E6A76;\">{{l.reelDetail}}</span>\n</div>\n\n<button type=\"button\" onClick=\"{{l.deplier}}\" aria-expanded=\"{{l.ouverte}}\" aria-label=\"D\u00e9tails de la ligne\" style=\"width: 34px; height: 34px; border-radius: 8px; border: 1px solid {{l.deplierBord}}; background: transparent; color: {{l.deplierTexte}}; display: flex; align-items: center; justify-content: center; cursor: pointer;\">\n<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"{{l.chevron}}\"></path></svg>\n</button>\n</div>\n\n<sc-if value=\"{{l.ouverte}}\" hint-placeholder-val=\"{{ false }}\">\n<div style=\"padding: 4px 14px 14px 52px; display: flex; flex-direction: column; gap: 12px;\">\n<div style=\"display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px;\">\n<sc-for list=\"{{l.champs}}\" as=\"c\" hint-placeholder-count=\"5\">\n<label style=\"display: flex; flex-direction: column; gap: 4px;\">\n<span style=\"font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #8A8691;\">{{c.label}}</span>\n<input value=\"{{c.valeur}}\" placeholder=\"{{c.exemple}}\" style=\"height: 34px; box-sizing: border-box; border-radius: 8px; border: 1px solid #2F2E35; background: #131316; color: #EEECF2; padding: 0 10px; font-size: 14px;\">\n</label>\n</sc-for>\n</div>\n<div style=\"display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 10px;\">\n<label style=\"display: flex; flex-direction: column; gap: 4px;\">\n<span style=\"font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #8A8691;\">Note du coach</span>\n<input value=\"{{l.note}}\" placeholder=\"Ce qu'il doit chercher\u2026\" style=\"height: 34px; box-sizing: border-box; border-radius: 8px; border: 1px solid #2F2E35; background: #131316; color: #EEECF2; padding: 0 10px; font-size: 14px;\">\n</label>\n<div style=\"display: flex; flex-direction: column; gap: 4px;\">\n<span style=\"font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #8A8691;\">Retour de l'athl\u00e8te</span>\n<p style=\"margin: 0; padding: 8px 10px; border-radius: 8px; background: #17161A; border: 1px solid #232228; font-size: 13px; line-height: 1.35; color: #C9C5D0; font-style: italic;\">\u00ab {{l.retour}} \u00bb</p>\n</div>\n</div>\n<div style=\"display: flex; gap: 8px;\">\n<button type=\"button\" style=\"height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid #2F2E35; background: transparent; color: #A9A5B0; font-size: 13px; cursor: pointer;\">Lier \u00e0 la ligne suivante</button>\n<button type=\"button\" style=\"height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid #2F2E35; background: transparent; color: #A9A5B0; font-size: 13px; cursor: pointer;\">Dupliquer</button>\n<button type=\"button\" style=\"height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid #2F2E35; background: transparent; color: #A9A5B0; font-size: 13px; cursor: pointer;\">D\u00e9tail par s\u00e9rie</button>\n<button type=\"button\" style=\"margin-left: auto; height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid #3A2A28; background: transparent; color: #D65A4A; font-size: 13px; cursor: pointer;\">Retirer</button>\n</div>\n</div>\n</sc-if>\n</div>\n</sc-for>\n</div>\n\n<div style=\"display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-top: 1px solid #2A2930;\">\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6E6A76;\">6 LIGNES \u00b7 TONNAGE 4 820 KG</span>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6E6A76;\">La colonne R\u00e9el vient de l'athl\u00e8te \u2014 elle ne se saisit pas ici</span>\n</div>\n</section>\n\n</div>\n");
+</script></body></html>

@@ -1,0 +1,153 @@
+// La bibliothèque d'exercices : une table `library_entries`, UNE PAR STRUCTURE.
+//
+// Unique par (structure, catégorie, nom) : on ne recrée jamais une entrée
+// existante (already_exists). Tout y est partagé dans la structure — pas de
+// scope privé, pas de suppression. `competition` marque les lifts suivis en
+// 1RM et n'a de sens que pour EXERCICES ; `supports` dit les groupes
+// principaux qu'un renforcement soutient.
+//
+// La LECTURE est ouverte à tout MEMBRE ; l'ÉCRITURE est au coach, dans SA
+// structure.
+//
+// ⚠️ UN RPC PAR GESTE, pas de PATCH. Le contrat REST portait un tri-état par
+// champ (absent / null / valeur) qui a coûté deux tickets (FRE-185, FRE-157) :
+// « vider » et « ne pas toucher » se confondaient. Ici renommer, marquer et
+// définir les soutiens sont trois messages, et la question ne se pose plus.
+syntax = "proto3";
+
+package hodos.bibliotheque.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "hodos/api/gen/hodos/bibliotheque/v1;bibliothequev1";
+
+// Les cinq catégories, le vocabulaire clos de `library_category` en base.
+enum Categorie {
+  CATEGORIE_UNSPECIFIED = 0;
+  CATEGORIE_EXERCICES = 1;
+  CATEGORIE_VARIANTES = 2;
+  CATEGORIE_ASSISTANCES = 3;
+  CATEGORIE_TEMPOS = 4;
+  CATEGORIE_FORMATS = 5;
+}
+
+// Les groupes principaux qu'un renforcement peut soutenir. Clos par la base
+// (`library_entries_supports`) : un groupe inconnu n'a pas de représentation.
+enum Groupe {
+  GROUPE_UNSPECIFIED = 0;
+  GROUPE_MU = 1;
+  GROUPE_PU = 2;
+  GROUPE_DIP = 3;
+  GROUPE_SQ = 4;
+}
+
+// Une entrée, toutes catégories confondues. Une seule table pour les cinq :
+// un exercice, une variante et un tempo ont la même forme.
+message Entree {
+  string id = 1;
+  string name = 2;
+  // Ne concerne QUE les exercices, et la base le garantit
+  // (`CHECK (NOT competition OR category = 'exercices')`). Faux ailleurs.
+  bool competition = 3;
+  // Vide quand l'entrée ne soutient rien : le vide n'existe pas en base
+  // (NULL), il n'a qu'une seule forme ici.
+  repeated Groupe supports = 4;
+}
+
+message LireBibliothequeRequest {
+  // La bibliothèque de quelle structure ; absente = la première du compte.
+  optional string structure = 1 [(buf.validate.field).string.max_len = 64];
+}
+
+// Les cinq catégories, TOUJOURS présentes, même vides : le front lit
+// `tempos` sans le tester.
+message LireBibliothequeResponse {
+  repeated Entree exercices = 1;
+  repeated Entree variantes = 2;
+  repeated Entree assistances = 3;
+  repeated Entree tempos = 4;
+  repeated Entree formats = 5;
+}
+
+message CreerEntreeRequest {
+  // Où l'écriture se range : la structure où l'on coache, sauf l'admin, qui
+  // nomme celle qu'il regarde. Absente = celle du coach.
+  optional string structure = 1 [(buf.validate.field).string.max_len = 64];
+  Categorie categorie = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  // Le nom, espaces de bord retirés par le serveur ; vide après ça, refusé.
+  string name = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  // Réservé à CATEGORIE_EXERCICES : ailleurs, invalid_argument
+  // (`competition_hors_exercices`).
+  bool competition = 4;
+  repeated Groupe supports = 5 [(buf.validate.field).repeated = {
+    max_items: 8
+    unique: true
+    items: {
+      enum: {
+        defined_only: true
+        not_in: [0]
+      }
+    }
+  }];
+}
+
+message CreerEntreeResponse {
+  string id = 1;
+}
+
+// Renomme une entrée. Le nom vit dans la clé étrangère des lignes
+// d'entraînement (ON UPDATE CASCADE) : renommer propage.
+message RenommerEntreeRequest {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+  string name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+}
+
+message RenommerEntreeResponse {}
+
+// Marque ou démarque un exercice comme lift de compétition. Sur une autre
+// catégorie : invalid_argument (`competition_hors_exercices`).
+message MarquerCompetitionRequest {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+  bool competition = 2;
+}
+
+message MarquerCompetitionResponse {}
+
+// Remplace les groupes soutenus. Une liste VIDE vide l'entrée : c'est le seul
+// geste qui le dit, il n'y a plus rien à confondre avec « ne pas toucher ».
+message DefinirSupportsRequest {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+  repeated Groupe supports = 2 [(buf.validate.field).repeated = {
+    max_items: 8
+    unique: true
+    items: {
+      enum: {
+        defined_only: true
+        not_in: [0]
+      }
+    }
+  }];
+}
+
+message DefinirSupportsResponse {}
+
+service BibliothequeService {
+  // Toute la bibliothèque d'une structure, groupée par catégorie. Membres.
+  rpc LireBibliotheque(LireBibliothequeRequest) returns (LireBibliothequeResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Crée une entrée dans la bibliothèque de la structure du coach. Coachs.
+  rpc CreerEntree(CreerEntreeRequest) returns (CreerEntreeResponse);
+  rpc RenommerEntree(RenommerEntreeRequest) returns (RenommerEntreeResponse);
+  rpc MarquerCompetition(MarquerCompetitionRequest) returns (MarquerCompetitionResponse);
+  rpc DefinirSupports(DefinirSupportsRequest) returns (DefinirSupportsResponse);
+}

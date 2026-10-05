@@ -1,0 +1,28 @@
+rules_version = '2';
+
+// ⚠️ REFUS INTÉGRAL, ET PLUS RIEN D'AUTRE. Ce fichier ne gouvernait qu'une chose :
+// les photos d'athlètes, téléversées directement du navigateur vers Firebase
+// Storage. Cette fonctionnalité a été retirée — dix athlètes sur 58 s'en
+// servaient, l'image n'était jamais affichée au-dessus de 56 pixels, et les
+// initiales faisaient déjà le travail pour tous les autres.
+//
+// ⚠️ CE QUE CE REFUS PERMET DE COUPER, ET C'EST LÀ QUE ÇA COMPTE. Les règles
+// précédentes appelaient `firestore.get(athletes/{id})` pour lire `coachId` et
+// `linkedUserId` : l'autorisation des photos était donc calculée depuis
+// Firestore, alors que Postgres est la source de vérité de l'identité depuis le
+// 27/07. brokkr entretenait cette table par trois écritures croisées, faute de
+// quoi un coach réassigné gardait l'accès aux photos de son ancien athlète.
+//
+// C'était le DERNIER fil qui retenait Firestore côté données. Il n'y a plus rien
+// à synchroniser, et les trois écritures ont disparu avec ce fichier.
+//
+// ⚠️ LA PHOTO DE PROFIL D'UN COACH N'EST PAS CONCERNÉE. Elle vit dans un bucket
+// de médias PUBLICS, écrite par brokkr en SDK admin (`app/storage.py`, FRE-30) —
+// le SDK admin ignore ces règles, et ce bucket n'est pas celui-ci.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>French Forge Trainer — App de coaching streetlifting</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="L'app de coaching streetlifting. Programmation par macro et bloc, suivi des records, séance sur le téléphone." />
+<meta name="theme-color" content="#0b0b0c" />
+
+<!-- Open Graph (partages Facebook / WhatsApp / Slack) -->
+<meta property="og:type" content="website" />
+<meta property="og:title" content="French Forge Trainer" />
+<meta property="og:description" content="Pensée par des athlètes internationaux, pour tous les athlètes." />
+<meta property="og:url" content="https://french-forge.com" />
+<meta property="og:locale" content="fr_FR" />
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="French Forge Trainer" />
+<meta name="twitter:description" content="Pensée par des athlètes internationaux, pour tous les athlètes." />
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23d4a843'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-size='36' font-family='-apple-system,sans-serif' font-weight='700' fill='%231a1a1a'%3E⚒%3C/text%3E%3C/svg%3E" />
+
+<style>
+  :root {
+    --bg: #0b0b0c;
+    --bg-card: #18181a;
+    --bg-card-hover: #1f1f22;
+    --border: #2a2a2e;
+    --text: #f1f1f3;
+    --text-muted: #888;
+    --text-dim: #555;
+    --accent: #d4a843;
+    --accent-dim: rgba(212, 168, 67, 0.15);
+    --accent-strong: #e8b94d;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ── Nav ──────────────────────────────────────────────── */
+  nav {
+    padding: 20px 0;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: rgba(11, 11, 12, 0.85);
+    backdrop-filter: blur(10px);
+    z-index: 10;
+  }
+  nav .container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--text);
+  }
+  .brand-logo {
+    width: 36px;
+    height: 36px;
+    background: var(--accent);
+    color: #1a1a1a;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .brand-name {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .brand-name span { color: var(--accent); }
+  .nav-cta {
+    background: var(--accent);
+    color: #1a1a1a;
+    padding: 10px 18px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    transition: background 0.15s;
+  }
+  .nav-cta:hover { background: var(--accent-strong); }
+
+  /* ── Hero ─────────────────────────────────────────────── */
+  .hero {
+    text-align: center;
+    padding: 80px 0 64px;
+  }
+  h1 {
+    font-size: 56px;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+    margin-bottom: 20px;
+  }
+  h1 .highlight { color: var(--accent); }
+  .subtitle {
+    font-size: 20px;
+    color: var(--text-muted);
+    max-width: 620px;
+    margin: 0 auto 36px;
+  }
+  .hero-ctas {
+    display: inline-flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #1a1a1a;
+    padding: 14px 28px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 16px;
+    box-shadow: 0 4px 24px rgba(212, 168, 67, 0.25);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(212, 168, 67, 0.35);
+  }
+  .btn-secondary {
+    color: var(--text);
+    padding: 14px 28px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 16px;
+    border: 1px solid var(--border);
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .btn-secondary:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .hero-note {
+    margin-top: 20px;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+
+  @media (max-width: 720px) {
+    h1 { font-size: 40px; }
+    .subtitle { font-size: 17px; }
+    .hero { padding: 56px 0 48px; }
+  }
+
+  /* ── Section title ────────────────────────────────────── */
+  section {
+    padding: 56px 0;
+  }
+  .section-title {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  .section-eyebrow {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+  .section-title h2 {
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .section-title p {
+    font-size: 17px;
+    color: var(--text-muted);
+    max-width: 540px;
+    margin: 12px auto 0;
+  }
+
+  /* ── Features (common) ────────────────────────────────── */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+  @media (max-width: 720px) {
+    .features-grid { grid-template-columns: 1fr; }
+  }
+  .feature-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+  }
+  .feature-icon {
+    width: 44px;
+    height: 44px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    margin-bottom: 16px;
+  }
+  .feature-card h3 {
+    font-size: 17px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .feature-card p {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* ── Coachs ───────────────────────────────────────────── */
+  .coach-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+  @media (max-width: 720px) {
+    .coach-grid { grid-template-columns: 1fr; }
+  }
+  .coach-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px 24px;
+    text-align: center;
+    text-decoration: none;
+    color: var(--text);
+    display: block;
+    transition: border-color .15s, transform .15s;
+  }
+  .coach-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  /* Halo doré derrière le sujet — pensé pour une photo DÉTOURÉE, façon story
+     Instagram. Sur une photo avec décor, il ne se voit pas : c'est le seul
+     endroit où le détourage change vraiment le rendu. */
+  .coach-card img {
+    width: 132px;
+    height: 132px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: radial-gradient(circle at 50% 35%, var(--accent-dim), transparent 70%), var(--bg);
+    margin: 0 auto 18px;
+    display: block;
+  }
+  .coach-card h3 {
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .coach-bio {white-space:pre-line;
+    margin-top: 10px;
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+  .coach-more {
+    display: inline-block;
+    margin-top: 14px;
+    color: var(--accent);
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .coach-role {
+    margin-top: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+  }
+
+  /* ── Final CTA ────────────────────────────────────────── */
+  .final-cta {
+    text-align: center;
+    background: linear-gradient(180deg, rgba(212, 168, 67, 0.05), transparent);
+    border-radius: 16px;
+    padding: 64px 24px;
+    margin-top: 32px;
+  }
+  .final-cta h2 {
+    font-size: 32px;
+    margin-bottom: 12px;
+    letter-spacing: -0.02em;
+  }
+  .final-cta p {
+    color: var(--text-muted);
+    margin-bottom: 28px;
+  }
+
+  /* ── Footer ───────────────────────────────────────────── */
+  footer {
+    padding: 40px 0;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  footer a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="container">
+    <a href="#" class="brand">
+      <div class="brand-logo">⚒</div>
+      <div class="brand-name">French Forge <span>Trainer</span></div>
+    </a>
+    <div style="display:flex;align-items:center;gap:18px">
+      <a href="/coachs" style="color:var(--text-muted);text-decoration:none;font-size:15px">Les coachs</a>
+      <a href="https://trainer.french-forge.com" class="nav-cta">Ouvrir l'app</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="container">
+    <h1>Programmer. Suivre.<br><span class="highlight">Progresser.</span></h1>
+    <p class="subtitle">L'app de coaching streetlifting, pour les coachs qui veulent un outil clair et les athlètes qui veulent performer.</p>
+    <div class="hero-ctas">
+      <a href="https://trainer.french-forge.com" class="btn-primary">Ouvrir l'app</a>
+      <a href="#coachs" class="btn-secondary">Découvrir les coachs</a>
+    </div>
+    <div class="hero-note">Coachs compétiteurs · Programmes sur mesure</div>
+  </div>
+</header>
+
+<section>
+  <div class="container">
+    <div class="section-title">
+      <div class="section-eyebrow">L'outil qu'on aurait voulu avoir</div>
+      <h2>Pensé par des athlètes internationaux, pour tous les athlètes</h2>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🏋️</div>
+        <h3>Programmation</h3>
+        <p>Par macro, bloc, semaine, jour. Tu poses la trame, l'app déroule les semaines — sans une ligne à ressaisir.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h3>Progression</h3>
+        <p>Records par mouvement et par nombre de reps, courbes de charge et de RPE, entraînement ou compétition.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⏱️</div>
+        <h3>Séance</h3>
+        <p>Sur le téléphone de l'athlète. Charge et reps réalisées, RPE par série, ressenti — le coach récolte de quoi ajuster la suite sur des faits, pas sur des souvenirs.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🎯</div>
+        <h3>Incréments</h3>
+        <p>En kg, en %, en reps, en RPE ou en séries. Reportés d'une semaine sur l'autre, arrondis à ta granularité.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🏆</div>
+        <h3>Compétition</h3>
+        <p>Feuille de match préparée en amont, live le jour J. Essais, validations, classement en direct.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📱</div>
+        <h3>Mobile</h3>
+        <p>Installable sur iOS et Android. Pensée pour servir entre deux séries, sous fatigue, les mains moites.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Les coachs — les trois cartes sont écrites À LA MAIN, pas générées : elles
+     changent une fois par an, et une mécanique d'injection dans ce fichier
+     versionné aurait fait bouger le HTML à chaque build pour rien. La liste qui
+     fait foi reste landing/coachs.js ; ici, ajouter un coach = copier un bloc. -->
+<section id="coachs">
+  <div class="container">
+    <div class="section-title">
+      <div class="section-eyebrow">L'équipe</div>
+      <h2>Coaché par des compétiteurs</h2>
+      <p>Chacun son approche, la même exigence sur les détails. Découvre leur parcours et ce qu'en disent leurs athlètes.</p>
+    </div>
+
+    <!-- COACHS:DEBUT — généré par build-coachs.mjs depuis coachs.js, ne pas éditer à la main -->
+    <div class="coach-grid">
+      <a class="coach-card" href="/coachs/aubin-chevillard" data-coach="aubin-chevillard">
+        <img src="https://storage.googleapis.com/french-forge-600-public-media/aubin-chevillard/profil.png" alt="" loading="lazy" data-live="photo" />
+        <h3>Aubin Chevillard</h3>
+        <div class="coach-role" data-live="accroche">King of Pull</div>
+        <p class="coach-bio" data-live="bio">Beau gosse de Signes, et six records du monde toujours à son actif.</p>
+        <span class="coach-more">Voir son profil →</span>
+      </a>
+      <a class="coach-card" href="/coachs/maxime-nowak" data-coach="maxime-nowak">
+        <img src="https://storage.googleapis.com/french-forge-600-public-media/maxime-nowak/profil.png" alt="" loading="lazy" data-live="photo" />
+        <h3>Maxime Nowak</h3>
+        <div class="coach-role" data-live="accroche">Ave Maria</div>
+        <p class="coach-bio" data-live="bio">Franco-polonais, investi.</p>
+        <span class="coach-more">Voir son profil →</span>
+      </a>
+      <a class="coach-card" href="/coachs/theo-goutte-toquet" data-coach="theo-goutte-toquet">
+        <img src="https://storage.googleapis.com/french-forge-600-public-media/theo-goutte-toquet/profil.png" alt="" loading="lazy" data-live="photo" />
+        <h3>Théo Goutte-Toquet</h3>
+        <div class="coach-role" data-live="accroche">Transition béton</div>
+        <p class="coach-bio" data-live="bio">Spécialiste du muscle-up, champion de force traditionnelle bretonne.</p>
+        <span class="coach-more">Voir son profil →</span>
+      </a>
+    </div>
+    <script>
+(function () {
+  document.querySelectorAll('[data-coach]').forEach(function (carte) {
+    fetch("https://brokkr-516415373440.europe-west4.run.app" + '/coach-profiles/' + carte.dataset.coach)
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d) return;
+        var poser = function (nom, valeur) {
+          var el = carte.querySelector('[data-live="' + nom + '"]');
+          if (!el || valeur == null || String(valeur).trim() === '') return;
+          el.textContent = valeur;
+          el.hidden = false;
+        };
+        poser('accroche', d.accroche);
+        poser('bio', d.bio);
+
+        
+      var zl = carte.querySelector('[data-live="langues"]');
+      if (zl && d.langues && d.langues.length) {
+        var noms = {"fr":"🇫🇷 Français","en":"🇬🇧 Anglais","es":"🇪🇸 Espagnol","de":"🇩🇪 Allemand","it":"🇮🇹 Italien","pt":"🇵🇹 Portugais","nl":"🇳🇱 Néerlandais","pl":"🇵🇱 Polonais","ru":"🇷🇺 Russe","uk":"🇺🇦 Ukrainien","ar":"🇸🇦 Arabe","tr":"🇹🇷 Turc"};
+        zl.innerHTML = d.langues.map(function (c) {
+          return '<span class="langue">' + (noms[c] || c) + '</span>';
+        }).join('');
+        zl.hidden = false;
+      }
+        var img = carte.querySelector('[data-live="photo"]');
+        if (img && d.photoUrl) img.src = d.photoUrl + '?v=' + Date.now();
+      })
+      .catch(function () { /* le HTML du build fait le travail */ });
+  });
+})();
+</script>
+    <!-- COACHS:FIN -->
+  </div>
+</section>
+
+<section id="essayer">
+  <div class="container">
+    <div class="final-cta">
+      <h2>Prêt à forger ton entraînement ?</h2>
+      <p>Pour les coachs comme pour les athlètes.</p>
+      <a href="https://trainer.french-forge.com" class="btn-primary">Ouvrir l'app</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <strong>French Forge Trainer</strong> · <a href="https://trainer.french-forge.com">trainer.french-forge.com</a><br>
+    Conçu et opéré en France · Hébergement Google Cloud · RGPD-friendly<br>
+    <small style="opacity:0.6">© 2026 French Forge · Tous droits réservés</small>
+  </div>
+</footer>
+
+</body>
+</html>

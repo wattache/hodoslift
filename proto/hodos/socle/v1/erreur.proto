@@ -1,0 +1,20 @@
+// Les erreurs de Hodos : la même forme que le contrat REST de brokkr
+// (`{code, detail, status}`), portée en DÉTAIL d'une erreur Connect.
+//
+// Le `code` Connect (not_found, already_exists, permission_denied…) classe
+// l'erreur ; `code` ici est le vocabulaire MÉTIER clos (`entree_introuvable`,
+// `reserve_aux_coachs`…), celui qu'eitri traduit à l'écran.
+syntax = "proto3";
+
+package hodos.socle.v1;
+
+option go_package = "hodos/api/gen/hodos/socle/v1;soclev1";
+
+message Erreur {
+  // Le code métier, un mot du vocabulaire clos de brokkr (`CODES`).
+  string code = 1;
+  // Une phrase pour l'humain. Jamais une donnée de santé.
+  string detail = 2;
+  // Le statut HTTP que rendrait brokkr : la même grille des deux côtés.
+  int32 status = 3;
+}

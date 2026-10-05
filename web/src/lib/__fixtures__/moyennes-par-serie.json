@@ -1,0 +1,56 @@
+{
+  "_pourquoi": [
+    "LA TABLE DE RÉFÉRENCE DES MOYENNES PAR SÉRIE — lue par les DEUX suites (FRE-136).",
+    "",
+    "La règle vit à deux endroits, et c'est délibéré : en SQL (ff_moyenne_serie,",
+    "ff_moyenne_rpe) parce que le serveur DÉRIVE la colonne, et en TypeScript",
+    "(par-serie.ts, rpe-scale.ts) parce que le chiffre doit suivre la frappe sans",
+    "réseau et survivre hors ligne. Deux copies d'une même règle : exactement ce",
+    "que ce projet corrige d'habitude en déplaçant le calcul — sauf qu'ici les",
+    "deux moments sont réels, et aucun ne peut disparaître.",
+    "",
+    "⚠️ CE QUI RESTAIT OUVERT : leur accord avait été PROUVÉ une fois, par",
+    "exécution des deux côtés, puis figé dans DEUX tables séparées. Changer la",
+    "règle d'un côté et sa table dans la foulée n'aurait rien fait rougir. Cette",
+    "table-ci est la seule ; les deux suites la lisent.",
+    "",
+    "⚠️ ELLE VIT CHEZ BROKKR, ET EITRI EN GARDE UNE COPIE COMMITÉE — même motif",
+    "que `brokkr.gen.ts` : chaque CI ne fait que son propre checkout, un chemin",
+    "croisé les casserait toutes les deux. `npm run fixtures:brokkr` recopie.",
+    "",
+    "⚠️ ET LA COPIE PEUT DONC SE PÉRIMER. C'est la limite du motif, la même que",
+    "pour les types générés. Le filet est le harnais RÉEL, où les deux règles",
+    "s'exécutent ensemble : `e2e-reel/moyennes-par-serie.spec.ts` saisit par série",
+    "et compare ce que brokkr a STOCKÉ à ce que le front AFFICHE.",
+    "",
+    "Les valeurs attendues ont été produites en EXÉCUTANT la règle TypeScript, pas",
+    "en la relisant — mon premier jeu écrit à la main en contenait un faux."
+  ],
+
+  "moyenneDesSeries": [
+    { "series": ["10", "11", "12"], "attendu": "11", "note": "sans décimale inutile" },
+    { "series": ["10", "11"], "attendu": "10.5" },
+    { "series": ["10", "11", "11"], "attendu": "10.7", "note": "10,666… : entier, ça mentirait sur l'écart" },
+    { "series": ["17,5", "17,5"], "attendu": "17.5", "note": "la virgule est la norme de saisie" },
+    { "series": ["20,4"], "attendu": "20.4" },
+    { "series": ["10", "", "12"], "attendu": "11", "note": "une série vide n'est pas une série à zéro" },
+    { "series": ["10", "   ", "12"], "attendu": "11" },
+    { "series": ["PDC", "PDC"], "attendu": "", "note": "« PDC » est une charge légitime, elle ne s'additionne pas" },
+    { "series": ["PDC", "20"], "attendu": "20" },
+    { "series": [], "attendu": "", "note": "rien de noté rend '', jamais '0'" },
+    { "series": ["8"], "attendu": "8", "note": "une valeur unique est sa propre moyenne" }
+  ],
+
+  "feltRPEFromSets": [
+    { "series": ["8", "8", "FAIL"], "attendu": "FAIL", "note": "FAIL est ABSORBANT : le format est raté" },
+    { "series": ["7", "8"], "attendu": "7.5" },
+    { "series": ["7", "7", "8"], "attendu": "7.5", "note": "7,33 → demi-point SUPÉRIEUR" },
+    { "series": ["4", "4"], "attendu": "Sub5" },
+    { "series": ["Sub5", "6"], "attendu": "5", "note": "Sub5 vaut 4 : la moyenne fait 5, pas Sub5" },
+    { "series": ["Sub5", "Sub5"], "attendu": "Sub5" },
+    { "series": ["4", "5"], "attendu": "Sub5", "note": "4,5 < 5" },
+    { "series": [], "attendu": "" },
+    { "series": ["9"], "attendu": "9" },
+    { "series": ["", "8"], "attendu": "8" }
+  ]
+}

@@ -1,0 +1,211 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8">
+
+
+<style>
+body{margin:0;background:#131316;font-family:'Barlow',system-ui,sans-serif;color:#EEECF2}
+a{color:#D4A843}a:hover{color:#E6C26A}
+.socle{display:flex;flex-direction:column;align-items:center;gap:1px;font-family:'IBM Plex Mono',monospace;line-height:1.25}
+</style>
+
+<style>html,body{margin:0}#root{display:inline-block}</style><style>@font-face{font-family:'Barlow';src:local('DejaVu Sans');}@font-face{font-family:'Barlow Condensed';src:local('DejaVu Sans Condensed');}@font-face{font-family:'IBM Plex Mono';src:local('DejaVu Sans Mono');}</style></head><body><div id="root"></div>
+<script>
+class DCLogic {
+  constructor(props){ this.props = props || {}; this.state = {}; }
+  setState(o){ Object.assign(this.state, o); window.__rerender(); }
+  forceUpdate(){ window.__rerender(); }
+}
+const SVGTAGS = new Set(['svg','path','g','circle','ellipse','rect','line','text','polygon','polyline','defs','use']);
+const EVT = { onclick:'click', onmouseenter:'mouseenter', onmouseleave:'mouseleave', onchange:'input', oninput:'input' };
+function lookup(path, ctx){
+  if (path === 'true') return true;
+  if (path === 'false') return false;
+  let cur = ctx;
+  for (const part of path.split('.')) {
+    if (cur == null) return undefined;
+    cur = cur[part];
+  }
+  return cur;
+}
+function interp(str, ctx){
+  return str.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (m, p) => {
+    const v = lookup(p, ctx);
+    return v == null ? '' : String(v);
+  });
+}
+function whole(str){ const m = str.match(/^\{\{\s*([^}]+?)\s*\}\}$/); return m ? m[1] : null; }
+function renderNodes(nodes, ctx, parent, svg){
+  for (const node of nodes) {
+    if (node.nodeType === 3) {
+      const t = interp(node.nodeValue, ctx);
+      if (t.trim()) parent.appendChild(document.createTextNode(t));
+      continue;
+    }
+    if (node.nodeType !== 1) continue;
+    const tag = node.tagName.toLowerCase();
+    if (tag === 'sc-for') {
+      const list = lookup(whole(node.getAttribute('list')) || '', ctx) || [];
+      const as = node.getAttribute('as') || 'item';
+      list.forEach((item, i) => {
+        const c = Object.create(ctx); c[as] = item; c.$index = i;
+        renderNodes([...node.childNodes], c, parent, svg);
+      });
+      continue;
+    }
+    if (tag === 'sc-if') {
+      const v = lookup(whole(node.getAttribute('value')) || '', ctx);
+      if (v) renderNodes([...node.childNodes], ctx, parent, svg);
+      continue;
+    }
+    const isSvg = svg || SVGTAGS.has(tag);
+    const el = isSvg ? document.createElementNS('http://www.w3.org/2000/svg', tag)
+                     : document.createElement(tag);
+    for (const attr of [...node.attributes]) {
+      const name = attr.name, raw = attr.value;
+      const w = whole(raw);
+      if (EVT[name.toLowerCase()]) {
+        const fn = w ? lookup(w, ctx) : null;
+        if (typeof fn === 'function') el.addEventListener(EVT[name.toLowerCase()], fn);
+        continue;
+      }
+      if (name.startsWith('hint-')) continue;
+      if (name === 'disabled') { if (w ? lookup(w, ctx) : true) el.setAttribute('disabled', ''); continue; }
+      if (name === 'value' && tag === 'input') { el.value = w ? (lookup(w, ctx) ?? '') : raw; continue; }
+      el.setAttribute(name, interp(raw, ctx));
+    }
+    renderNodes([...node.childNodes], ctx, el, isSvg);
+    parent.appendChild(el);
+  }
+}
+window.__boot = function(markup){
+  const holder = document.createElement('div');
+  holder.innerHTML = markup;
+  const tpl = [...holder.childNodes];
+  const inst = new Component({});
+  window.__inst = inst;
+  window.__rerender = function(){
+    const root = document.getElementById('root');
+    root.innerHTML = '';
+    renderNodes(tpl, inst.renderVals(), root, false);
+  };
+  window.__rerender();
+};
+</script>
+<script>
+// Prescrit et réel : le réel ne s'affiche que lorsqu'il s'écarte.
+var SEM = [
+  { label: 'S1', sets: 3, reps: '2', repsDone: '', kg: 60, kgDone: null, rpeCible: 8, rpeReel: 8, fait: true },
+  { label: 'S2', sets: 3, reps: '2', repsDone: '', kg: 62.5, kgDone: null, rpeCible: 8, rpeReel: 8, fait: true },
+  { label: 'S3', sets: 3, reps: '2', repsDone: '1', kg: 65, kgDone: 62.5, rpeCible: 8, rpeReel: 9, fait: true },
+  { label: 'S4', sets: 3, reps: '2', repsDone: '', kg: 67.5, kgDone: null, rpeCible: 8, rpeReel: null, fait: false }
+];
+var ELASTIQUE = [
+  { nom: 'RB30', aide: 30, label: 'S1', volume: '3×2', rpe: 8, fait: true },
+  { nom: 'RB20', aide: 20, label: 'S2', volume: '3×2', rpe: 8, fait: true },
+  { nom: 'RB15', aide: 15, label: 'S3', volume: '3×2', rpe: 9, fait: true },
+  { nom: 'sans', aide: 0, label: 'S4', volume: '3×2', rpe: null, fait: false }
+];
+function couleurRpe(r) {
+  if (r === null) return '#6E6A76';
+  if (r <= 7) return '#7FA58C';
+  if (r < 9) return '#E0A93C';
+  return '#D65A4A';
+}
+function fr(n) { return String(n).replace('.', ','); }
+/** La charge EFFECTIVE : le réel s'il existe, sinon le prescrit. */
+function effective(s) { return s.kgDone !== null ? s.kgDone : s.kg; }
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { choix: 67.5 }; }
+  renderVals() {
+    var self = this, st = this.state;
+    var toutes = SEM.map(effective).concat(SEM.map(function (s) { return s.kg; }));
+    var min = Math.min.apply(null, toutes), max = Math.max.apply(null, toutes);
+    var span = (max - min) || 1;
+    var n = SEM.length;
+    var X0 = 12, X1 = 588, SOL = 92, CIEL = 26;
+    var xAt = function (i) { return X0 + ((i + 0.5) / n) * (X1 - X0); };
+    var yAt = function (kg) { return SOL - ((kg - min) / span) * (SOL - CIEL); };
+    var faits = SEM.filter(function (s) { return s.fait; });
+
+    var semaines = SEM.map(function (s, i) {
+      var eff = effective(s);
+      var prec = i > 0 ? effective(SEM[i - 1]) : null;
+      var d = prec === null ? null : eff - prec;
+      var volume = s.sets + '×' + s.reps + (s.repsDone ? ' → ' + s.sets + '×' + s.repsDone : '');
+      var chargeTexte = s.kgDone !== null ? fr(s.kg) + '→' + fr(s.kgDone) : fr(s.kg);
+      var rpeTexte = s.rpeReel === null ? fr(s.rpeCible) + ' visé'
+        : s.rpeReel !== s.rpeCible ? fr(s.rpeCible) + '→' + fr(s.rpeReel) : fr(s.rpeReel);
+      return {
+        label: s.label, volume: volume, chargeTexte: chargeTexte, rpeTexte: rpeTexte,
+        rpeCouleur: couleurRpe(s.rpeReel === null ? s.rpeCible : s.rpeReel),
+        couleurLabel: s.fait ? '#8A8691' : '#D4A843',
+        couleurValeur: s.fait ? (s.kgDone !== null ? '#E0A93C' : '#EEECF2') : '#D4A843',
+        ecart: d === null ? '—' : (d > 0 ? '+' + fr(d) : fr(d)),
+        ecartCouleur: d === null ? '#6E6A76' : d > 0 ? '#7FA58C' : '#E08A3C',
+        hauteur: Math.round(20 + ((eff - min) / span) * 84),
+        hauteurPrescrit: Math.round(20 + ((s.kg - min) / span) * 84),
+        contourPrescrit: s.kgDone !== null ? '1.5px dashed #8A8691' : (s.fait ? 'none' : '1.5px dashed #D4A843'),
+        barre: s.fait ? (s.kgDone !== null ? '#B98F35' : '#D4A843') : 'transparent',
+        hauteurMarche: Math.round(58 + ((eff - min) / span) * 56),
+        marcheFond: s.fait ? 'rgba(212,168,67,0.16)' : 'transparent',
+        marcheBord: s.fait ? '#5A4A22' : '#3A3940',
+        largeurEffort: s.rpeReel === null ? 4 : Math.round((s.rpeReel / 10) * 100),
+        effortFond: s.rpeReel === null ? '#232228' : couleurRpe(s.rpeReel) + '33',
+        projFond: s.fait ? '#3A3628' : 'transparent',
+        projBord: s.fait ? 'none' : '1.5px dashed #D4A843'
+      };
+    });
+
+    var courbe = {
+      chemin: faits.map(function (s, i) { return (i ? 'L' : 'M') + xAt(i) + ' ' + yAt(effective(s)); }).join(' '),
+      prevu: 'M' + xAt(faits.length - 1) + ' ' + yAt(effective(faits[faits.length - 1])) + ' L' + xAt(n - 1) + ' ' + yAt(SEM[n - 1].kg),
+      points: SEM.map(function (s, i) {
+        return { x: xAt(i), y: yAt(effective(s)), r: s.fait ? 5 : 4.5, fill: s.fait ? '#D4A843' : '#1B1A1F' };
+      }),
+      // Le prescrit quitté : point creux gris relié au réel par un pointillé.
+      ecarts: SEM.map(function (s, i) {
+        if (s.kgDone === null) return null;
+        return { x: xAt(i), y1: yAt(s.kg), y2: yAt(s.kgDone), xTexte: xAt(i) - 9, prescrit: fr(s.kg) };
+      }).filter(function (e) { return e; }),
+      valeurs: [0, 2, 3].map(function (i) {
+        var s = SEM[i];
+        return { x: xAt(i), y: yAt(effective(s)) + (s.kgDone !== null ? 20 : -11),
+          texte: fr(effective(s)), couleur: s.fait ? (s.kgDone !== null ? '#E0A93C' : '#EEECF2') : '#D4A843' };
+      })
+    };
+
+    var tableau = [
+      { titre: 'Séries × reps', cellules: semaines.map(function (s) { return { texte: s.volume, taille: '13px', graisse: '400', couleur: '#C9C5D0' }; }) },
+      { titre: 'Charge', cellules: semaines.map(function (s) { return { texte: s.chargeTexte, taille: '17px', graisse: '600', couleur: s.couleurValeur }; }) },
+      { titre: 'RPE', cellules: semaines.map(function (s) { return { texte: s.rpeTexte, taille: '13px', graisse: '600', couleur: s.rpeCouleur }; }) },
+      { titre: 'Écart', cellules: semaines.map(function (s) { return { texte: s.ecart, taille: '12px', graisse: '400', couleur: s.ecartCouleur }; }) }
+    ];
+
+    var elastique = ELASTIQUE.map(function (e) {
+      return { nom: e.nom, label: e.label, volume: e.volume,
+        rpe: e.rpe === null ? '8 visé' : fr(e.rpe), rpeCouleur: couleurRpe(e.rpe === null ? 8 : e.rpe),
+        couleur: e.fait ? '#D4A843' : '#6E6A76',
+        couleurLabel: e.fait ? '#8A8691' : '#D4A843',
+        hauteur: Math.max(8, Math.round((e.aide / 30) * 74)),
+        fond: e.fait ? 'rgba(212,168,67,0.35)' : 'transparent',
+        bord: e.fait ? '1px solid #5A4A22' : '1.5px dashed #3A3940' };
+    });
+
+    return {
+      semaines: semaines, courbe: courbe, tableau: tableau, elastique: elastique,
+      aria: 'Charge : 60 kg en S1, 62,5 en S2, 65 prévus et 62,5 faits en S3, 67,5 prévus en S4. Trois séries de deux répétitions chaque semaine, une seule en S3. RPE 8, sauf 9 en S3.',
+      propositions: [
+        { kg: 62.5, note: 'idem' },
+        { kg: 65, note: 'reprendre' },
+        { kg: 67.5, note: '+5' }
+      ].map(function (p) {
+        var on = st.choix === p.kg;
+        return { kg: fr(p.kg), note: p.note, on: on,
+          bord: on ? '#D4A843' : '#2F2E35', fond: on ? '#D4A843' : '#17161A', texte: on ? '#131316' : '#C9C5D0',
+          pick: function () { self.setState({ choix: p.kg }); } };
+      })
+    };
+  }
+}
+
+window.__boot("\n\n<div style=\"width: 1320px; height: 1240px; box-sizing: border-box; padding: 22px 24px; background: #131316; display: flex; flex-direction: column; gap: 14px;\">\n\n<header style=\"display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;\">\n<div style=\"display: flex; flex-direction: column; gap: 3px;\">\n<h1 style=\"margin: 0; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 27px; letter-spacing: 0.5px; text-transform: uppercase;\">Progression sur le bloc \u2014 huit rendus, les m\u00eames quatre valeurs</h1>\n<p style=\"margin: 0; font-size: 13px; color: #9A96A2;\">PULL UP lest\u00e9. Chaque rendu porte <strong style=\"color: #EEECF2; font-weight: 600;\">s\u00e9ries \u00d7 reps</strong>, <strong style=\"color: #D4A843; font-weight: 600;\">charge</strong> et <strong style=\"color: #EEECF2; font-weight: 600;\">RPE</strong> ; une fl\u00e8che appara\u00eet quand le r\u00e9el s'\u00e9carte du prescrit. S3 : 65 pr\u00e9vus, 62,5 faits, une rep de moins, RPE 9 au lieu de 8.</p>\n</div>\n<div style=\"display: flex; gap: 12px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1px; color: #9A96A2;\">\n<span style=\"display: flex; align-items: center; gap: 5px;\"><span style=\"width: 10px; height: 10px; border-radius: 2px; background: #D4A843;\"></span>CHARGE</span>\n<span style=\"display: flex; align-items: center; gap: 5px;\"><span style=\"width: 10px; height: 10px; border-radius: 2px; border: 1.5px solid #8A8691; box-sizing: border-box;\"></span>PRESCRIT</span>\n<span style=\"display: flex; align-items: center; gap: 5px;\">RPE<span style=\"width: 10px; height: 10px; border-radius: 2px; background: #7FA58C;\"></span>\u22647<span style=\"width: 10px; height: 10px; border-radius: 2px; background: #E0A93C;\"></span>8<span style=\"width: 10px; height: 10px; border-radius: 2px; background: #D65A4A;\"></span>9+</span>\n</div>\n</header>\n\n<div style=\"flex-grow: 1; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 14px;\">\n\n<!-- A \u00b7 COURBE -->\n<section style=\"background: #1B1A1F; border: 1px solid #2A2930; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;\">\n<div style=\"display: flex; align-items: baseline; justify-content: space-between; gap: 10px;\">\n<h2 style=\"margin: 0; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 16px; text-transform: uppercase; letter-spacing: 0.6px;\">A \u00b7 Courbe</h2>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1px; color: #6E6A76;\">COACH ANALYSE \u00b7 D\u00c9FAUT</span>\n</div>\n<svg width=\"600\" height=\"112\" viewBox=\"0 0 600 118\" role=\"img\" aria-label=\"{{aria}}\">\n<line x1=\"12\" y1=\"92\" x2=\"588\" y2=\"92\" stroke=\"#2F2E35\" stroke-width=\"1\"></line>\n<sc-for list=\"{{courbe.ecarts}}\" as=\"e\" hint-placeholder-count=\"1\">\n<line x1=\"{{e.x}}\" y1=\"{{e.y1}}\" x2=\"{{e.x}}\" y2=\"{{e.y2}}\" stroke=\"#8A8691\" stroke-width=\"1.2\" stroke-dasharray=\"2 3\"></line>\n<circle cx=\"{{e.x}}\" cy=\"{{e.y1}}\" r=\"4.5\" fill=\"#1B1A1F\" stroke=\"#8A8691\" stroke-width=\"1.6\"></circle>\n<text x=\"{{e.xTexte}}\" y=\"{{e.y1}}\" text-anchor=\"end\" dominant-baseline=\"middle\" fill=\"#8A8691\" font-family=\"'IBM Plex Mono', monospace\" font-size=\"11\">{{e.prescrit}}</text>\n</sc-for>\n<path d=\"{{courbe.chemin}}\" fill=\"none\" stroke=\"#D4A843\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>\n<path d=\"{{courbe.prevu}}\" fill=\"none\" stroke=\"#D4A843\" stroke-width=\"2\" stroke-dasharray=\"4 4\" opacity=\"0.5\"></path>\n<sc-for list=\"{{courbe.points}}\" as=\"p\" hint-placeholder-count=\"4\">\n<circle cx=\"{{p.x}}\" cy=\"{{p.y}}\" r=\"{{p.r}}\" fill=\"{{p.fill}}\" stroke=\"#1B1A1F\" stroke-width=\"2\"></circle>\n</sc-for>\n<sc-for list=\"{{courbe.valeurs}}\" as=\"v\" hint-placeholder-count=\"3\">\n<text x=\"{{v.x}}\" y=\"{{v.y}}\" text-anchor=\"middle\" fill=\"{{v.couleur}}\" font-family=\"'IBM Plex Mono', monospace\" font-size=\"13\" font-weight=\"600\">{{v.texte}}</text>\n</sc-for>\n</svg>\n<div style=\"display: flex;\">\n<sc-for list=\"{{semaines}}\" as=\"s\" hint-placeholder-count=\"4\">\n<div class=\"socle\" style=\"flex-grow: 1;\">\n<span style=\"font-size: 11px; color: {{s.couleurLabel}};\">{{s.label}}</span>\n<span style=\"font-size: 12px; color: #C9C5D0;\">{{s.volume}}</span>\n<span style=\"font-size: 12px; color: {{s.rpeCouleur}};\">RPE {{s.rpeTexte}}</span>\n</div>\n</sc-for>\n</div>\n</section>\n\n<!-- B \u00b7 BARRES -->\n<section style=\"background: #1B1A1F; border: 1px solid #2A2930; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;\">\n<div style=\"display: flex; align-items: baseline; justify-content: space-between; gap: 10px;\">\n<h2 style=\"margin: 0; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 16px; text-transform: uppercase; letter-spacing: 0.6px;\">B \u00b7 Barres</h2>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1px; color: #6E6A76;\">ATHL\u00c8TE \u00b7 LECTURE SIMPLE</span>\n</div>\n<div style=\"height: 118px; display: flex; align-items: flex-end; gap: 12px; padding: 0 4px; border-bottom: 1px solid #2F2E35;\">\n<sc-for list=\"{{semaines}}\" as=\"s\" hint-placeholder-count=\"4\">\n<div style=\"flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;\">\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; color: {{s.couleurValeur}};\">{{s.chargeTexte}}</span>\n<div style=\"position: relative; width: 100%; height: {{s.hauteurPrescrit}}px; display: flex; align-items: flex-end;\">\n<span style=\"position: absolute; inset: 0; border: {{s.contourPrescrit}}; border-radius: 4px 4px 0 0;\"></span>\n<div style=\"position: relative; width: 100%; height: {{s.hauteur}}px; border-radius: 4px 4px 0 0; background: {{s.barre}};\"></div>\n</div>\n</div>\n</sc-for>\n</div>\n<div style=\"display: flex; gap: 12px; padding: 0 4px;\">\n<sc-for list=\"{{semaines}}\" as=\"s\" hint-placeholder-count=\"4\">\n<div class=\"socle\" style=\"flex-grow: 1;\">\n<span style=\"font-size: 11px; color: {{s.couleurLabel}};\">{{s.label}}</span>\n<span style=\"font-size: 12px; color: #C9C5D0;\">{{s.volume}}</span>\n<span style=\"font-size: 12px; color: {{s.rpeCouleur}};\">RPE {{s.rpeTexte}}</span>\n</div>\n</sc-for>\n</div>\n</section>\n\n<!-- C \u00b7 MARCHES -->\n<section style=\"background: #1B1A1F; border: 1px solid #2A2930; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;\">\n<div style=\"display: flex; align-items: baseline; justify-content: space-between; gap: 10px;\">\n<h2 style=\"margin: 0; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 16px; text-transform: uppercase; letter-spacing: 0.6px;\">C \u00b7 Marches</h2>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1px; color: #6E6A76;\">ATHL\u00c8TE \u00b7 \u00ab JE MONTE DE COMBIEN \u00bb</span>\n</div>\n<div style=\"flex-grow: 1; display: flex; align-items: flex-end; gap: 5px;\">\n<sc-for list=\"{{semaines}}\" as=\"s\" hint-placeholder-count=\"4\">\n<div style=\"flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;\">\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: {{s.ecartCouleur}};\">{{s.ecart}}</span>\n<div style=\"width: 100%; height: {{s.hauteurMarche}}px; border-radius: 6px; background: {{s.marcheFond}}; border: 1px solid {{s.marcheBord}}; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; padding-top: 6px;\">\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 600; color: {{s.couleurValeur}};\">{{s.chargeTexte}}</span>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #C9C5D0;\">{{s.volume}}</span>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: {{s.rpeCouleur}};\">RPE {{s.rpeTexte}}</span>\n</div>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: {{s.couleurLabel}};\">{{s.label}}</span>\n</div>\n</sc-for>\n</div>\n</section>\n\n<!-- D \u00b7 CHIFFRES -->\n<section style=\"background: #1B1A1F; border: 1px solid #2A2930; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;\">\n<div style=\"display: flex; align-items: baseline; justify-content: space-between; gap: 10px;\">\n<h2 style=\"margin: 0; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 16px; text-transform: uppercase; letter-spacing: 0.6px;\">D \u00b7 Chiffres</h2>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1px; color: #6E6A76;\">\u00ab JE VEUX LES NOMBRES \u00bb</span>\n</div>\n<div style=\"flex-grow: 1; display: grid; grid-template-columns: 78px repeat(4, minmax(0, 1fr)); align-items: center; gap: 4px;\">\n<span></span>\n<sc-for list=\"{{semaines}}\" as=\"s\" hint-placeholder-count=\"4\">\n<span style=\"text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: {{s.couleurLabel}};\">{{s.label}}</span>\n</sc-for>\n<sc-for list=\"{{tableau}}\" as=\"r\" hint-placeholder-count=\"4\">\n<span style=\"font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #8A8691;\">{{r.titre}}</span>\n<sc-for list=\"{{r.cellules}}\" as=\"c\" hint-placeholder-count=\"4\">\n<span style=\"text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: {{c.taille}}; font-weight: {{c.graisse}}; color: {{c.couleur}};\">{{c.texte}}</span>\n</sc-for>\n</sc-for>\n</div>\n</section>\n\n<!-- E \u00b7 PHRASE -->\n<section style=\"background: #1B1A1F; border: 1px solid #2A2930; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;\">\n<div style=\"display: flex; align-items: baseline; justify-content: space-between; gap: 10px;\">\n<h2 style=\"margin: 0; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 16px; text-transform: uppercase; letter-spacing: 0.6px;\">E \u00b7 Une phrase</h2>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1px; color: #6E6A76;\">ATHL\u00c8TE EN S\u00c9ANCE \u00b7 MINIMAL</span>\n</div>\n<div style=\"flex-grow: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px;\">\n<div style=\"display: flex; align-items: baseline; gap: 10px;\">\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 30px; font-weight: 600; color: #D4A843;\">60 \u2192 62,5</span>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #6E6A76;\">kg</span>\n<span style=\"height: 24px; padding: 0 9px; border-radius: 999px; background: rgba(127,165,140,0.16); color: #7FA58C; display: flex; align-items: center; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600;\">+2,5 sur le bloc</span>\n</div>\n<p style=\"margin: 0; font-size: 14px; line-height: 1.45; color: #C9C5D0;\">Deux mont\u00e9es, puis une semaine plus dure : <strong style=\"color: #EEECF2; font-weight: 600;\">65 pr\u00e9vus, 62,5 faits</strong>, une rep de moins et RPE 9 au lieu de 8.</p>\n<div style=\"display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 9px; background: #17161A; border: 1px solid #232228;\">\n<span style=\"font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #8A8691;\">Cette semaine</span>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 15px; color: #EEECF2;\">3\u00d72</span>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600; color: #D4A843;\">67,5 kg</span>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 15px; color: #E0A93C;\">RPE 8</span>\n<span style=\"margin-left: auto; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6E6A76;\">vis\u00e9</span>\n</div>\n</div>\n</section>\n\n<!-- F \u00b7 EFFORT -->\n<section style=\"background: #1B1A1F; border: 1px solid #2A2930; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;\">\n<div style=\"display: flex; align-items: baseline; justify-content: space-between; gap: 10px;\">\n<h2 style=\"margin: 0; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 16px; text-transform: uppercase; letter-spacing: 0.6px;\">F \u00b7 Co\u00fbt de l'effort</h2>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1px; color: #6E6A76;\">COACH ANALYSE</span>\n</div>\n<div style=\"flex-grow: 1; display: flex; flex-direction: column; gap: 6px; justify-content: center;\">\n<sc-for list=\"{{semaines}}\" as=\"s\" hint-placeholder-count=\"4\">\n<div style=\"display: flex; align-items: center; gap: 8px;\">\n<span style=\"width: 24px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: {{s.couleurLabel}};\">{{s.label}}</span>\n<div style=\"flex-grow: 1; height: 34px; border-radius: 6px; background: #17161A; border: 1px solid #232228; position: relative; overflow: hidden; display: flex; align-items: center; gap: 10px; padding: 0 10px;\">\n<span style=\"position: absolute; left: 0; top: 0; bottom: 0; width: {{s.largeurEffort}}%; background: {{s.effortFond}};\"></span>\n<span style=\"position: relative; font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; color: {{s.couleurValeur}};\">{{s.chargeTexte}} kg</span>\n<span style=\"position: relative; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #C9C5D0;\">{{s.volume}}</span>\n<span style=\"position: relative; margin-left: auto; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; color: {{s.rpeCouleur}};\">RPE {{s.rpeTexte}}</span>\n</div>\n</div>\n</sc-for>\n</div>\n</section>\n\n<!-- G \u00b7 PROCHAINE MARCHE -->\n<section style=\"background: #1B1A1F; border: 1px solid #2A2930; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;\">\n<div style=\"display: flex; align-items: baseline; justify-content: space-between; gap: 10px;\">\n<h2 style=\"margin: 0; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 16px; text-transform: uppercase; letter-spacing: 0.6px;\">G \u00b7 Prochaine marche</h2>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1px; color: #6E6A76;\">COACH PROGRAMMATION</span>\n</div>\n<div style=\"margin-top: 16px; display: flex; align-items: flex-end; gap: 8px; height: 78px; border-bottom: 1px solid #2F2E35;\">\n<sc-for list=\"{{semaines}}\" as=\"s\" hint-placeholder-count=\"4\">\n<div style=\"flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;\">\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: {{s.couleurValeur}};\">{{s.chargeTexte}}</span>\n<div style=\"width: 100%; height: {{s.hauteur}}px; border-radius: 4px 4px 0 0; background: {{s.projFond}}; border: {{s.projBord}};\"></div>\n</div>\n</sc-for>\n</div>\n<div style=\"display: flex;\">\n<sc-for list=\"{{semaines}}\" as=\"s\" hint-placeholder-count=\"4\">\n<div class=\"socle\" style=\"flex-grow: 1;\">\n<span style=\"font-size: 11px; color: {{s.couleurLabel}};\">{{s.label}}</span>\n<span style=\"font-size: 11px; color: #C9C5D0;\">{{s.volume}}</span>\n<span style=\"font-size: 11px; color: {{s.rpeCouleur}};\">RPE {{s.rpeTexte}}</span>\n</div>\n</sc-for>\n</div>\n<div style=\"display: flex; gap: 8px; align-items: center; padding-top: 4px;\">\n<span style=\"font-size: 13px; color: #A9A5B0;\">S4 :</span>\n<sc-for list=\"{{propositions}}\" as=\"p\" hint-placeholder-count=\"3\">\n<button type=\"button\" onClick=\"{{p.pick}}\" aria-pressed=\"{{p.on}}\" style=\"height: 44px; padding: 0 12px; border-radius: 9px; border: 1px solid {{p.bord}}; background: {{p.fond}}; color: {{p.texte}}; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer;\">\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 600;\">{{p.kg}}</span>\n<span style=\"font-size: 10px;\">{{p.note}}</span>\n</button>\n</sc-for>\n<span style=\"margin-left: auto; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6E6A76;\">3\u00d72 \u00b7 RPE vis\u00e9 8</span>\n</div>\n</section>\n\n<!-- H \u00b7 ASSISTANCE -->\n<section style=\"background: #1B1A1F; border: 1px solid #2A2930; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;\">\n<div style=\"display: flex; align-items: baseline; justify-content: space-between; gap: 10px;\">\n<h2 style=\"margin: 0; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 16px; text-transform: uppercase; letter-spacing: 0.6px;\">H \u00b7 Sans charge : l'aide diminue</h2>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1px; color: #6E6A76;\">LE CAS DE TA CAPTURE</span>\n</div>\n<div style=\"flex-grow: 1; display: flex; align-items: flex-end; gap: 10px;\">\n<sc-for list=\"{{elastique}}\" as=\"e\" hint-placeholder-count=\"4\">\n<div style=\"flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;\">\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; color: {{e.couleur}};\">{{e.nom}}</span>\n<div style=\"width: 100%; height: {{e.hauteur}}px; border-radius: 4px; background: {{e.fond}}; border: {{e.bord}};\"></div>\n<span class=\"socle\">\n<span style=\"font-size: 11px; color: {{e.couleurLabel}};\">{{e.label}}</span>\n<span style=\"font-size: 11px; color: #C9C5D0;\">{{e.volume}}</span>\n<span style=\"font-size: 11px; color: {{e.rpeCouleur}};\">RPE {{e.rpe}}</span>\n</span>\n</div>\n</sc-for>\n</div>\n</section>\n\n</div>\n</div>\n");
+</script></body></html>

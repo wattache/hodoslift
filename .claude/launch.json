@@ -1,0 +1,43 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "eitri",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "web"
+      ],
+      "port": 5174
+    },
+    {
+      "name": "landing",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd web && node landing/build-coachs.mjs && npx firebase emulators:start --only hosting --project french-forge-600"
+      ],
+      "port": 5000
+    },
+    {
+      "name": "eitri-mock",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd web && VITE_FIREBASE_API_KEY= npx vite --port 5175 --strictPort"
+      ],
+      "port": 5175
+    },
+    {
+      "name": "eitri-reel",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd web && npx vite --port 5198 --strictPort"
+      ],
+      "port": 5198
+    }
+  ]
+}

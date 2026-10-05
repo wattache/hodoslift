@@ -1,0 +1,5 @@
+# L'image ne porte que le front construit et son routage : sans ce filtre, le
+# contexte enverrait `node_modules` et les `.env` au démon Docker.
+*
+!Caddyfile
+!dist

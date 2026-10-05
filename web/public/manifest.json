@@ -1,0 +1,24 @@
+{
+  "name": "Hodos par French Forge",
+  "short_name": "Hodos",
+  "description": "Suivi d'entraînement pour la force athlétique",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1B1A1F",
+  "theme_color": "#D4A843",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/marque/icone-any.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/marque/icone-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

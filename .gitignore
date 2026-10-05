@@ -1,0 +1,53 @@
+# Un seul .gitignore pour le monorepo : chaque règle porte le dossier qu'elle
+# garde. Ce qui n'a pas de dossier vaut partout.
+
+# --- poste ------------------------------------------------------------------
+.DS_Store
+node_modules/
+.claude/settings.local.json
+.claude/worktrees/
+# Rapports Playwright, déposés là où la commande est lancée (racine, eitri, brokkr).
+test-results/
+schema-erd/
+
+# --- api-python -------------------------------------------------------------------
+__pycache__/
+*.pyc
+api-python/.env
+api-python/.venv/
+api-python/venv/
+api-python/.pytest_cache/
+api-python/.ruff_cache/
+api-python/.coverage
+api-python/coverage.xml
+# Clés de compte de service — NE JAMAIS committer
+api-python/.secrets/
+*-sa.json
+*.serviceaccount.json
+# ERD Graphviz intermédiaire (régénéré par brokkr/docs/grouped-erd.py)
+api-python/docs/*.dot
+
+# --- web --------------------------------------------------------------------
+web/dist/
+# `.env.local` porte la config Firebase réelle + l'URL brokkr, `.env.production`
+# l'état des flags prod. Jamais versionnés.
+web/.env.local
+web/.env.production
+web/.env*.local
+*.log
+.eslintcache
+web/playwright-report/
+# Cache de déploiement Firebase (empreinte des fichiers déployés) : réécrit à
+# chaque deploy, aucune valeur en revue. `.firebaserc`, lui, reste versionné.
+web/.firebase/
+
+# --- infra ---------------------------------------------------------------
+infra/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+!terraform.tfvars.example
+
+# --- api -------------------------------------------------------------------
+# Le binaire d'un `go build` lancé à la main ; l'image le construit elle-même.
+api/api

@@ -1,0 +1,271 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8">
+
+
+<style>
+body{margin:0;background:#131316;font-family:'Barlow',system-ui,sans-serif;color:#EEECF2}
+a{color:#D4A843}a:hover{color:#E6C26A}
+</style>
+
+<style>html,body{margin:0}#root{display:inline-block}</style><style>@font-face{font-family:'Barlow';src:local('DejaVu Sans');}@font-face{font-family:'Barlow Condensed';src:local('DejaVu Sans Condensed');}@font-face{font-family:'IBM Plex Mono';src:local('DejaVu Sans Mono');}</style></head><body><div id="root"></div>
+<script>
+class DCLogic {
+  constructor(props){ this.props = props || {}; this.state = {}; }
+  setState(o){ Object.assign(this.state, o); window.__rerender(); }
+  forceUpdate(){ window.__rerender(); }
+}
+const SVGTAGS = new Set(['svg','path','g','circle','ellipse','rect','line','text','polygon','polyline','defs','use']);
+const EVT = { onclick:'click', onmouseenter:'mouseenter', onmouseleave:'mouseleave', onchange:'input', oninput:'input' };
+function lookup(path, ctx){
+  if (path === 'true') return true;
+  if (path === 'false') return false;
+  let cur = ctx;
+  for (const part of path.split('.')) {
+    if (cur == null) return undefined;
+    cur = cur[part];
+  }
+  return cur;
+}
+function interp(str, ctx){
+  return str.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (m, p) => {
+    const v = lookup(p, ctx);
+    return v == null ? '' : String(v);
+  });
+}
+function whole(str){ const m = str.match(/^\{\{\s*([^}]+?)\s*\}\}$/); return m ? m[1] : null; }
+function renderNodes(nodes, ctx, parent, svg){
+  for (const node of nodes) {
+    if (node.nodeType === 3) {
+      const t = interp(node.nodeValue, ctx);
+      if (t.trim()) parent.appendChild(document.createTextNode(t));
+      continue;
+    }
+    if (node.nodeType !== 1) continue;
+    const tag = node.tagName.toLowerCase();
+    if (tag === 'sc-for') {
+      const list = lookup(whole(node.getAttribute('list')) || '', ctx) || [];
+      const as = node.getAttribute('as') || 'item';
+      list.forEach((item, i) => {
+        const c = Object.create(ctx); c[as] = item; c.$index = i;
+        renderNodes([...node.childNodes], c, parent, svg);
+      });
+      continue;
+    }
+    if (tag === 'sc-if') {
+      const v = lookup(whole(node.getAttribute('value')) || '', ctx);
+      if (v) renderNodes([...node.childNodes], ctx, parent, svg);
+      continue;
+    }
+    const isSvg = svg || SVGTAGS.has(tag);
+    const el = isSvg ? document.createElementNS('http://www.w3.org/2000/svg', tag)
+                     : document.createElement(tag);
+    for (const attr of [...node.attributes]) {
+      const name = attr.name, raw = attr.value;
+      const w = whole(raw);
+      if (EVT[name.toLowerCase()]) {
+        const fn = w ? lookup(w, ctx) : null;
+        if (typeof fn === 'function') el.addEventListener(EVT[name.toLowerCase()], fn);
+        continue;
+      }
+      if (name.startsWith('hint-')) continue;
+      if (name === 'disabled') { if (w ? lookup(w, ctx) : true) el.setAttribute('disabled', ''); continue; }
+      if (name === 'value' && tag === 'input') { el.value = w ? (lookup(w, ctx) ?? '') : raw; continue; }
+      el.setAttribute(name, interp(raw, ctx));
+    }
+    renderNodes([...node.childNodes], ctx, el, isSvg);
+    parent.appendChild(el);
+  }
+}
+window.__boot = function(markup){
+  const holder = document.createElement('div');
+  holder.innerHTML = markup;
+  const tpl = [...holder.childNodes];
+  const inst = new Component({});
+  window.__inst = inst;
+  window.__rerender = function(){
+    const root = document.getElementById('root');
+    root.innerHTML = '';
+    renderNodes(tpl, inst.renderVals(), root, false);
+  };
+  window.__rerender();
+};
+</script>
+<script>
+var MOUV = ['MUSCLE UP', 'PULL UP', 'DIPS', 'SQUAT'];
+var MOTIFS = ['Ne sait pas', 'Trop lourd', 'Départ anticipé', 'Position finale'];
+function e(p, r, o, sel, res) { return { p: p, r: r, o: o, sel: sel || null, res: res || '' }; }
+var ATH = [
+  { nom: 'Laura Four', cat: '-63 · 60 kg', grp: 'A', mv: [
+    [e(6, 7.5, 9, 'r', 'rep'), e(7, 9, 10.5, 'r', 'rep'), e(8, 10, 12, 'r', 'norep')],
+    [e(31, 34, 36), e(33, 37, 39), e(35, 40, 42)],
+    [e(30, 32, 34), e(32.5, 36, 38), e(35, 40, 42)],
+    [e(41, 42, 46), e(44, 46, 50), e(47, 50, 54)] ] },
+  { nom: 'Inès Marchal', cat: '-63 · 61.8 kg', grp: 'A', mv: [
+    [e(5, 6, 7, 'p', 'rep'), e(6, 7.5, 8.5, 'r', 'rep'), e(7, 8.5, 10, 'r', 'rep')],
+    [e(28, 30, 32), e(30, 32.5, 34), e(32, 35, 37)],
+    [e(28, 30, 32), e(30, 33, 35), e(32, 35, 38)],
+    [e(38, 40, 43), e(41, 43, 46), e(44, 46, 50)] ] },
+  { nom: 'Sofia Renard', cat: '-72 · 70.2 kg', grp: 'A', mv: [
+    [e(8, 10, 12, 'r', 'rep'), e(10, 12, 14, 'r', 'norep'), e(12, 12, 16, 'r', 'rep')],
+    [e(40, 43, 46), e(43, 46, 49), e(46, 49, 52)],
+    [e(42, 45, 48), e(45, 48, 51), e(48, 51, 55)],
+    [e(60, 65, 70), e(65, 70, 75), e(70, 75, 80)] ] },
+  { nom: 'Willi Lagachette', cat: '-80 · 79.4 kg', grp: 'B', mv: [
+    [e(8.75, 10, 11.25, 'r', 'rep'), e(11.25, 12.5, 13.75), e(13.75, 15, 16.25)],
+    [e(57.5, 60, 62.5), e(60, 62.5, 65), e(62.5, 65, 67.5)],
+    [e(70, 75, 80), e(75, 80, 85), e(80, 85, 90)],
+    [e(165, 172.5, 180), e(175, 182.5, 190), e(185, 192.5, 200)] ] },
+  { nom: 'Théo Vasseur', cat: '-80 · 78.1 kg', grp: 'B', mv: [
+    [e(10, 12.5, 15, 'p', 'rep'), e(12.5, 15, 17.5), e(15, 17.5, 20)],
+    [e(55, 57.5, 60), e(57.5, 60, 62.5), e(60, 62.5, 65)],
+    [e(65, 70, 75), e(70, 75, 80), e(75, 80, 85)],
+    [e(150, 160, 170), e(160, 170, 180), e(170, 180, 190)] ] },
+  { nom: 'Karim Belhadj', cat: '-90 · 88.6 kg', grp: 'B', mv: [
+    [e(15, 17.5, 20, 'r', 'rep'), e(17.5, 20, 22.5), e(20, 22.5, 25)],
+    [e(65, 70, 75), e(70, 75, 80), e(75, 80, 85)],
+    [e(80, 85, 90), e(85, 90, 95), e(90, 95, 100)],
+    [e(180, 190, 200), e(190, 200, 210), e(200, 210, 220)] ] }
+];
+function kgDe(a) { return a.sel === 'p' ? a.p : a.sel === 'r' ? a.r : a.sel === 'o' ? a.o : 0; }
+function totalDe(ath) {
+  var t = 0;
+  ath.mv.forEach(function (m) {
+    var best = 0;
+    m.forEach(function (a) { if (a.res === 'rep' && kgDe(a) > best) best = kgDe(a); });
+    t += best;
+  });
+  return t;
+}
+function arrondi(n) { return Math.round(n * 100) / 100; }
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { mi: 0, ai: 1, pi: 3, motif: null, vue: 'feuille', tick: 0 };
+  }
+  maj() { this.setState({ tick: this.state.tick + 1 }); }
+  renderVals() {
+    var self = this, st = this.state;
+    var ath = ATH[st.pi];
+    var cour = ath.mv[st.mi][st.ai];
+    var etape = st.mi * 3 + st.ai + 1;
+
+    var etapes = [];
+    for (var s = 0; s < 12; s++) {
+      var mi = Math.floor(s / 3), ai = s % 3;
+      var duGrp = ATH.filter(function (a) { return a.grp === ATH[st.pi].grp; });
+      var faits = duGrp.filter(function (a) { return a.mv[mi][ai].res !== ''; }).length;
+      etapes.push({ bg: s === etape - 1 ? '#D4A843' : faits === duGrp.length ? '#4E9A6B' : faits > 0 ? '#6E6A76' : '#2C2B31' });
+    }
+
+    var grpCourant = ath.grp;
+    var attente = ATH.map(function (a, pi) { return { a: a, pi: pi }; })
+      .filter(function (x) { return x.a.grp === grpCourant; })
+      .map(function (x) { var a = x.a, pi = x.pi;
+      var at = a.mv[st.mi][st.ai];
+      return { pi: pi, nom: a.nom, prec: st.ai > 0 ? (kgDe(a.mv[st.mi][st.ai - 1]) || a.mv[st.mi][st.ai - 1].r) : 0, a: at, kg: kgDe(at) || at.r, fait: at.res !== '' };
+    }).sort(function (x, y) {
+      if (x.fait !== y.fait) return x.fait ? 1 : -1;
+      if (x.kg !== y.kg) return x.kg - y.kg;
+      if (x.prec !== y.prec) return x.prec - y.prec;
+      return x.pi - y.pi;
+    });
+    var ordre = attente.map(function (o, i) {
+      var actif = o.pi === st.pi;
+      return {
+        pos: o.fait ? '✓' : i + 1, nom: o.nom, kg: arrondi(o.kg),
+        kgCouleur: o.a.res === 'rep' ? '#8FD3A8' : o.a.res === 'norep' ? '#E78C7F' : '#EEECF2',
+        bord: actif ? '#D4A843' : '#26252B', fond: actif ? '#201E22' : '#1B1A1F',
+        pastilleFond: o.fait ? 'rgba(78,154,107,0.2)' : actif ? '#D4A843' : '#26252B',
+        pastilleTexte: o.fait ? '#8FD3A8' : actif ? '#131316' : '#9A96A2',
+        pick: function () { self.setState({ pi: o.pi, motif: null }); }
+      };
+    });
+    var reste = attente.filter(function (o) { return !o.fait; }).length;
+
+    var feuille = ath.mv.map(function (m, mi) {
+      return {
+        nom: MOUV[mi], couleur: mi === st.mi ? '#D4A843' : '#6E6A76',
+        cases: m.map(function (a, ai) {
+          var ici = mi === st.mi && ai === st.ai;
+          var kg = kgDe(a) || a.r;
+          var fond = '#17161A', bordure = '1px solid #2A2930', texte = '#6E6A76';
+          if (a.res === 'rep') { fond = 'rgba(78,154,107,0.16)'; bordure = '1px solid #4E9A6B'; texte = '#8FD3A8'; }
+          else if (a.res === 'norep') { fond = 'rgba(214,90,74,0.14)'; bordure = '1px solid #D65A4A'; texte = '#E78C7F'; }
+          if (ici) { bordure = '2px solid #D4A843'; texte = '#EEECF2'; }
+          return { kg: arrondi(kg), tier: a.sel ? a.sel.toUpperCase() : 'R',
+            tierCouleur: a.res === 'rep' ? '#5E8C72' : a.res === 'norep' ? '#9A5C55' : ici ? '#D4A843' : '#4A4550',
+            fond: fond, bordure: bordure, texte: texte,
+            aria: MOUV[mi] + ' essai ' + (ai + 1),
+            pick: function () { self.setState({ mi: mi, ai: ai, motif: null }); } };
+        })
+      };
+    });
+
+    var tiers = [{ id: 'p', label: 'P' }, { id: 'r', label: 'R' }, { id: 'o', label: 'O' }];
+    return {
+      etape: etape, etapes: etapes, grp: ath.grp,
+      onglets: ['A', 'B'].map(function (g) {
+        var on = g === ath.grp;
+        return { label: 'Groupe ' + g, on: on,
+          bord: on ? '#D4A843' : '#2F2E35', fond: on ? '#D4A843' : 'transparent', texte: on ? '#131316' : '#9A96A2',
+          pick: function () {
+            var premier = ATH.map(function (a, i) { return { a: a, i: i }; })
+              .filter(function (x) { return x.a.grp === g; })[0];
+            if (premier) self.setState({ pi: premier.i, motif: null });
+          } };
+      }),
+      plancherTexte: (function () {
+        var pl = 0;
+        for (var k = 0; k < st.ai; k++) { var w = kgDe(ath.mv[st.mi][k]); if (w > pl) pl = w; }
+        return pl > 0 ? 'plancher ' + arrondi(pl) + ' kg' : 'premier essai';
+      })(),
+      vues: [{ id: 'feuille', label: 'Feuille' }, { id: 'classement', label: 'Classement' }].map(function (v) {
+        var on = st.vue === v.id;
+        return { label: v.label, on: on, fond: on ? '#26252B' : 'transparent', texte: on ? '#EEECF2' : '#9A96A2',
+          pick: function () { self.setState({ vue: v.id }); } };
+      }),
+      vueFeuille: st.vue === 'feuille', vueClassement: st.vue === 'classement',
+      classement: ATH.filter(function (a) { return a.grp === ath.grp; })
+        .map(function (a) { return { nom: a.nom, cat: a.cat.split(' ·')[0], total: totalDe(a) }; })
+        .sort(function (x, y) { return y.total - x.total; })
+        .map(function (r, rang) {
+          return { rang: (rang + 1) + '.', cat: r.cat, nom: r.nom, total: arrondi(r.total),
+            fond: rang === 0 ? 'rgba(212,168,67,0.07)' : 'transparent' };
+        }), mouvNom: MOUV[st.mi], essaiNum: st.ai + 1,
+      prec: function () { var e = etape - 2; if (e < 0) return; self.setState({ mi: Math.floor(e / 3), ai: e % 3, motif: null }); },
+      suiv: function () { var e = etape; if (e > 11) return; self.setState({ mi: Math.floor(e / 3), ai: e % 3, motif: null }); },
+      enBarreNom: ath.nom, enBarreCat: ath.cat,
+      enBarreKg: arrondi(kgDe(cour) || cour.r),
+      enBarreTier: cour.sel ? 'ANNONCÉ ' + cour.sel.toUpperCase() : 'NON ANNONCÉ',
+      plans: tiers.map(function (t) {
+        var on = cour.sel === t.id;
+        var pl = 0;
+        for (var k = 0; k < st.ai; k++) { var w = kgDe(ath.mv[st.mi][k]); if (w > pl) pl = w; }
+        // Une annonce ne baisse pas : sous le plancher, la charge n'est pas proposée.
+        var enBaisse = !on && cour[t.id] < pl;
+        return { label: t.label, kg: arrondi(cour[t.id]), on: on,
+          bord: on ? '#D4A843' : '#2F2E35',
+          fond: on ? '#D4A843' : '#232228',
+          texte: on ? '#131316' : enBaisse ? '#4A4550' : '#C9C5D0',
+          pick: function () { if (!enBaisse) { cour.sel = t.id; self.maj(); } } };
+      }),
+      rep: function () { cour.res = cour.res === 'rep' ? '' : 'rep'; if (!cour.sel) cour.sel = 'r'; self.maj(); },
+      norep: function () { cour.res = cour.res === 'norep' ? '' : 'norep'; if (!cour.sel) cour.sel = 'r'; self.maj(); },
+      repFond: cour.res === 'rep' ? '#4E9A6B' : '#232228',
+      repTexte: cour.res === 'rep' ? '#0F1611' : '#C9C5D0',
+      norepFond: cour.res === 'norep' ? '#D65A4A' : '#232228',
+      norepTexte: cour.res === 'norep' ? '#1A0F0D' : '#C9C5D0',
+      montreMotifs: cour.res === 'norep',
+      motifs: MOTIFS.map(function (m) {
+        var on = st.motif === m;
+        return { label: m, on: on, bord: on ? '#D65A4A' : '#2F2E35',
+          fond: on ? 'rgba(214,90,74,0.18)' : '#232228', texte: on ? '#E78C7F' : '#C9C5D0',
+          pick: function () { self.setState({ motif: m }); } };
+      }),
+      ordre: ordre, resteTexte: reste + ' en attente',
+      feuille: feuille, feuilleNom: ath.nom, feuilleTotal: arrondi(totalDe(ath))
+    };
+  }
+}
+
+window.__boot("\n\n<div style=\"width: 390px; height: 980px; box-sizing: border-box; padding: 14px; background: #131316; display: flex; flex-direction: column; gap: 12px; overflow: hidden;\">\n\n<header style=\"display: flex; align-items: center; justify-content: space-between; gap: 8px;\">\n<div style=\"display: flex; flex-direction: column;\">\n<span style=\"font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 20px; text-transform: uppercase; line-height: 1.1;\">Mock Meet</span>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #6E6A76;\">SAM. 10 OCT.</span>\n</div>\n<span style=\"height: 30px; padding: 0 12px; border-radius: 999px; background: rgba(78,154,107,0.16); border: 1px solid #4E9A6B; color: #8FD3A8; display: flex; align-items: center; font-size: 12px; font-weight: 600;\">\u25cf EN DIRECT</span>\n</header>\n\n<div style=\"background: #1B1A1F; border: 1px solid #2A2930; border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;\">\n<div style=\"display: flex; align-items: center; gap: 8px;\">\n<button type=\"button\" onClick=\"{{prec}}\" aria-label=\"\u00c9tape pr\u00e9c\u00e9dente\" style=\"width: 44px; height: 44px; border-radius: 10px; border: 1px solid #2F2E35; background: transparent; color: #A9A5B0; font-size: 16px; cursor: pointer;\">\u2039</button>\n<div style=\"flex-grow: 1; text-align: center;\">\n<div style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1.5px; color: #6E6A76;\">TOUR {{etape}} / 12 \u00b7 GROUPE {{grp}}</div>\n<div style=\"font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 22px; text-transform: uppercase;\">{{mouvNom}} \u00b7 E{{essaiNum}}</div>\n</div>\n<button type=\"button\" onClick=\"{{suiv}}\" aria-label=\"\u00c9tape suivante\" style=\"width: 44px; height: 44px; border-radius: 10px; border: 1px solid #2F2E35; background: transparent; color: #A9A5B0; font-size: 16px; cursor: pointer;\">\u203a</button>\n</div>\n<div style=\"display: flex; gap: 3px;\">\n<sc-for list=\"{{etapes}}\" as=\"s\" hint-placeholder-count=\"12\">\n<span style=\"flex-grow: 1; height: 4px; border-radius: 999px; background: {{s.bg}};\"></span>\n</sc-for>\n</div>\n<div style=\"display: flex; align-items: center; gap: 6px;\" role=\"group\" aria-label=\"Groupe en piste\">\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1px; color: #6E6A76;\">EN PISTE</span>\n<sc-for list=\"{{onglets}}\" as=\"g\" hint-placeholder-count=\"2\">\n<button type=\"button\" onClick=\"{{g.pick}}\" aria-pressed=\"{{g.on}}\" style=\"height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid {{g.bord}}; background: {{g.fond}}; color: {{g.texte}}; font-family: 'Barlow', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer;\">{{g.label}}</button>\n</sc-for>\n</div>\n</div>\n\n<div style=\"background: #1F1E24; border: 1px solid #D4A843; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 12px;\">\n<div style=\"display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;\">\n<div style=\"min-width: 0; display: flex; flex-direction: column; gap: 2px;\">\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1.5px; color: #D4A843;\">EN BARRE \u00b7 GROUPE {{grp}}</span>\n<span style=\"font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 22px; line-height: 1.1; text-transform: uppercase;\">{{enBarreNom}}</span>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #9A96A2;\">{{enBarreCat}}</span>\n</div>\n<div style=\"text-align: right;\">\n<div style=\"font-family: 'IBM Plex Mono', monospace; font-size: 34px; font-weight: 600; line-height: 1;\">{{enBarreKg}}</div>\n<div style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #6E6A76;\">KG \u00b7 {{enBarreTier}}</div>\n</div>\n</div>\n<div style=\"display: flex; align-items: baseline; justify-content: space-between;\">\n<span style=\"font-size: 12px; color: #A9A5B0;\">Plan de l'essai \u2014 annonce une charge</span>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #6E6A76;\">{{plancherTexte}}</span>\n</div>\n<div style=\"display: flex; gap: 6px;\">\n<sc-for list=\"{{plans}}\" as=\"p\" hint-placeholder-count=\"3\">\n<button type=\"button\" onClick=\"{{p.pick}}\" aria-pressed=\"{{p.on}}\" style=\"flex-grow: 1; height: 54px; border-radius: 10px; border: 1px solid {{p.bord}}; background: {{p.fond}}; color: {{p.texte}}; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer;\">\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 16px; font-weight: 600;\">{{p.kg}}</span>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1px;\">{{p.label}}</span>\n</button>\n</sc-for>\n<button type=\"button\" aria-label=\"Autre charge\" style=\"width: 54px; height: 54px; border-radius: 10px; border: 1px dashed #3A3940; background: transparent; color: #9A96A2; font-family: 'IBM Plex Mono', monospace; font-size: 18px; cursor: pointer;\">\u00b1</button>\n</div>\n<div style=\"display: flex; gap: 8px;\">\n<button type=\"button\" onClick=\"{{rep}}\" style=\"flex-grow: 1; height: 62px; border-radius: 12px; border: none; background: {{repFond}}; color: {{repTexte}}; font-family: 'Barlow', sans-serif; font-size: 17px; font-weight: 600; cursor: pointer;\">\u2713 REP</button>\n<button type=\"button\" onClick=\"{{norep}}\" style=\"flex-grow: 1; height: 62px; border-radius: 12px; border: none; background: {{norepFond}}; color: {{norepTexte}}; font-family: 'Barlow', sans-serif; font-size: 17px; font-weight: 600; cursor: pointer;\">\u2715 NO REP</button>\n</div>\n<sc-if value=\"{{montreMotifs}}\" hint-placeholder-val=\"{{ false }}\">\n<div style=\"display: flex; gap: 6px; overflow-x: auto;\">\n<sc-for list=\"{{motifs}}\" as=\"m\" hint-placeholder-count=\"4\">\n<button type=\"button\" onClick=\"{{m.pick}}\" aria-pressed=\"{{m.on}}\" style=\"flex-shrink: 0; height: 38px; padding: 0 12px; border-radius: 999px; border: 1px solid {{m.bord}}; background: {{m.fond}}; color: {{m.texte}}; font-size: 13px; cursor: pointer;\">{{m.label}}</button>\n</sc-for>\n</div>\n</sc-if>\n</div>\n\n<div style=\"display: flex; flex-direction: column; gap: 6px;\">\n<div style=\"display: flex; align-items: baseline; justify-content: space-between;\">\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1.5px; color: #6E6A76;\">ORDRE DE BARRE \u00b7 GROUPE {{grp}}</span>\n<span style=\"font-size: 12px; color: #9A96A2;\">{{resteTexte}}</span>\n</div>\n<sc-for list=\"{{ordre}}\" as=\"o\" hint-placeholder-count=\"2\">\n<button type=\"button\" onClick=\"{{o.pick}}\" style=\"height: 48px; padding: 0 12px; border-radius: 10px; border: 1px solid {{o.bord}}; background: {{o.fond}}; color: #EEECF2; display: flex; align-items: center; gap: 10px; cursor: pointer;\">\n<span style=\"width: 22px; height: 22px; border-radius: 999px; background: {{o.pastilleFond}}; color: {{o.pastilleTexte}}; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600;\">{{o.pos}}</span>\n<span style=\"flex-grow: 1; text-align: left; font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\">{{o.nom}}</span>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600; color: {{o.kgCouleur}};\">{{o.kg}}</span>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #6E6A76;\">kg</span>\n</button>\n</sc-for>\n</div>\n\n<div style=\"flex-grow: 1; min-height: 0; background: #1B1A1F; border: 1px solid #2A2930; border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; overflow: hidden;\">\n<div style=\"display: flex; align-items: center; gap: 6px;\">\n<sc-for list=\"{{vues}}\" as=\"v\" hint-placeholder-count=\"2\">\n<button type=\"button\" onClick=\"{{v.pick}}\" aria-pressed=\"{{v.on}}\" style=\"height: 32px; padding: 0 12px; border-radius: 8px; border: none; background: {{v.fond}}; color: {{v.texte}}; font-family: 'Barlow', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer;\">{{v.label}}</button>\n</sc-for>\n<span style=\"flex-grow: 1;\"></span>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #D4A843;\">{{feuilleTotal}} kg</span>\n</div>\n<sc-if value=\"{{vueFeuille}}\" hint-placeholder-val=\"{{ true }}\">\n<div style=\"display: flex; flex-direction: column; gap: 6px;\">\n<sc-for list=\"{{feuille}}\" as=\"f\" hint-placeholder-count=\"4\">\n<div style=\"display: flex; align-items: center; gap: 8px;\">\n<span style=\"width: 74px; flex-shrink: 0; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.5px; color: {{f.couleur}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\">{{f.nom}}</span>\n<sc-for list=\"{{f.cases}}\" as=\"c\" hint-placeholder-count=\"3\">\n<button type=\"button\" onClick=\"{{c.pick}}\" aria-label=\"{{c.aria}}\" style=\"flex-grow: 1; height: 46px; padding: 0; border-radius: 9px; border: {{c.bordure}}; background: {{c.fond}}; color: {{c.texte}}; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-weight: 600; cursor: pointer;\">\n<span style=\"font-size: 14px;\">{{c.kg}}</span>\n<span style=\"font-size: 9px; letter-spacing: 0.5px; color: {{c.tierCouleur}};\">{{c.tier}}</span>\n</button>\n</sc-for>\n</div>\n</sc-for>\n</div>\n</sc-if>\n<sc-if value=\"{{vueClassement}}\" hint-placeholder-val=\"{{ false }}\">\n<div style=\"display: flex; flex-direction: column; gap: 4px;\">\n<sc-for list=\"{{classement}}\" as=\"r\" hint-placeholder-count=\"3\">\n<div style=\"display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 9px; background: {{r.fond}};\">\n<span style=\"width: 16px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6E6A76;\">{{r.rang}}</span>\n<span style=\"width: 34px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #6E6A76;\">{{r.cat}}</span>\n<span style=\"flex-grow: 1; min-width: 0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\">{{r.nom}}</span>\n<span style=\"font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; color: #D4A843;\">{{r.total}}</span>\n</div>\n</sc-for>\n<p style=\"margin: 2px 0 0; font-size: 11px; line-height: 1.35; color: #6E6A76;\">Le groupe se classe au total. Le g\u00e9n\u00e9ral se fait au RIS, apr\u00e8s le dernier squat.</p>\n</div>\n</sc-if>\n</div>\n\n</div>\n");
+</script></body></html>

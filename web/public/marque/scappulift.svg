@@ -1,0 +1,5 @@
+<!-- LE BLASON SCAPPULIFT (FRE-13) — redessiné par Claude Design (18/09) d'après
+     le logo officiel de la structure, passé aux couleurs Hodos le 19/09 : lame
+     ivoire, cornes et grand losange or. Le même tracé vit dans `index.html`
+     (`#boot-sc`, `#open-sc`) : les deux bougent ensemble. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="SCAPPULIFT"><title>SCAPPULIFT</title><g fill="#D4A843"><path d="M11.4 0.6C6.7 2 2 3.9 1.8 7C1.6 9.9 3.2 12.2 5.3 13.7L8.8 11.8C7.9 8.4 8.2 3.4 11.4 0.6Z"/><path d="M20.6 0.6C25.3 2 30 3.9 30.2 7C30.4 9.9 28.8 12.2 26.7 13.7L23.2 11.8C24.1 8.4 23.8 3.4 20.6 0.6Z"/><polygon points="16,3.9 20.6,8.75 16,13.6 11.4,8.75"/><path fill="#EEECF2" fill-rule="evenodd" d="M3.6 8.8L16 16.2L28.4 8.8L27.5 16.6L16 31.8L4.5 16.6ZM10.8 18.5L12.3 17L19.7 17L21.2 18.5L19.7 20L12.3 20ZM16 21.6L18 23.5L16 25.4L14 23.5ZM16 22.6L17.05 23.5L16 24.4L14.95 23.5Z"/></g></svg>

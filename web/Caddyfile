@@ -1,0 +1,66 @@
+# Le front de Hodos, et la seule porte de l'app : le navigateur ne connaît que
+# cette origine. Ce qui n'est pas un fichier du front part vers son service.
+#
+#   /api/…      → api-python (FastAPI), préfixe retiré
+#   /hodos.…    → api (Go, Connect)
+#   /__/…       → Firebase (`/__/auth/handler`, `/__/firebase/init.json`) : le
+#                 repli de connexion par popup ouvre une page sur NOTRE domaine,
+#                 qui doit donc la servir. Méthode documentée par Firebase pour
+#                 un domaine d'authentification à soi.
+#
+# Les règles de cache sont celles de `firebase.json` : les fichiers à empreinte
+# se gardent un an, tout ce qui décide de la version (`index.html`, `sw.js`,
+# `manifest.json`) se revalide à chaque fois.
+{
+	admin off
+	auto_https off
+}
+
+:{$PORT:8080} {
+	encode zstd gzip
+
+	# La popup de connexion doit pouvoir rendre la main à l'app.
+	header Cross-Origin-Opener-Policy same-origin-allow-popups
+
+	# Ce que `make verifier` interroge : la version du front qui tourne.
+	handle /health {
+		header Content-Type application/json
+		respond `{"status":"ok","service":"web","version":"{$GIT_SHA}"}` 200
+	}
+
+	handle_path /api/* {
+		reverse_proxy {$API_PYTHON_URL} {
+			header_up Host {upstream_hostport}
+		}
+	}
+
+	handle /hodos.* {
+		reverse_proxy {$API_URL} {
+			header_up Host {upstream_hostport}
+		}
+	}
+
+	handle /__/* {
+		reverse_proxy {$FIREBASE_AUTH} {
+			header_up Host {upstream_hostport}
+		}
+	}
+
+	# Un fichier à empreinte absent est un 404, jamais `index.html` : sinon le
+	# navigateur mettrait du HTML en cache sous le nom d'un script.
+	handle /assets/* {
+		root * /srv
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	handle {
+		root * /srv
+		@immuable path *.js *.css *.woff *.woff2 *.ttf *.eot *.png *.jpg *.jpeg *.gif *.svg *.ico
+		header @immuable Cache-Control "public, max-age=31536000, immutable"
+		@revalider path / /index.html /sw.js /manifest.json *.html
+		header @revalider Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}
