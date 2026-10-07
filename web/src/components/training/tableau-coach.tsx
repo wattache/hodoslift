@@ -293,7 +293,7 @@ export function TableauCoach({
                 {enGroupe && natureDuGroupe === "emom" ? (
                   <span className="font-display text-[10px] font-bold uppercase tracking-[0.1em] text-metric">
                     {debutDansLEmom(session.exercises.slice(0, i).filter(o => o.groupId === ex.groupId).length,
-                      tempsDuGroupe("emom", membres, ex.sets, ex.clusterMode)?.intervalle ?? null)}
+                      tempsDuGroupe("emom", membres, ex.sets, ex.clusterMode))}
                   </span>
                 ) : (
                   <span className="text-center font-mono text-[11px] text-muted-foreground tabular-nums">{i + 1}</span>

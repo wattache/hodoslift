@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import i18n from '@/i18n';
 
 import type { Exercise, Session } from '@/api/types';
-import { blocDe, chaineSansLacher, CHAMPS_DE_GROUPE, champsDeGroupe, grouperExercices, leReposSeSaisit, libelleGroupe, natureDe, nettoyerGroupesSeuls, rangDansLeGroupe, tempsDuGroupe } from '@/lib/groupe';
+import { blocDe, chaineSansLacher, debutDansLEmom, CHAMPS_DE_GROUPE, champsDeGroupe, grouperExercices, leReposSeSaisit, libelleGroupe, natureDe, nettoyerGroupesSeuls, rangDansLeGroupe, tempsDuGroupe } from '@/lib/groupe';
 
 /** Ce que les e2e ne peuvent PAS atteindre (FRE-31).
  *
@@ -378,5 +378,26 @@ describe('chaineSansLacher', () => {
   it("un lien posé sur la DERNIÈRE ligne du groupe ne relie rien", () => {
     const lignes = [lie('MU'), lie('PU', true), exo('SQUAT')];
     expect(chaineSansLacher(lignes, 1)).toBeNull();
+  });
+});
+
+/** LE REPÈRE D'UN EMOM SE LIT AU MINUTEUR — William, 07/10 : six PULL UP en
+ *  rotation, 2' chacun, un tour. « 12'00, 10'00 … 2'00 », et l'on a jusqu'à
+ *  0'00 pour finir.
+ *
+ *  MUTATION QUI ROUGIT : compter le temps ÉCOULÉ (`rang × intervalle`) — le
+ *  premier sort à « 0'00 » au lieu de « 12'00 ». */
+describe('debutDansLEmom', () => {
+  it('décompte le temps qui reste, du premier mouvement au dernier', () => {
+    const temps = tempsDuGroupe('emom', 6, '1', '120');
+    expect([0, 1, 2, 3, 4, 5].map(r => debutDansLEmom(r, temps)))
+      .toEqual(["12'00", "10'00", "8'00", "6'00", "4'00", "2'00"]);
+  });
+  it('compte les tours : le second passage ne recommence pas le décompte', () => {
+    // 3 mouvements × 2 tours × 1' : le premier démarre à 6'00.
+    expect(debutDansLEmom(0, tempsDuGroupe('emom', 3, '2', '60'))).toBe("6'00");
+  });
+  it('sans tours, la durée est inconnue : le temps écoulé, comme avant', () => {
+    expect(debutDansLEmom(2, tempsDuGroupe('emom', 6, null, '120'))).toBe("4'00");
   });
 });

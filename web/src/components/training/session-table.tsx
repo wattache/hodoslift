@@ -395,7 +395,7 @@ export function SessionTable(props: SessionTableProps) {
                     <span className="w-11 shrink-0 pt-0.5 font-display text-[11px] font-bold uppercase tracking-[0.12em] text-metric">
                       {debutDansLEmom(
                         session.exercises.slice(0, i).filter(o => o.groupId === ex.groupId).length,
-                        tempsDuGroupe("emom", tailleDuGroupe, ex.sets, ex.clusterMode)?.intervalle ?? null,
+                        tempsDuGroupe("emom", tailleDuGroupe, ex.sets, ex.clusterMode),
                       )}
                     </span>
                   ) : enGroupe ? (
@@ -947,11 +947,11 @@ export function SessionTable(props: SessionTableProps) {
                     <span className="font-mono text-base font-semibold text-gold">{ex.toursRealises ?? "—"}</span>
                   )}
                 </div>
-              ) : talonDuGroupe(natureDuGroupe, ex, leReposSeSaisit(natureDuGroupe) && !hasFreeRest && ex.rest ? formatRest(ex.rest) : "") && (
+              ) : talonDuGroupe(natureDuGroupe, ex, leReposSeSaisit(natureDuGroupe) && !hasFreeRest && ex.rest ? formatRest(ex.rest) : "", tailleDuGroupe) && (
                 <div className="flex items-center gap-2 px-3 pb-2 pt-1.5">
                   <span className={cn("h-[3px] w-3", natureDuGroupe === "emom" ? "bg-metric" : "bg-gold/70")} aria-hidden />
                   <span className="font-display text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                    {talonDuGroupe(natureDuGroupe, ex, leReposSeSaisit(natureDuGroupe) && !hasFreeRest && ex.rest ? formatRest(ex.rest) : "")}
+                    {talonDuGroupe(natureDuGroupe, ex, leReposSeSaisit(natureDuGroupe) && !hasFreeRest && ex.rest ? formatRest(ex.rest) : "", tailleDuGroupe)}
                   </span>
                 </div>
               ))}

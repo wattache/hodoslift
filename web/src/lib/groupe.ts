@@ -236,14 +236,20 @@ export function tempsDuGroupe(nature: NatureDeGroupe, membres: number, sets: str
   return { intervalle, total: Number.isFinite(tours) && tours > 0 ? intervalle * membres * tours : null };
 }
 
-/** Quand commence le mouvement de rang `rang` (0 pour le premier) dans un EMOM
- *  en rotation : « MIN 3 » pour un intervalle d'une minute, « 3'00 » sinon. La
- *  minute se lit de la PLACE dans le groupe — plus rien à écrire dans la variante,
- *  où les tableurs la rangeaient (« MIN 4GOBELET »). */
-export function debutDansLEmom(rang: number, intervalle: number | null): string {
-  if (intervalle === 60 || intervalle === null) return i18n.t('session.emomMinute', { n: rang + 1 });
-  const s = rang * intervalle;
-  return `${Math.floor(s / 60)}'${String(s % 60).padStart(2, '0')}`;
+/** Le repère d'un mouvement de rang `rang` (0 pour le premier) dans un EMOM en
+ *  rotation, lu au MINUTEUR : le temps qui RESTE quand il démarre — « 12'00 »,
+ *  « 10'00 »… jusqu'au dernier, et l'on a jusqu'à « 0'00 » pour finir (William,
+ *  07/10). C'est ce qu'affiche la pendule d'une salle.
+ *
+ *  Sans tours, la durée totale est inconnue (`tempsDuGroupe`) : on retombe sur
+ *  le temps ÉCOULÉ, « MIN 3 » pour un intervalle d'une minute, « 3'00 » sinon.
+ *  La minute se lit de la PLACE dans le groupe — plus rien à écrire dans la
+ *  variante, où les tableurs la rangeaient (« MIN 4GOBELET »). */
+export function debutDansLEmom(rang: number, temps: { intervalle: number; total: number | null } | null): string {
+  const enMinSec = (s: number) => `${Math.floor(s / 60)}'${String(s % 60).padStart(2, '0')}`;
+  if (temps?.total != null) return enMinSec(temps.total - rang * temps.intervalle);
+  if (!temps || temps.intervalle === 60) return i18n.t('session.emomMinute', { n: rang + 1 });
+  return enMinSec(rang * temps.intervalle);
 }
 
 /** L'ancienne constante, conservée pour les appelants qui ne connaissent pas la
