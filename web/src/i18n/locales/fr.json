@@ -1670,8 +1670,8 @@
     "actif": "Activé sur cet appareil ✓",
     "inactif": "Désactivé",
     "enCours": "Un instant…",
-    "refuse": "Les notifications sont bloquées pour Hodos dans les réglages du navigateur — il faut les y autoriser d’abord.",
-    "indisponible": "Ce navigateur ne le permet pas. Sur iPhone, installe Hodos sur l’écran d’accueil (Partager → Sur l’écran d’accueil), puis reviens ici.",
+    "refuse": "Les notifications sont bloquées pour HodosLift dans les réglages du navigateur — il faut les y autoriser d’abord.",
+    "indisponible": "Ce navigateur ne le permet pas. Sur iPhone, installe HodosLift sur l’écran d’accueil (Partager → Sur l’écran d’accueil), puis reviens ici.",
     "echec": "Ça n’a pas marché — réessaie, ou vérifie la connexion."
   },
   "poids": {

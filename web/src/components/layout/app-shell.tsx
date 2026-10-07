@@ -9,7 +9,7 @@ import {
   SidebarTrigger, useSidebar,
 } from '@/components/ui/sidebar';
 import { LanguageToggle } from '@/components/ui/language-toggle';
-import { SymboleHodos } from '@/components/marque-hodos';
+import { NomHodosLift, SymboleHodos } from '@/components/marque-hodos';
 import { ChoixDeStructure, SignatureDeStructure } from '@/components/layout/signature-de-structure';
 // ⚠️ LA COMPOSITION DES SECTIONS VIT AILLEURS, et c'est délibéré : `sectionKine`
 // décide qui voit quoi, et cette décision doit être TESTABLE. Le dev-mock n'a
@@ -201,7 +201,7 @@ function AppSidebar({ theme, onToggleTheme }: { theme: ThemeKey; onToggleTheme: 
                 c'est ce qui le sépare de la signature en bas-de-casse
                 juste dessous. Barlow Condensed le rend en 38 px sur les 69
                 disponibles — mesuré à l'écran, pas estimé. */}
-            <span className="truncate font-display text-sm font-bold uppercase tracking-[0.08em]">Hodos</span>
+            <span className="truncate font-display text-sm font-bold uppercase tracking-[0.08em]"><NomHodosLift /></span>
             {/* ⚠️ EN MINUSCULES, ET CE N'EST PAS UN CHOIX DE STYLE. « Trainer »
                 qu'il remplace tenait en un mot ; « by French Forge » en fait
                 trois, dans une colonne large de 73 px que fixe la barre
