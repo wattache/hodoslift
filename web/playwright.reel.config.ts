@@ -19,7 +19,6 @@ import { defineConfig, devices } from '@playwright/test';
  *  modifiée ne se « dé-modifie » pas.
  */
 const BROKKR = process.env.E2E_BROKKR_URL ?? 'http://127.0.0.1:8082';
-const SINDRI = process.env.E2E_SINDRI_URL ?? 'http://127.0.0.1:8083';
 const EMULATEUR = process.env.E2E_AUTH_EMULATOR ?? '127.0.0.1:9099';
 
 export default defineConfig({
@@ -54,7 +53,6 @@ export default defineConfig({
       VITE_FIREBASE_PROJECT_ID: 'french-forge-600',
       VITE_AUTH_EMULATOR_HOST: EMULATEUR,
       VITE_BROKKR_URL: BROKKR,
-      VITE_SINDRI_URL: SINDRI,
       // ⚠️ PAS DE BOUTON GIS DANS LE HARNAIS. `VITE_GOOGLE_CLIENT_ID` vit dans
       // `.env.local` et fait rendre le bouton Google Identity Services — qui
       // parle au VRAI Google, dans un test censé être hermétique. Deux dégâts :

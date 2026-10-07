@@ -6,14 +6,14 @@ endroit, et le seul d'où l'on déploie. Les anciens dépôts (`eitri`, `brokkr`
 rien ne s'y écrit ni ne s'en déploie plus.
 
 Les dossiers portent leur rôle : `web/` ← `eitri`, `api-python/` ← `brokkr`,
-`infra/` ← `nidavellir`, et `api/` est l'API Go.
+`infra/` ← `nidavellir`. `api/` et `proto/` portent l'API Go, en sommeil.
 
 | dossier | ce qu'il est | vérifier | déployer |
 |---|---|---|---|
 | `web/` | le front (React, TanStack Query), sur Firebase Hosting — `trainer.french-forge.com` | `npx tsc -b`, `npm test`, `npm run test:e2e` | `make hosting` |
 | `api-python/` | l'API Python (FastAPI, Postgres chez Neon), sur Cloud Run (service `brokkr`) | `make test`, `make invariants`, `make contrat` | `make deploy` |
-| `api/` | l'API en **Go + Connect + sqlc**, sur Cloud Run (service `api`) : la bibliothèque, puis les autres parties une à une | `make test`, `make lint` | `make deploy` |
-| `proto/` | le contrat unique (buf), engendré dans `api/gen/` et `web/src/gen/` | `make contrat` à la racine | — |
+| `api/` | l'API en **Go + Connect + sqlc**, EN SOMMEIL : ni déployée, ni lue par le front, ni dans le harnais | `make test`, `make lint` | — |
+| `proto/` | le contrat de l'API Go (buf), engendré dans `api/gen/` | `make contrat` à la racine | — |
 | `infra/` | l'infrastructure (Terraform : GCP, Neon, Scaleway) | `terraform fmt`, `validate` | `terraform apply` |
 | la racine | l'outillage commun : `Makefile`, `mprocs*.yaml`, `compose.yaml`, `scripts/e2e-reel.sh`, `seeds/` | `make livrer` joue tout, dans l'ordre | — |
 
@@ -48,35 +48,38 @@ que le premier `make livrer` n'est pas passé. C'est attendu.
 
 ⚠️ **L'ÉTAT TERRAFORM EST CELUI DE L'ANCIEN `nidavellir`** (même backend GCS).
 L'infrastructure ne s'applique plus que d'ici : un `apply` depuis l'ancien dépôt
-détruirait ce qu'il ne connaît pas (le service `api`, le registre Scaleway).
+détruirait ce qu'il ne connaît pas (le registre et la base Scaleway).
+
+La production depuis hodos est la MÊME qu'avant, sur GCP : api-python sur le
+service Cloud Run `brokkr` (même nom, même URL), le front sur Firebase Hosting,
+la base chez Neon, les photos de coachs dans le seau GCS. Aucun `apply` n'est
+nécessaire pour la livrer : `make livrer` à la racine — harnais réel, puis
+api-python, puis le front.
 
 Les clés VAPID ne se tapent plus : la publique est une constante (`push.tf`), la
 privée se lit dans Secret Manager.
 
-Dans l'ordre, après le premier commit :
+## La base Postgres de Scaleway (FRE-213)
 
-1. **L'image de l'API Go**, avant que son service existe : `make -C api build`.
-2. **L'infrastructure** : `terraform apply` dans `infra/`. Il crée le service
-   Cloud Run `api` ; la pile Scaleway dort (`pile_scaleway = false`).
-3. **Les photos de coachs**, du seau GCS vers le seau public Scaleway, où
-   api-python téléverse désormais et où lit le site vitrine :
-   `cd api-python && uv run python ../scripts/copier_les_photos_vers_scaleway.py`
-   (à blanc), puis avec `--appliquer`.
-4. **La livraison** : `make livrer` à la racine — harnais réel, puis api-python
-   (le service `brokkr`), puis l'api Go, puis le front. Le front lit l'adresse
-   de l'api Go sur Cloud Run au moment de publier.
-5. **Le site vitrine**, qui lit désormais les photos chez Scaleway :
-   `make -C web landing`.
+`infra/scaleway_postgres.tf` crée la base `hodos` à Paris, à côté de Neon, que
+les API lisent toujours. Ce n'est pas du HDS : le périmètre HDS de Scaleway ne
+couvre pas le Postgres managé (Neon non plus).
 
-⚠️ **Au premier déploiement d'ici, la version change de forme** : elle devient le
-SHA du dernier commit de chaque dossier, dans ce dépôt-ci.
+1. `scaleway_postgres_ips_autorisees` dans `infra/terraform.tfvars` : ton
+   adresse (`curl -s https://api.ipify.org`), suffixée `/32`. Sans elle, le
+   `plan` s'arrête.
+2. `terraform apply` dans `infra/`.
+3. La recopie : `./scripts/copier_la_base_vers_scaleway.sh`. Les mots de passe
+   se lisent dans Secret Manager (`hodos-db-password`, `hodos-app-db-password`),
+   jamais en sortie Terraform.
 
 ## Le déménagement chez Scaleway, plus tard
 
 Tout est écrit et éprouvé, en sommeil (`infra/scaleway_applicatif.tf`,
 `scaleway.mk`, `web/Caddyfile`, `web/Dockerfile`) : trois conteneurs derrière
 une seule origine — `web` (Caddy) sert le front et route `/api/…` vers
-api-python, `/hodos.…` vers l'api Go, `/__/…` vers Firebase —, une base Postgres
+api-python, `/__/…` vers Firebase (et `/hodos.…` vers l'api Go, le jour où
+elle se réveille) —, une base Postgres
 16 managée et un réseau privé. Pas de CORS : le navigateur ne voit qu'une
 origine. Le domaine `hodos-trainer.com`, acheté chez Scaleway, se pose par
 `-var domaine_hodos=hodos-trainer.com` (un ALIAS au nu du domaine).
@@ -84,24 +87,27 @@ origine. Le domaine `hodos-trainer.com`, acheté chez Scaleway, se pose par
 Le jour venu : `-var pile_scaleway=true`, les images (`make -C … build` en visant
 `scaleway.mk`), puis la base — d'abord Neon (`base_scaleway = "neon"`, le
 défaut), ensuite la recopie (`scripts/copier_la_base_vers_scaleway.sh`, qui
-prouve lignes, droits et bornes) et `base_scaleway = "scaleway"`. Côté Google,
+prouve lignes, droits et bornes) et `base_scaleway = "scaleway"`. Les photos
+de coachs passent alors dans le seau public Scaleway
+(`scripts/copier_les_photos_vers_scaleway.py`), avec api-python et le site
+vitrine. Côté Google,
 trois réglages à la main pour le nouveau domaine : domaines autorisés Firebase,
 origine JavaScript et URI de redirection `/__/auth/handler` du client OAuth.
 
-## L'API Go, partie par partie
+## L'API Go, en sommeil
 
-Décidé le 24/09 : proto + Connect + Go + sqlc, en strangler. `proto/` est la
-source unique du contrat ; `api/` sert la bibliothèque et api-python garde le
-reste. Les outils (`migrer`, `verifier_*`, l'ETL, les seeds) restent en Python.
-Le harnais réel joue les deux serveurs côte à côte et **l'oracle**
-(`scripts/oracle_bibliotheque.py`) refuse de continuer s'ils ne répondent pas la
-même chose. Prochaine partie : à choisir ; les routes `/library` d'api-python se
-retirent une fois l'api Go en production.
+proto + Connect + Go + sqlc, en strangler : `api/` sert la bibliothèque, que
+api-python sert toujours (`/library`). Rien ne l'appelle aujourd'hui : ni le
+front, ni `make livrer`, ni le harnais réel. Le code reste compilable
+(`make -C api test`, `make contrat`). Pour la réveiller : le client Connect du
+front, le service `api` (Cloud Run ou Scaleway), l'étape dans `make livrer`, et
+l'oracle (`scripts/oracle_bibliotheque.py`) dans le harnais réel, qui compare
+ses réponses à celles d'api-python.
 
 ## Démarrer
 
 ```bash
-make dev            # web, api-python et api sous mprocs
+make dev            # web et api-python sous mprocs
 make bac-a-sable    # le Postgres local (:55433), et attend qu'il réponde
 ```
 
@@ -195,10 +201,10 @@ que `make deploy` joue.
 Manuellement, jamais automatiquement.
 
 ```bash
-make livrer                 # harnais réel, puis api-python, puis api, puis web — jamais l'inverse
+make livrer                 # harnais réel, puis api-python, puis web — jamais l'inverse
 ```
 
-Ou, un dossier seul : `make -C api-python build deploy`, `make -C api build deploy`, `make -C web hosting`.
+Ou, un dossier seul : `make -C api-python build deploy`, `make -C web hosting`.
 
 La version est le **SHA du dernier commit du dossier**, et elle se vérifie
 après coup — `/health` côté API, `sw.js` côté front.

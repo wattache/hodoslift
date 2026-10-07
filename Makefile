@@ -11,23 +11,25 @@ install: ## Installe les dépendances des quatre dossiers (uv, go, npm, terrafor
 	cd web && npm ci
 	cd infra && terraform init -input=false
 
-# LE CONTRAT UNIQUE : `proto/` engendre le Go de sindri et le TypeScript
-# d'eitri ; les requêtes SQL de sindri engendrent leur Go. Le résultat est
-# COMMITTÉ, et `contrat` refuse qu'il diverge de sa source — c'est la même
-# règle que `make -C api-python contrat` pour l'OpenAPI, au même endroit qu'on lit.
+# ⚠️ L'API GO DORT : ni livrée, ni dans le harnais, ni lue par le front. Ces
+# cibles la gardent compilable pour le jour où elle reprend.
+#
+# LE CONTRAT : `proto/` engendre le Go de sindri ; ses requêtes SQL engendrent
+# leur Go. Le résultat est COMMITTÉ, et `contrat` refuse qu'il diverge de sa
+# source — la même règle que `make -C api-python contrat` pour l'OpenAPI.
 gen: ## Regénère le code depuis proto/ et les requêtes SQL (buf, sqlc)
 	$(MAKE) --no-print-directory -C api gen
 
 contrat: gen ## Le code engendré committé est-il celui du contrat ? (échoue s'il diverge)
 	@[ "$$(git rev-parse --show-toplevel 2>/dev/null)" = "$$(pwd)" ] \
 		|| { echo "✗ pas de dépôt git à la racine de hodos : rien ne peut dire si le code engendré est committé."; exit 1; }
-	@if [ -n "$$(git status --porcelain -- proto api/gen api/internal/db web/src/gen)" ]; then \
+	@if [ -n "$$(git status --porcelain -- proto api/gen api/internal/db)" ]; then \
 		echo "✗ Le code engendré diverge du contrat — 'make gen', puis commit :"; \
-		git status --short -- proto api/gen api/internal/db web/src/gen; \
+		git status --short -- proto api/gen api/internal/db; \
 		exit 1; \
 	fi; echo "[contrat] OK — le code engendré est celui de proto/ et des requêtes"
 
-dev: ## Démarre la stack locale (web + api-python + api) via mprocs — ⚠️ sur la PRODUCTION
+dev: ## Démarre la stack locale (web + api-python) via mprocs — ⚠️ sur la PRODUCTION
 	@command -v mprocs >/dev/null 2>&1 || { echo "mprocs manquant → brew install mprocs"; exit 1; }
 	mprocs
 
@@ -124,27 +126,23 @@ api: ## api (Go, Connect, :8081) seule — sur la base du .env d'api-python
 # ⚠️ LE COMPTE gcloud SE PROUVE EN PREMIER, avant les quatre minutes du harnais :
 # découvrir un jeton expiré à l'étape 2 fait rejouer tout le reste. La règle
 # vit dans `cloudrun.mk` (`compte-gcloud`), une fois ; ici on l'appelle.
-livrer: ## ⚠️ PROD : harnais réel, puis api-python, puis api, puis web — jamais l'inverse
+livrer: ## ⚠️ PROD : harnais réel, puis api-python, puis web — jamais l'inverse
 	@$(MAKE) --no-print-directory -C api-python compte-gcloud
-	@# Le numéro affiché se vérifie AVANT que rien ne parte : découvert à l'étape 4,
-	@# les serveurs seraient déjà livrés sous un numéro qui ne bouge pas.
+	@# Le numéro affiché se vérifie AVANT que rien ne parte : découvert à l'étape 3,
+	@# le serveur serait déjà livré sous un numéro qui ne bouge pas.
 	@cd web && node scripts/numero-de-version.mjs verifier
 ifeq ($(SANS_HARNAIS),1)
 	@echo "⚠️  harnais réel SAUTÉ (SANS_HARNAIS=1) — on livre sans le filet front↔brokkr"
 else
-	@echo "· 1/4 — harnais réel (navigateur → web → api-python → Postgres)"
+	@echo "· 1/3 — harnais réel (navigateur → web → api-python → Postgres)"
 	@./scripts/e2e-reel.sh
 	@echo
 endif
-	@echo "· 2/4 — api-python (image du SHA, puis contrat, schéma, migrations, déploiement, SHA et bornes servis)"
+	@echo "· 2/3 — api-python (image du SHA, puis contrat, schéma, migrations, déploiement, SHA et bornes servis)"
 	@$(MAKE) --no-print-directory -C api-python build
 	@$(MAKE) --no-print-directory -C api-python deploy
 	@echo
-	@echo "· 3/4 — api, le Go (image du SHA, déploiement, SHA et bornes servis)"
-	@$(MAKE) --no-print-directory -C api build
-	@$(MAKE) --no-print-directory -C api deploy
-	@echo
-	@echo "· 4/4 — web (les deux serveurs se sont prouvés, le front peut partir)"
+	@echo "· 3/3 — web (le serveur s'est prouvé, le front peut partir)"
 	@$(MAKE) --no-print-directory -C web hosting
 
 

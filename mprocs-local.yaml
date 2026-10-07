@@ -30,7 +30,6 @@ procs:
       # Même surcharge que dans `mprocs.yaml` : le front parle au brokkr d'à
       # côté, et non à celui de production que désigne son `.env.local`.
       VITE_BROKKR_URL: "http://localhost:8080"
-      VITE_SINDRI_URL: "http://localhost:8081"
     # Vite → http://localhost:5173
 
   brokkr:
@@ -49,11 +48,3 @@ procs:
     # FastAPI/uvicorn --reload → http://localhost:8080, sur la COPIE.
     # Le journal va dans /tmp/brokkr-dev-local.log — un nom distinct de celui de
     # `mprocs.yaml`, pour qu'on sache toujours quelle base on lisait.
-
-  sindri:
-    # Le frère de brokkr en Go (Connect) — sert la bibliothèque. Même base que
-    # brokkr ici (`make dev` lit le `.env` de brokkr), :8081.
-    shell: "make dev 2>&1 | tee /tmp/sindri-dev-local.log"
-    cwd: api
-    env:
-      DATABASE_URL: "postgresql+psycopg://postgres:local@localhost:55433/ff"

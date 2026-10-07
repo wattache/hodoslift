@@ -16,8 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { LANGUES } from './langues.js';
 
 const DIR = dirname(fileURLToPath(import.meta.url));
-// Le seau PUBLIC de Scaleway, où brokkr téléverse (`api-python/app/personnes/storage.py`).
-const BUCKET = 'https://french-forge-coachs-public.s3.fr-par.scw.cloud';
+const BUCKET = 'https://storage.googleapis.com/french-forge-600-public-media';
 const SITE = 'https://french-forge.com';
 const APP = 'https://trainer.french-forge.com';
 // Route PUBLIQUE de brokkr (FRE-30) : le coach édite son profil depuis l'app et

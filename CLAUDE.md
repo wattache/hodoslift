@@ -140,7 +140,7 @@ scripts/e2e-reel.sh          # le harnais réel — ne rend pas la main dans un 
 | dossier | vérifier | déployer |
 | -- | -- | -- |
 | api-python | `make test`, `make invariants`, `make contrat` | `make deploy` |
-| api | `make test`, `make lint` ; `make contrat` (racine) après `proto/` ou une requête SQL | `make deploy` |
+| api (Go, en sommeil) | `make test`, `make lint` ; `make contrat` (racine) après `proto/` ou une requête SQL | — |
 | web | `npx tsc -b`, `npm test`, `npm run test:e2e` | `make hosting` |
 | infra | `terraform fmt`, `validate` | `terraform apply` — depuis hodos SEULEMENT |
 

@@ -1348,6 +1348,8 @@
     "reps": "Reps",
     "repsReelles": "Actual reps",
     "rpeCible": "Target RPE",
+    "rpeCibleEtReel": "Target → actual RPE",
+    "rpeReelDeLAthlete": "Actual RPE logged by the athlete",
     "rpeReel": "Actual RPE",
     "saisie": "Entry",
     "sansNom": "Unnamed",

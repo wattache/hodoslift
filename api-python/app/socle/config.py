@@ -49,6 +49,11 @@ class Settings(BaseSettings):
     # Absent = 5432. Le point PUBLIC de la base Scaleway sert sur un autre port.
     db_port: int | None = None
 
+    # Bucket GCS des médias PUBLICS du site vitrine (photos de coachs — FRE-30).
+    # Distinct du bucket privé des avatars d'athlètes (public_access_prevention
+    # enforced) — cf. nidavellir/public_media.tf.
+    public_media_bucket: str = "french-forge-600-public-media"
+
     # --- Scaleway : le stockage des médias, hors GCP (FRE-99) ---------------
     # ⚠️ VIDES PAR DÉFAUT, ET C'EST L'INTERRUPTEUR — même convention que le DSN
     # Sentry. Sans clé, `mediatheque` refuse de servir : en local et dans les

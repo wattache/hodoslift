@@ -1,8 +1,8 @@
 // LE NUMÉRO AFFICHÉ SE PROMEUT À CHAQUE LIVRAISON (William, 25/09).
 //
 // Une livraison pose le tag `v<numéro>` et note dedans ce qu'elle a livré : le
-// SHA d'eitri, de brokkr et de sindri. Livrer ensuite un AUTRE contenu — l'un
-// des trois changé — sous le même numéro est refusé : il faut monter le numéro
+// SHA d'eitri et de brokkr. Livrer ensuite un AUTRE contenu — l'un des deux
+// changé — sous le même numéro est refusé : il faut monter le numéro
 // de `package.json`. Republier exactement le même contenu reste permis.
 //
 //   node scripts/numero-de-version.mjs verifier   refuse (code 1) si le numéro est déjà pris
@@ -13,21 +13,21 @@
 // chacun sert, et un commit d'un autre dossier n'y change rien. Le commit taggé,
 // lui, est la tête du dépôt — il ne dit donc plus le SHA d'eitri, d'où la note.
 // Un tag de l'ancien format (dépôt eitri seul, note `brokkr=` seule) se lit
-// encore : eitri = le commit taggé, sindri = inconnu.
+// encore : eitri = le commit taggé.
 //
-// `BROKKR_SHA` et `SINDRI_SHA` surchargent la lecture du dépôt.
+// `BROKKR_SHA` surcharge la lecture du dépôt.
 
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
-const SERVEURS = ['brokkr', 'sindri'];
+const SERVEURS = ['brokkr'];
 
 /** La décision, sans git : `publie` = ce que porte le tag du numéro, ou `null`.
  *  Un SHA inconnu d'un côté (tag ancien, dossier absent) ne compte pas comme un
  *  changement : on ne refuse que ce qu'on sait avoir changé. */
-export function decider({ numero, publie, eitri, brokkr, sindri }) {
+export function decider({ numero, publie, eitri, brokkr }) {
   if (!publie) return { ok: true, nouveau: true };
-  const courant = { eitri, brokkr, sindri };
+  const courant = { eitri, brokkr };
   const changes = ['eitri', ...SERVEURS].filter(
     (nom) => publie[nom] && courant[nom] && publie[nom] !== courant[nom],
   );
@@ -53,7 +53,7 @@ function tagPublie(numero) {
     const commit = git(`git rev-parse --short "v${numero}^{commit}"`);
     const note = git(`git tag -l --format='%(contents)' "v${numero}"`);
     const lu = (nom) => new RegExp(`${nom}=(\\w+)`).exec(note)?.[1] ?? null;
-    return { eitri: lu('eitri') ?? commit, brokkr: lu('brokkr'), sindri: lu('sindri') };
+    return { eitri: lu('eitri') ?? commit, brokkr: lu('brokkr') };
   } catch {
     return null;
   }
@@ -63,11 +63,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const numero = JSON.parse(readFileSync('package.json', 'utf8')).version;
   const eitri = shaDu('.');
   const brokkr = process.env.BROKKR_SHA || shaDu('../api-python');
-  const sindri = process.env.SINDRI_SHA || shaDu('../api');
-  const decision = decider({ numero, publie: tagPublie(numero), eitri, brokkr, sindri });
+  const decision = decider({ numero, publie: tagPublie(numero), eitri, brokkr });
   if (process.argv[2] === 'poser') {
     if (decision.ok && decision.nouveau) {
-      const livre = `eitri=${eitri ?? 'inconnu'} brokkr=${brokkr ?? 'inconnu'} sindri=${sindri ?? 'inconnu'}`;
+      const livre = `eitri=${eitri ?? 'inconnu'} brokkr=${brokkr ?? 'inconnu'}`;
       git(`git tag -a "v${numero}" -m "Hodos v${numero}" -m "${livre}"`);
       console.log(`[numéro] v${numero} posé (${livre})`);
     }

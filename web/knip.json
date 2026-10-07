@@ -9,19 +9,8 @@
     "e2e-reel/*.spec.ts",
     "src/**/*.test.{ts,tsx}"
   ],
-  "project": [
-    "src/**/*.{ts,tsx}",
-    "scripts/*.mjs",
-    "landing/*.mjs"
-  ],
-  "ignore": [
-    "src/api/brokkr.gen.ts",
-    "landing/coachs.js",
-    "src/gen/**"
-  ],
+  "project": ["src/**/*.{ts,tsx}", "scripts/*.mjs", "landing/*.mjs"],
+  "ignore": ["src/api/brokkr.gen.ts", "landing/coachs.js"],
   "ignoreExportsUsedInFile": true,
-  "ignoreDependencies": [
-    "@tailwindcss/vite",
-    "tailwindcss"
-  ]
+  "ignoreDependencies": ["@tailwindcss/vite", "tailwindcss"]
 }

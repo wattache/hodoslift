@@ -36,9 +36,7 @@ if (!publication) process.exit(0);
 // vide — le garde crierait au loup à chaque publication, et on apprendrait à le
 // contourner. Le même piège est consigné dans `vite.config.ts` pour le jeton
 // Sentry ; c'est la deuxième fois qu'il se pose.
-const env = loadEnv('production', process.cwd(), '');
-const url = (env.VITE_BROKKR_URL ?? '').trim();
-const urlSindri = (env.VITE_SINDRI_URL ?? '').trim();
+const url = (loadEnv('production', process.cwd(), '').VITE_BROKKR_URL ?? '').trim();
 
 const refuser = (raison, detail) => {
   console.error(
@@ -81,17 +79,5 @@ if (!memeOrigine(url) && cible.protocol !== 'https:') {
           'Le jeton d\'authentification y circule à chaque requête.');
 }
 
-// ⚠️ SINDRI AUSSI, MÊMES RÈGLES : la bibliothèque n'a plus d'autre serveur.
-let cibleSindri;
-try {
-  if (!urlSindri) throw new Error('vide');
-  cibleSindri = new URL(urlSindri, 'https://meme-origine.invalide');
-} catch {
-  refuser("l'URL de sindri est absente ou illisible", `VITE_SINDRI_URL = ${urlSindri || '(vide)'} — la bibliothèque n'aurait aucun serveur.`);
-}
-if (!memeOrigine(urlSindri) && (['localhost', '127.0.0.1', '0.0.0.0', '::1'].includes(cibleSindri.hostname) || cibleSindri.protocol !== 'https:')) {
-  refuser("l'URL de sindri est locale ou en clair", `VITE_SINDRI_URL = ${urlSindri}`);
-}
-
 const dire = (u, c) => (memeOrigine(u) ? `${u} (même origine)` : c.origin);
-console.log(`· publication (${publication}) — brokkr : ${dire(url, cible)} · sindri : ${dire(urlSindri, cibleSindri)}`);
+console.log(`· publication (${publication}) — brokkr : ${dire(url, cible)}`);

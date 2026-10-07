@@ -40,7 +40,16 @@ test('choisir la date du départ reprend la pesée saisie ce jour-là', async ({
   const hier = new Date(); hier.setDate(hier.getDate() - 1);
   const iso = hier.toISOString().slice(0, 10);
   await page.getByTitle('Date du départ').click();
-  await page.locator(`[role="gridcell"][data-day="${iso}"] button`).click();
+  // ⚠️ LE CALENDRIER S'OUVRE SUR LE MOIS DU DÉPART (il y a vingt jours), PAS SUR
+  // CELUI D'HIER : les deux diffèrent dès les premiers jours du mois. La spec a
+  // rougi le 05/10 — le 04/10 n'était pas à l'écran, le calendrier montrait
+  // septembre. On va au mois du jour cherché, dans le bon sens.
+  const jour = page.locator(`[role="gridcell"][data-day="${iso}"] button`);
+  for (let mois = 0; mois < 3 && !(await jour.isVisible()); mois++) {
+    const affiche = await page.locator('[role="gridcell"][data-day]').nth(10).getAttribute('data-day') ?? '';
+    await page.getByRole('button', { name: iso < affiche ? 'Aller au mois précédent' : 'Aller au mois suivant' }).click();
+  }
+  await jour.click();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('spinbutton', { name: 'Poids de départ' })).toHaveValue('62');
   await expect(page.locator('[data-pesee-reprise]')).toContainText('62,0 kg');

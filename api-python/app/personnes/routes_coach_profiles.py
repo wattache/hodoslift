@@ -17,6 +17,7 @@ from app.personnes import storage
 from app.socle.erreurs import erreurs
 from app.socle.audit import log_write
 from app.socle.authz import require_coach
+from app.socle.config import settings
 from app.socle.db import get_session
 from app.personnes.schemas_coach_profile import CoachProfilePatch, ProfilCoachLu
 from app.socle.schemas_ecriture import PhotoCoachEcrite, ProfilCoachEcrit
@@ -224,7 +225,7 @@ def upload_my_photo(
 
     object_path = f"{slug}/profil.png"  # PAS de préfixe 'coachs/' : vérifié contre le bucket
     storage.upload_public_media(object_path, data, "image/png")
-    photo_url = storage.url_publique(object_path)
+    photo_url = f"https://storage.googleapis.com/{settings.public_media_bucket}/{object_path}"
 
     with get_session() as session:
         session.execute(

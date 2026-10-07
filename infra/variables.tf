@@ -170,3 +170,16 @@ variable "scaleway_tem_permission_sets" {
   type        = list(string)
   default     = ["TransactionalEmailEmailSmtpCreate"]
 }
+
+# Les adresses qui entrent dans le Postgres Scaleway (FRE-213), en CIDR. Pas de
+# défaut : une base ouverte par oubli serait le pire défaut à avoir. Le poste de
+# William d'abord (`curl -s https://api.ipify.org`), suffixé `/32`.
+variable "scaleway_postgres_ips_autorisees" {
+  description = "CIDR autorisés à joindre le Postgres Scaleway (ex. [\"203.0.113.7/32\"])."
+  type        = list(string)
+
+  validation {
+    condition     = length(var.scaleway_postgres_ips_autorisees) > 0 && alltrue([for c in var.scaleway_postgres_ips_autorisees : can(cidrhost(c, 0))])
+    error_message = "Au moins un CIDR valide (ex. 203.0.113.7/32) : une base sans adresse autorisée est injoignable."
+  }
+}

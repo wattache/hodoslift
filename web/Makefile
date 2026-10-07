@@ -19,7 +19,7 @@
 # découvre que trois jours plus tard, en cherchant pourquoi un correctif
 # « déployé » est absent. Le build local reste libre (on travaille) ; seule la
 # PUBLICATION refuse.
-# Seul CE dossier compte : un fichier modifié dans brokkr/ ne bloque pas le front.
+# Seul CE dossier compte : un fichier modifié dans api-python/ ne bloque pas le front.
 define REFUSER_ARBRE_SALE
 	@if [ -n "$$(git status --porcelain -- .)" ]; then \
 		echo "✗ Arbre de travail modifié — commit (ou remise) avant de publier."; \
@@ -54,21 +54,10 @@ preview: ## Déploie sur un CANAL DE PREVIEW (URL temporaire 7 j, prod intacte)
 # Le numéro affiché (`package.json`) se promeut à chaque livraison : un numéro
 # déjà publié ne repart pas avec un autre contenu (scripts/numero-de-version.mjs).
 # Le tag `v<numéro>` se pose APRÈS la vérification de la prod, jamais avant.
-# Le numéro affiché (`package.json`) se promeut à chaque livraison : un numéro
-# déjà publié ne repart pas avec un autre contenu (scripts/numero-de-version.mjs).
-# Le tag `v<numéro>` se pose APRÈS la vérification de la prod, jamais avant.
-#
-# ⚠️ L'ADRESSE DE L'API GO SE LIT SUR CLOUD RUN, au moment de publier : elle
-# n'a pas à vivre dans `.env.production`, où une copie à la main finirait par
-# viser un service qui n'existe plus. Celle d'api-python (`VITE_BROKKR_URL`)
-# reste dans le fichier, comme avant.
-VITE_SINDRI_URL ?= $(shell CLOUDSDK_CORE_ACCOUNT=attachew974@gmail.com gcloud run services describe api --project=french-forge-600 --region=europe-west4 --format='value(status.url)' 2>/dev/null)
-
 hosting: ## ⚠️ PROD : déploie sur https://trainer.french-forge.com (site french-forge-600)
 	$(REFUSER_ARBRE_SALE)
-	@[ -n "$(VITE_SINDRI_URL)" ] || { echo "✗ le service Cloud Run « api » est introuvable : l'api Go n'est pas déployée, la bibliothèque n'aurait pas de serveur."; exit 1; }
 	@node scripts/numero-de-version.mjs verifier
-	@FF_PUBLICATION=prod VITE_SINDRI_URL=$(VITE_SINDRI_URL) $(MAKE) --no-print-directory build
+	@FF_PUBLICATION=prod $(MAKE) --no-print-directory build
 	npx firebase deploy --only hosting:app
 	@node scripts/verifier-deploiement.mjs
 	@node scripts/numero-de-version.mjs poser

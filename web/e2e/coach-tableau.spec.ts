@@ -93,9 +93,28 @@ test('« Tout déplier » ouvre le reste de chaque ligne d’un geste, « Tout r
   await expect(seance(page).getByRole('textbox', { name: 'Note coach' })).toHaveCount(0);
 });
 
-test('le réel n’est pas dans le tableau du coach : on y programme', async ({ page }) => {
-  /** William, 30/09 : « quand on programme, on n'a pas besoin du réel ». */
+test('le réel ne se saisit pas dans le tableau du coach : on y programme', async ({ page }) => {
+  /** William, 30/09 : « quand on programme, on n'a pas besoin du réel ». Le RPE
+   *  réel se LIT (spec suivante), il ne s'écrit pas ici. */
   await ouvrirLaSeance(page);
   await expect(seance(page).getByRole('combobox', { name: 'RPE réel' })).toHaveCount(0);
   await expect(seance(page).locator('[data-rangee]').getByText(/RPE ressenti|pas encore fait/)).toHaveCount(0);
+});
+
+test('le RPE réel de l’athlète se lit dans la rangée, à côté de la cible — sans déplier', async ({ page }) => {
+  /** William, 05/10 : « on veut le voir sans déplier, c'est une semaine coach ».
+   *  La colonne Réel sortie en 1.0.6 emportait le seul endroit où le coach le
+   *  voyait : quatre lignes sur cinq n'ont pas de détail par série (mesuré en
+   *  prod, 4 355 sur 5 424 sur quatre semaines).
+   *
+   *  MUTATION QUI ROUGIT : retirer le `data-rpe-reel` de la rangée. */
+  await ouvrirLaSeance(page);
+  const rangees = seance(page).locator('[data-rangee]');
+  // Muscle up (cible 8, réel 8) et pull up (cible 7,5, réel 7) l'ont noté ; le rowing non.
+  await expect(rangees.locator('[data-rpe-reel]')).toHaveText(['→8', '→7']);
+  await expect(rangees.nth(0).locator('[data-rpe-reel]')).toHaveText('→8');
+  await expect(rangees.nth(2).locator('[data-rpe-reel]')).toHaveCount(0);
+  // Replié : aucune ligne n'est ouverte, et le réel est là quand même.
+  await expect(rangees.getByRole('button', { name: /^Déplier la ligne/, expanded: true })).toHaveCount(0);
+  await expect(rangees.nth(0).locator('[data-rpe-reel]')).toHaveAttribute('title', 'RPE réel noté par l’athlète');
 });

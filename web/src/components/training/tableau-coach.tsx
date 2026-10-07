@@ -53,8 +53,8 @@ const FORMATS = ["", "EMOM", "AMRAP", "CLUSTER"];
  *  ne touche pas à chaque ligne — nature, lien, notes, détail du réel,
  *  progression, actions. La grille a une largeur minimale et défile sur un
  *  écran étroit, comme avant la refonte. */
-const COLONNES = "grid-cols-[24px_minmax(200px,1fr)_minmax(108px,0.5fr)_78px_76px_52px_84px_116px_60px_minmax(80px,0.35fr)_66px_34px]";
-const LARGEUR_MIN = "min-w-[1060px]";
+const COLONNES = "grid-cols-[24px_minmax(200px,1fr)_minmax(108px,0.5fr)_78px_76px_52px_84px_116px_60px_minmax(80px,0.35fr)_104px_34px]";
+const LARGEUR_MIN = "min-w-[1100px]";
 
 const LIBELLE = "mb-1 block font-display text-[10px] uppercase tracking-[0.14em] text-muted-foreground";
 
@@ -202,7 +202,7 @@ export function TableauCoach({
         <span className="text-right">{t("session.charge")}</span>
         <span>{t("session.repos")}</span>
         <span>{t("session.assistance")}</span>
-        <span className="text-center">{t("session.rpeCible")}</span>
+        <span className="text-center">{t("session.rpeCibleEtReel")}</span>
         {/* D'un geste : ouvrir le reste de toutes les lignes (notes, progression), ou le refermer. */}
         <button type="button" data-tout-plier
                 onClick={() => setOuvertes(toutOuvert ? new Set() : new Set(session.exercises.map((_, k) => k)))}
@@ -432,8 +432,13 @@ export function TableauCoach({
                   <Combobox value={ex.assistance} options={assistanceOptions ?? []} label={t("session.assistance")} placeholder="—" onCommit={(v) => onUpdateField(i, "assistance", v)} />
                 </div>
 
-                {/* ---- RPE cible ---- */}
-                <div className="flex items-center justify-center">
+                {/* ---- RPE cible, et le RÉEL noté par l'athlète ----
+                    ⚠️ LE RÉEL SE LIT SANS DÉPLIER (William, 05/10) : la colonne Réel
+                    est sortie en 1.0.6, et avec elle le seul endroit où le coach
+                    voyait le RPE ressenti — quatre lignes sur cinq n'ont pas de
+                    détail par série. Rien tant que l'athlète n'a rien noté : une
+                    semaine à venir ne montre que la cible. */}
+                <div className="flex items-center justify-center gap-1.5">
                   {recopiable("aimedRPE", i, <select
                     value={ex.aimedRPE ?? ''}
                     aria-label={t("session.rpeCible")}
@@ -443,6 +448,13 @@ export function TableauCoach({
                   >
                     {RPE_OPTIONS.map((o) => <option key={o} value={o}>{o || "—"}</option>)}
                   </select>)}
+                  {ex.feltRPE?.trim() ? (
+                    <span data-rpe-reel title={t("session.rpeReelDeLAthlete")}
+                          className="w-8 shrink-0 whitespace-nowrap font-mono text-[11px] font-semibold tabular-nums"
+                          style={{ color: rpeDotColor(ex.feltRPE.trim()) }}>
+                      <span className="text-muted-foreground/60">→</span>{ex.feltRPE.trim()}
+                    </span>
+                  ) : <span className="w-8 shrink-0" aria-hidden />}
                 </div>
 
                 {/* ---- Le dépli ---- */}

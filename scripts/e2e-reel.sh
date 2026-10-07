@@ -36,17 +36,15 @@ set -euo pipefail
 FORGE="$(cd "$(dirname "$0")/.." && pwd)"        # la racine du monorepo
 EITRI="$FORGE/web"
 BROKKR="$FORGE/api-python"
-SINDRI="$FORGE/api"
 EMULATEUR="127.0.0.1:9099"
 PORT_BROKKR=8082
-PORT_SINDRI=8083
 LOGS="${TMPDIR:-/tmp}/e2e-reel"
 mkdir -p "$LOGS"
 
 ecoute() { lsof -t -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1; }
 
 if [ "${1:-}" = "--arret" ]; then
-  for port in 9099 "$PORT_BROKKR" "$PORT_SINDRI"; do
+  for port in 9099 "$PORT_BROKKR"; do
     pid=$(lsof -t -iTCP:"$port" -sTCP:LISTEN 2>/dev/null || true)
     [ -n "$pid" ] && kill $pid && echo "· port $port arrêté (pid $pid)"
   done
@@ -152,36 +150,6 @@ for i in $(seq 1 40); do
   [ "$i" = 40 ] && { echo "⛔ brokkr-e2e ne répond pas ($LOGS/brokkr-e2e.log)"; exit 1; }
   sleep 0.5
 done
-
-# ── 3 bis. sindri sur le même bac à sable, même émulateur ───────────────────
-#
-# ⚠️ RELANCÉ À CHAQUE FOIS, et c'est la leçon du 17/08 appliquée à un binaire :
-#    `--reload` n'existe pas en Go, un processus debout servirait le code de son
-#    démarrage, et la spec validerait la version d'avant. Compiler prend deux
-#    secondes ; se tromper de version a coûté trois jours.
-pid=$(lsof -t -iTCP:"$PORT_SINDRI" -sTCP:LISTEN 2>/dev/null || true)
-[ -n "$pid" ] && { kill $pid; sleep 1; }
-echo "· démarrage de sindri-e2e sur :${PORT_SINDRI}…"
-(cd "$SINDRI" && \
-  PORT="$PORT_SINDRI" \
-  DATABASE_URL="postgresql://postgres:local@localhost:55433/ff" \
-  FIREBASE_AUTH_EMULATOR_HOST="$EMULATEUR" \
-  GOOGLE_CLOUD_PROJECT="french-forge-600" \
-  GOOGLE_APPLICATION_CREDENTIALS=../api-python/.secrets/brokkr-sa.json \
-  nohup go run ./cmd/api >"$LOGS/sindri-e2e.log" 2>&1 &)
-for i in $(seq 1 60); do
-  curl -sf "http://127.0.0.1:$PORT_SINDRI/health" >/dev/null && break
-  [ "$i" = 60 ] && { echo "⛔ sindri-e2e ne répond pas ($LOGS/sindri-e2e.log)"; exit 1; }
-  sleep 0.5
-done
-
-# ── 3 ter. L'ORACLE : sindri répond-il la même chose que brokkr ? ────────────
-#
-# Tant que la bibliothèque a deux serveurs, c'est ici qu'on prouve qu'ils
-# disent la même chose — pytest ne parle pas Connect, et les specs ne lisent
-# que l'écran. Le harnais s'arrête si les deux divergent.
-(cd "$BROKKR" && uv run python "$FORGE/scripts/oracle_bibliotheque.py" \
-    "http://127.0.0.1:$PORT_BROKKR" "http://127.0.0.1:$PORT_SINDRI" "$EMULATEUR") || exit 1
 
 # ── 4. les specs (Playwright monte Vite lui-même, sur 5200) ──────────────────
 cd "$EITRI"

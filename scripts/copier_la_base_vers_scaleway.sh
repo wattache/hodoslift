@@ -12,7 +12,8 @@
 # la répétition générale ou la recopie finale, quand les écritures sont gelées.
 #
 # Ce que le script fait, dans l'ordre :
-#   1. les URL viennent de `terraform output`, jamais d'une copie à la main ;
+#   1. les adresses viennent de `terraform output`, les mots de passe de
+#      Secret Manager — jamais d'une copie à la main ;
 #   2. dump de Neon au format personnalisé, dans un fichier temporaire ;
 #   3. restauration par le PROPRIÉTAIRE `brokkr`, SANS les propriétaires du dump :
 #      Neon en a d'internes (`neon_superuser`…), absents ici, et tout objet doit
@@ -36,10 +37,18 @@ ECRASER=0
 [ "${1:-}" = "--ecraser" ] && ECRASER=1
 
 # `SOURCE`, `CIBLE`, `APPLI` se surchargent pour éprouver le script sur des bases
-# locales ; sans eux, ce sont les vraies.
+# locales ; sans eux, ce sont les vraies. Les mots de passe de Scaleway n'ont
+# que des caractères sûrs dans une URL (`scaleway_postgres.tf`).
+secret() {
+  CLOUDSDK_CORE_ACCOUNT=attachew974@gmail.com \
+    gcloud secrets versions access latest --project=french-forge-600 --secret="$1"
+}
+if [ -z "${CIBLE:-}" ] || [ -z "${APPLI:-}" ]; then
+  BASE="$(${TF} output -raw scaleway_postgres_endpoint)/hodos?sslmode=require"
+fi
 SOURCE="${SOURCE:-$(${TF} output -raw neon_migration_uri)}"
-CIBLE="${CIBLE:-$(${TF} output -raw scaleway_base_url_proprietaire)}"
-APPLI="${APPLI:-$(${TF} output -raw scaleway_base_url_application)}"
+CIBLE="${CIBLE:-postgresql://brokkr:$(secret hodos-db-password)@${BASE}}"
+APPLI="${APPLI:-postgresql://brokkr_app:$(secret hodos-app-db-password)@${BASE}}"
 PG="docker run --rm -i --add-host=host.docker.internal:host-gateway -e PGCONNECT_TIMEOUT=20 postgres:16"
 
 TMP="$(mktemp -d)"

@@ -1,37 +1,29 @@
-"""Téléversement vers le seau de médias PUBLICS — Scaleway Object Storage, en S3.
+"""Téléversement vers le bucket de médias PUBLICS (FRE-30).
 
-Le seau `scaleway_bucket_public` porte la photo détourée de chaque coach, lue par
-des visiteurs NON authentifiés du site vitrine : lisible par n'importe qui, par
-construction. brokkr téléverse lui-même, avec le client S3 de la médiathèque.
+brokkr téléverse LUI-MÊME plutôt que de délivrer une URL signée V4 : signer sur
+Cloud Run (ADC sans clé privée) exigerait `roles/iam.serviceAccountTokenCreator`
+sur soi-même et l'API IAM SignBlob. Une seule liaison suffit ainsi :
+`roles/storage.objectAdmin` sur le bucket public pour la SA `brokkr` (nidavellir).
 
-⚠️ L'OBJET EST POSÉ `public-read`. L'ACL publique du SEAU ne rend pas ses objets
-lisibles en S3 : sans l'ACL de l'objet, la photo existe et rend 403 au site.
+⚠️ `objectAdmin` et NON `objectCreator`, qui autorise la création mais pas le
+REMPLACEMENT. L'objet est à chemin fixe (`<slug>/profil.png`) : la première photo
+passerait, et toutes les suivantes tomberaient en 403.
 
-⚠️ L'URL se construit ICI, une fois : la route l'enregistre en base, le site
-vitrine la recompose depuis le même schéma (`web/landing/build-coachs.mjs`).
+L'import de google-cloud-storage est PARESSEUX : ni l'app ni les tests ne le
+chargent au démarrage, et les tests monkeypatchent `upload_public_media`.
 """
 
 from app.socle.config import settings
-from app.kine import mediatheque
-
-
-def url_publique(object_path: str) -> str:
-    """L'URL publique d'un objet du seau public (style « hôte virtuel » de Scaleway)."""
-    return (f"https://{settings.scaleway_bucket_public}.s3.{settings.scaleway_region}.scw.cloud/"
-            f"{object_path}")
 
 
 def upload_public_media(object_path: str, data: bytes, content_type: str) -> None:
-    """Écrit `data` dans le seau public, lisible par tous, en cache un jour.
+    """Écrit `data` dans gs://<public_media_bucket>/<object_path>.
 
-    Raises:
-        MediathequeIndisponible: aucune clé Scaleway configurée.
+    Cache d'un jour : ces images ne changent qu'exceptionnellement.
     """
-    mediatheque._client().put_object(
-        Bucket=settings.scaleway_bucket_public,
-        Key=object_path,
-        Body=data,
-        ContentType=content_type,
-        ACL="public-read",
-        CacheControl="public, max-age=86400",
-    )
+    from google.cloud import storage  # import paresseux — cf. en-tête du module
+
+    client = storage.Client(project=settings.project_id)
+    blob = client.bucket(settings.public_media_bucket).blob(object_path)
+    blob.cache_control = "public, max-age=86400"
+    blob.upload_from_string(data, content_type=content_type)

@@ -1,6 +1,6 @@
-# `buf generate` depuis proto/ (ou `make gen` à la racine) : Go pour sindri,
-# TypeScript pour eitri. Le code engendré est COMMITTÉ, comme docs/openapi.json
-# l'était : le contrat se lit sans outil, et `make contrat` refuse une dérive.
+# `buf generate` depuis proto/ (ou `make gen` à la racine) : Go pour sindri. Le
+# code engendré est COMMITTÉ, comme docs/openapi.json l'était : le contrat se lit
+# sans outil, et `make contrat` refuse une dérive.
 version: v2
 clean: true
 plugins:
@@ -10,10 +10,3 @@ plugins:
   - local: protoc-gen-connect-go
     out: ../api/gen
     opt: paths=source_relative
-  - local: ../web/node_modules/.bin/protoc-gen-es
-    out: ../web/src/gen
-    # `js+dts` et non `ts` : eitri interdit la syntaxe non effaçable (`erasableSyntaxOnly`), et les enums TS en sont.
-    opt: target=js+dts
-    # `buf/validate/validate.proto` est importé par nos fichiers : eitri en a
-    # besoin pour charger les descripteurs, il ne valide rien lui-même.
-    include_imports: true

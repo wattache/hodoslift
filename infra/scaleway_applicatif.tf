@@ -23,8 +23,9 @@
 #
 #   "neon"     — Neon, comme l'ancienne app : mêmes comptes, mêmes données, le
 #                temps que tout le monde passe.
-#   "scaleway" — la base Postgres managée ci-dessous, par le réseau privé, une
-#                fois la donnée recopiée (`scripts/copier_la_base_vers_scaleway.sh`).
+#   "scaleway" — la base Postgres managée (`scaleway_postgres.tf`), par le
+#                réseau privé, une fois la donnée recopiée
+#                (`scripts/copier_la_base_vers_scaleway.sh`).
 #                Le job nocturne des analyses n'existe que dans ce cas : sur
 #                Neon, celui de GCP tourne déjà.
 #
@@ -101,10 +102,10 @@ locals {
   # La connexion des conteneurs. Sur la base managée, par le RÉSEAU PRIVÉ : elle
   # n'y est jamais exposée à internet pour eux.
   base_conteneurs = local.sur_scw ? {
-    host     = try(scaleway_rdb_instance.hodos[0].private_network[0].ip, null)
-    port     = try(scaleway_rdb_instance.hodos[0].private_network[0].port, null)
-    name     = try(scaleway_rdb_database.app[0].name, null)
-    password = try(random_password.scw_brokkr_app[0].result, null)
+    host     = try(scaleway_rdb_instance.hodos.private_network[0].ip, null)
+    port     = try(scaleway_rdb_instance.hodos.private_network[0].port, null)
+    name     = scaleway_rdb_database.hodos.name
+    password = random_password.scaleway_brokkr_app.result
     } : {
     host     = neon_project.ff.database_host
     port     = 5432
@@ -154,123 +155,9 @@ resource "scaleway_vpc_private_network" "hodos" {
 }
 
 # ----------------------------------------------------------------------------
-# 3. LA BASE — Postgres 16 managé, la plus petite instance
-#
-# Choisie contre le Postgres serverless (05/10) : avec la consommation de Neon,
-# active 16 à 20 h par jour, le serverless facture au moins 1 vCPU actif et
-# coûte cinq à sept fois plus ; et il refuse rôles, `ALTER ROLE` et `GRANT`, sur
-# lesquels brokkr repose. Ici, c'est un Postgres complet.
-#
-# ⚠️ DEUX POINTS D'ACCÈS, ET LE PUBLIC N'EST PAS UN OUBLI. Les conteneurs passent
-# par le réseau privé ; le point public sert ce qui n'y a pas accès : le job
-# nocturne (Serverless Jobs n'ont pas de réseau privé), les migrations et les
-# invariants joués depuis le poste, la recopie dans le bac à sable. C'est la
-# posture de Neon aujourd'hui : TLS exigé, mot de passe fort, aucune IP fixe à
-# filtrer côté jobs.
+# 3. LA BASE — `scaleway_postgres.tf`, qui existe déjà : la pile s'y branche par
+# le réseau privé (bloc `private_network` dynamique de l'instance).
 # ----------------------------------------------------------------------------
-
-# Scaleway exige un mot de passe d'au moins une majuscule, une minuscule, un
-# chiffre et un caractère spécial.
-resource "random_password" "scw_brokkr" {
-  count            = var.pile_scaleway ? 1 : 0
-  length           = 32
-  min_upper        = 2
-  min_lower        = 2
-  min_numeric      = 2
-  min_special      = 2
-  override_special = "-_.!"
-}
-
-resource "random_password" "scw_brokkr_app" {
-  count            = var.pile_scaleway ? 1 : 0
-  length           = 32
-  min_upper        = 2
-  min_lower        = 2
-  min_numeric      = 2
-  min_special      = 2
-  override_special = "-_.!"
-}
-
-resource "scaleway_rdb_instance" "hodos" {
-  count         = var.pile_scaleway ? 1 : 0
-  name          = "hodos"
-  region        = local.scw_region
-  node_type     = "DB-DEV-S"
-  engine        = "PostgreSQL-16"
-  is_ha_cluster = false
-  # Le PROPRIÉTAIRE du schéma, comme `brokkr` chez Neon : c'est lui qui joue les
-  # migrations et la restauration. L'application, elle, est `brokkr_app`.
-  user_name          = "brokkr"
-  password           = random_password.scw_brokkr[0].result
-  volume_type        = "sbs_5k"
-  volume_size_in_gb  = 5
-  encryption_at_rest = true
-
-  # La perte maximale est l'intervalle entre deux sauvegardes : une heure, comme
-  # les dumps de Neon vers GCS (`backup.tf`), sur la même fenêtre de 90 jours.
-  disable_backup            = false
-  backup_schedule_frequency = 1
-  backup_schedule_retention = 90
-  backup_same_region        = false
-
-  private_network {
-    pn_id       = scaleway_vpc_private_network.hodos[0].id
-    enable_ipam = true
-  }
-
-  load_balancer {}
-
-  lifecycle {
-    # Données de santé, une fois la recopie faite : on ne détruit jamais cette
-    # base par un simple `apply`. Même règle que `neon_project.ff`.
-    prevent_destroy = true
-  }
-}
-
-resource "scaleway_rdb_acl" "hodos" {
-  count       = var.pile_scaleway ? 1 : 0
-  instance_id = scaleway_rdb_instance.hodos[0].id
-  region      = local.scw_region
-  acl_rules {
-    ip          = "0.0.0.0/0"
-    description = "Point public : jobs sans IP fixe et poste de William — TLS et mot de passe, comme Neon"
-  }
-}
-
-resource "scaleway_rdb_database" "app" {
-  count       = var.pile_scaleway ? 1 : 0
-  instance_id = scaleway_rdb_instance.hodos[0].id
-  region      = local.scw_region
-  name        = "french_forge_trainer" # le nom de la base Neon, pour que la recopie soit un geste à l'identique
-}
-
-resource "scaleway_rdb_user" "brokkr_app" {
-  count       = var.pile_scaleway ? 1 : 0
-  instance_id = scaleway_rdb_instance.hodos[0].id
-  region      = local.scw_region
-  name        = local.role_applicatif
-  password    = random_password.scw_brokkr_app[0].result
-  is_admin    = false
-}
-
-resource "scaleway_rdb_privilege" "brokkr" {
-  count         = var.pile_scaleway ? 1 : 0
-  instance_id   = scaleway_rdb_instance.hodos[0].id
-  region        = local.scw_region
-  user_name     = scaleway_rdb_instance.hodos[0].user_name
-  database_name = scaleway_rdb_database.app[0].name
-  permission    = "all"
-}
-
-# DML seulement, comme chez Neon : l'application ne change pas le schéma.
-resource "scaleway_rdb_privilege" "brokkr_app" {
-  count         = var.pile_scaleway ? 1 : 0
-  instance_id   = scaleway_rdb_instance.hodos[0].id
-  region        = local.scw_region
-  user_name     = scaleway_rdb_user.brokkr_app[0].name
-  database_name = scaleway_rdb_database.app[0].name
-  permission    = "readwrite"
-}
 
 # ----------------------------------------------------------------------------
 # 4. LES CONTENEURS — web, api-python, api
@@ -483,7 +370,7 @@ resource "scaleway_secret_version" "brokkr_app_db_password" {
   count     = local.sur_scw ? 1 : 0
   secret_id = scaleway_secret.brokkr_app_db_password[0].id
   region    = local.scw_region
-  data      = random_password.scw_brokkr_app[0].result
+  data      = random_password.scaleway_brokkr_app.result
 }
 
 resource "scaleway_job_definition" "analytics" {
@@ -499,8 +386,8 @@ resource "scaleway_job_definition" "analytics" {
   timeout                = "15m"
 
   env = merge(local.env_commun, {
-    DB_HOST = scaleway_rdb_instance.hodos[0].load_balancer[0].ip
-    DB_PORT = tostring(scaleway_rdb_instance.hodos[0].load_balancer[0].port)
+    DB_HOST = scaleway_rdb_instance.hodos.load_balancer[0].ip
+    DB_PORT = tostring(scaleway_rdb_instance.hodos.load_balancer[0].port)
   })
 
   secret_reference {
@@ -540,21 +427,4 @@ output "api_python_scaleway_url" {
 output "api_scaleway_url" {
   description = "api (Go), en direct (sans passer par web) — tests et front local."
   value       = var.pile_scaleway ? (scaleway_container.api[0].public_endpoint) : null
-}
-
-output "scaleway_base_publique" {
-  description = "Le point PUBLIC de la base Scaleway (hôte:port) : migrations, invariants, recopie."
-  value       = var.pile_scaleway ? ("${scaleway_rdb_instance.hodos[0].load_balancer[0].ip}:${scaleway_rdb_instance.hodos[0].load_balancer[0].port}") : null
-}
-
-output "scaleway_base_url_proprietaire" {
-  description = "URL du PROPRIÉTAIRE du schéma (brokkr) sur la base Scaleway — migrations et recopie, jamais l'application."
-  value       = var.pile_scaleway ? ("postgresql://${scaleway_rdb_instance.hodos[0].user_name}:${random_password.scw_brokkr[0].result}@${scaleway_rdb_instance.hodos[0].load_balancer[0].ip}:${scaleway_rdb_instance.hodos[0].load_balancer[0].port}/${scaleway_rdb_database.app[0].name}?sslmode=require") : null
-  sensitive   = true
-}
-
-output "scaleway_base_url_application" {
-  description = "URL du rôle applicatif (brokkr_app) sur la base Scaleway — pose de ses bornes de session, contrôle des droits."
-  value       = var.pile_scaleway ? ("postgresql://${scaleway_rdb_user.brokkr_app[0].name}:${random_password.scw_brokkr_app[0].result}@${scaleway_rdb_instance.hodos[0].load_balancer[0].ip}:${scaleway_rdb_instance.hodos[0].load_balancer[0].port}/${scaleway_rdb_database.app[0].name}?sslmode=require") : null
-  sensitive   = true
 }

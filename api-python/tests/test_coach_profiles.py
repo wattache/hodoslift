@@ -293,7 +293,6 @@ def test_langues_dans_les_deux_lectures(auth_as, db):
 
 def test_upload_photo(auth_as, db, monkeypatch):
     _seed_profile(db, coach_uid="coach-1", slug="aubin")
-    monkeypatch.setattr("app.socle.config.settings.scaleway_bucket_public", "french-forge-coachs-public")
     calls = {}
     monkeypatch.setattr(
         "app.personnes.storage.upload_public_media",
@@ -308,8 +307,7 @@ def test_upload_photo(auth_as, db, monkeypatch):
     assert calls["path"] == "aubin/profil.png"  # PAS de préfixe 'coachs/'
     assert calls["ct"] == "image/png"
     url = r.json()["photoUrl"]
-    # Le seau PUBLIC de Scaleway, celui que le site vitrine lit aussi.
-    assert url == "https://french-forge-coachs-public.s3.fr-par.scw.cloud/aubin/profil.png"
+    assert url == "https://storage.googleapis.com/french-forge-600-public-media/aubin/profil.png"
     assert _val(db, "coach-1", "photo_url") == url
 
 

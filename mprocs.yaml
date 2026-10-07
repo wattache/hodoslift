@@ -30,7 +30,6 @@ procs:
       # cohérente. Lancé seul (`npm run dev` dans eitri/), il retrouve le
       # comportement du fichier — pratique pour travailler le front sans back.
       VITE_BROKKR_URL: "http://localhost:8080"
-      VITE_SINDRI_URL: "http://localhost:8081"
     # Vite → http://localhost:5173 · connexion Firebase réelle.
 
   brokkr:
@@ -51,9 +50,3 @@ procs:
     # pour l'authentification. Les scripts sont en dry-run par défaut ; ce qui
     # passe par l'API, non. Pour travailler sur une copie, monter le bac à
     # sable : `scripts/e2e-reel.sh` (cf. eitri/docs/e2e-reel.md).
-
-  sindri:
-    # Le frère de brokkr en Go (Connect) — sert la bibliothèque. Même base que
-    # brokkr ici (`make dev` lit le `.env` de brokkr), :8081.
-    shell: "make dev 2>&1 | tee /tmp/sindri-dev.log"
-    cwd: api

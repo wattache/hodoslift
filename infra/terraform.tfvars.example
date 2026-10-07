@@ -30,3 +30,6 @@
 # imprime les deux. La privée est un SECRET ; ne la mettre que dans terraform.tfvars.
 # vapid_private_key = ""
 # vapid_public_key  = ""
+
+# Postgres Scaleway (FRE-213) : les CIDR autorisés à le joindre — le poste d'abord.
+scaleway_postgres_ips_autorisees = ["203.0.113.7/32"]
