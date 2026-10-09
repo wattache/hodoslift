@@ -178,30 +178,41 @@ def test_le_NOM_de_l_index_ne_compte_pas(pg):
 _DEPUIS_LE_ROLE_APPLICATIF = "2026-09-09"
 
 
-def test_une_migration_qui_CREE_une_table_pose_son_GRANT():
-    """⚠️ ET LA TABLE VISÉE DOIT ÊTRE LA BONNE. Un `GRANT` sur une autre table du
-    même fichier passerait un contrôle qui ne chercherait que le mot
-    « brokkr_app » : on exige donc le nom de CHAQUE table créée."""
+def test_une_migration_qui_CREE_une_table_ou_une_vue_pose_son_GRANT():
+    """⚠️ ET LA RELATION VISÉE DOIT ÊTRE LA BONNE. Un `GRANT` sur une autre table
+    du même fichier passerait un contrôle qui ne chercherait que le mot
+    « brokkr_app » : on exige donc le nom de CHAQUE relation créée.
+
+    ⚠️ UNE VUE AUSSI. Cette spec ne lisait que `CREATE TABLE` : le 09/10, sept
+    vues sont parties sans GRANT, et `/users/me` a rendu 500 à tout le monde
+    — le défaut exact qu'elle prétendait garder. Le GRANT peut venir d'une
+    migration POSTÉRIEURE (c'est ainsi que ces sept-là ont été rattrapées) ;
+    jamais d'aucune."""
     dossier = pathlib.Path(__file__).parent.parent / "docs" / "migrations"
+    noms = [n for n in fichiers_du_depot() if n >= _DEPUIS_LE_ROLE_APPLICATIF]
+    textes = {n: (dossier / n).read_text(encoding="utf-8") for n in noms}
     manquants: list[str] = []
-    for nom in fichiers_du_depot():
-        if nom < _DEPUIS_LE_ROLE_APPLICATIF:
-            continue
-        texte = (dossier / nom).read_text(encoding="utf-8")
+    for i, nom in enumerate(noms):
         creees = re.findall(
-            r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-z_][a-z0-9_]*)",
-            texte, re.IGNORECASE)
-        for table in creees:
+            r"CREATE\s+(?:OR\s+REPLACE\s+)?(?:TABLE|VIEW)\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-z_][a-z0-9_]*)",
+            textes[nom], re.IGNORECASE)
+        for relation in creees:
+            # ⚠️ Une vue recréée (`DROP` + `CREATE`) garde son GRANT d'origine :
+            # Postgres ne le perd qu'avec la vue, et un `CREATE OR REPLACE` ne le
+            # touche pas. Un `DROP VIEW` le perd, et le fichier doit le reposer.
+            depuis = i if re.search(rf"DROP\s+VIEW\s+(?:IF\s+EXISTS\s+)?{re.escape(relation)}\b",
+                                    textes[nom], re.IGNORECASE) else 0
+            apres = "\n".join(textes[n] for n in noms[depuis:])
             grant = re.search(
-                rf"GRANT[^;]*\b{re.escape(table)}\b[^;]*brokkr_app", texte,
+                rf"GRANT[^;]*\b{re.escape(relation)}\b[^;]*brokkr_app", apres,
                 re.IGNORECASE | re.DOTALL)
             if not grant:
-                manquants.append(f"{nom} → {table}")
+                manquants.append(f"{nom} → {relation}")
     assert not manquants, (
-        "ces tables naîtraient INVISIBLES à l'application — ajoute leur "
-        "`GRANT SELECT, INSERT, UPDATE, DELETE ON <table> TO brokkr_app;` dans "
-        "la migration, ET dans `nidavellir/sql/brokkr_app.sql` qui est la liste "
-        f"de référence : {manquants}")
+        "ces relations naîtraient INVISIBLES à l'application — ajoute leur "
+        "`GRANT … ON <relation> TO brokkr_app;` dans la migration, ET dans "
+        "`infra/sql/brokkr_app.sql` qui est la liste de référence : "
+        f"{manquants}")
 
 
 def test_ce_qui_appartient_a_une_EXTENSION_n_est_pas_notre_schema(pg):

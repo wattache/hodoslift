@@ -94,6 +94,13 @@ TO brokkr_app;
 -- ─── LECTURE SEULE ───────────────────────────────────────────────────────────
 -- `competition_scores` est une VUE : son contenu est calculé, personne n'y écrit.
 GRANT SELECT ON competition_scores TO brokkr_app;
+-- Les vues du 09/10 (FRE-215 → 222) : le compte et ses rôles, qui suit qui, les
+-- signalements, un bloc et une semaine tels qu'on les lit, les séries réalisées.
+-- ⚠️ UNE VUE AUSSI DOIT SON GRANT : sans lui, `/users/me` a rendu 500 à tout le
+-- monde le 09/10 — la vue existait pour `brokkr`, pas pour l'application.
+GRANT SELECT ON comptes, liens_athlete, signalements,
+                blocs_lus, semaines_lues, series_realisees, series_de_travail
+TO brokkr_app;
 
 -- ⚠️ `norep_reasons` : 32 lignes de référentiel, qu'AUCUN code ne lit par son nom
 -- — le front porte les libellés, et c'est la clé étrangère de
