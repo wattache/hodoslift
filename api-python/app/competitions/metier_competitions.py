@@ -17,7 +17,7 @@ from sqlalchemy import text
 from app.socle.authz import derive_participant_uids, is_admin
 from app.socle.structures import slugs_de
 from app.competitions.schemas_competition import Participant
-from app.competitions.scoring import compute_ris, compute_projection, compute_score
+from app.competitions.scoring import compute_ris, compute_projection
 from app.socle.empreinte import empreinte
 from app.socle.erreurs import ErreurMetier
 
@@ -552,7 +552,7 @@ _READ_MOVEMENTS = text(
 # La vue agrège, Python applique le barème.
 _READ_PARTICIPANTS = text(
     "SELECT cp.id, cp.competition_id, cp.name, cp.competes_on, cp.bodyweight_kg, cp.gender, "
-    "cp.weight_category, a.user_uid, cs.total_bareme_kg "
+    "cp.weight_category, a.user_uid, cs.score, cs.total_bareme_kg "
     "FROM competition_participants cp "
     "LEFT JOIN athletes a ON a.id = cp.athlete_id "
     "LEFT JOIN competition_scores cs ON cs.participant_id = cp.id "
@@ -648,7 +648,10 @@ def recompose_all(session) -> list[dict]:
         part_att = att_by_part.get(p["id"], {})
         ordered = [mv for mv in mv_by_comp.get(p["competition_id"], []) if mv in part_att]
         pdoc["movements"] = [{"name": mv, "attempts": part_att[mv]} for mv in ordered]
-        pdoc["score"] = compute_score(pdoc["movements"])
+        # ⚠️ Le score aussi vient de la VUE : elle agrège sur `upper(movement)`,
+        # là où « SQUAT » et « Squat » coexistent dans `competition_movements`.
+        # Un calcul sur le nom brut en ferait deux mouvements.
+        pdoc["score"] = float(p["score"])
         # Vers quoi il se dirige, selon les trois hypothèses du plan (FRE-203).
         pdoc["projection"] = compute_projection(pdoc["movements"])
         # ⚠️ Le RIS est SERVI, pas calculé par le navigateur (FRE-92) : une seule

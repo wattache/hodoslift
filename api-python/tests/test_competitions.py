@@ -764,6 +764,24 @@ def test_put_score_participant_422(auth_as, sql):
     assert client.put("/competitions/c1", json=doc, headers=_AUTH).status_code == 422
 
 
+def test_le_score_est_celui_de_la_vue_meme_quand_la_casse_divise_un_mouvement(auth_as, sql):
+    """⚠️ UNE SEULE DÉFINITION DU SCORE : la vue `competition_scores`.
+
+    `competition_movements` est unique sur le TEXTE du mouvement : « SQUAT » et
+    « Squat » y coexistent, et le validateur les accepte tous deux. La vue les
+    agrège sur `upper(...)` — un mouvement, le plus lourd des deux. Un calcul
+    refait en Python sur le nom brut les additionnerait (210 au lieu de 110)."""
+    client = auth_as(uid="coach-1")
+    doc = {"name": "C", "date": "2026-03-01", "movementNames": ["SQUAT", "Squat"],
+           "participants": [{"name": "P", "movements": [
+               {"name": "SQUAT", "attempts": [{"weight": 100, "result": "rep"}]},
+               {"name": "Squat", "attempts": [{"weight": 110, "result": "rep"}]},
+           ]}]}
+    assert client.put("/competitions/c1", json=doc, headers=_AUTH).status_code == 200
+    got = client.get("/competitions", headers=_AUTH).json()[0]
+    assert got["participants"][0]["score"] == 110.0
+
+
 def test_comp_absente_404(auth_as, sql):
     client = auth_as(uid="coach-1")
     assert client.patch("/competitions/nope", json={"name": "X", "version": "x"}, headers=_AUTH).status_code == 404
