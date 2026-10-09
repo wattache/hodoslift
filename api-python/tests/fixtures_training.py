@@ -62,7 +62,6 @@ def arbre_de_test(program_id: str = "prog-test") -> list[dict]:
                 "legacy_id": "bloc-1",
                 "number": 1,
                 "name": "Accumulation",
-                "start_date": "2026-01-05", "end_date": "2026-02-01",
                 "day_split": [{"day": "J1", "tiers": {"SQUAT": 1, "PULL UP": 2}}],
                 "selected_principals": ["PULL UP", "SQUAT"],
                 # PIÈGE RÉEL : la virgule ET le point cohabitent dans la même base.
@@ -135,7 +134,6 @@ def arbre_de_test(program_id: str = "prog-test") -> list[dict]:
             # écrites à la main n'a jamais eu de modèle.
             {
                 "legacy_id": "bloc-2", "number": 2, "name": None,
-                "start_date": None, "end_date": None,
                 "day_split": None, "selected_principals": None, "granularity": None,
                 "s1_start_date": None, "s1_end_date": None,
                 "principes": [], "accessoires": [], "semaines": [],

@@ -104,7 +104,7 @@ WEEKS_SQL = text(
            -- comptait pour 180 répétitions, soit 11,8 % du volume total, alors
            -- qu'aucune n'a été exécutée. `reps` y porte des secondes. Le
            -- tonnage, lui, s'auto-corrige : l'ETL le laisse NULL et `sum()` les
-           -- ignore. IS DISTINCT FROM pour couvrir les lignes sans unité d'une
+           -- ignore. IS DISTINCT FROM, pour couvrir les lignes sans unité d'une
            -- projection antérieure à la migration "" → "count".
            sum(sets * coalesce(reps_done, reps))
                FILTER (WHERE reps_unit IS DISTINCT FROM 'sec') AS reps_total,

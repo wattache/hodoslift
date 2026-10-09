@@ -393,7 +393,7 @@ def generate_week(program_id: str, block_id: str,
         if existante is None:
             week_id = metier.inserer_la_semaine(conn, str(bloc["id"]), 1, semaine)
         else:
-            deja = metier.seances_de_la_semaine(conn, existante["id"])
+            deja = existante["session_count"]
             if deja:
                 raise ErreurMetier(
                     "semaine_deja_remplie", status.HTTP_409_CONFLICT,

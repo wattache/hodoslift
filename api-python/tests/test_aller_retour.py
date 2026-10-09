@@ -57,8 +57,8 @@ def vide(pg):
     n'ont pas de date de S1, 13 seulement portent un nom — et celui qu'aucune
     fixture « réaliste » ne reproduit."""
     pg.execute(text("UPDATE training_macros SET name = NULL"))
-    pg.execute(text("UPDATE training_blocks SET name = NULL, start_date = NULL, "
-                    "end_date = NULL, s1_start_date = NULL, s1_end_date = NULL"))
+    pg.execute(text("UPDATE training_blocks SET name = NULL, "
+                    "s1_start_date = NULL, s1_end_date = NULL"))
     pg.execute(text("UPDATE training_weeks SET name = NULL, start_date = NULL, end_date = NULL"))
     # `training_sessions.name` est NOT NULL : le vide y est la chaîne vide, ce qui
     # est justement la valeur qu'un contrat trop strict refusait de relire.
@@ -109,9 +109,10 @@ def test_macro(client, vide):
 
 
 def test_bloc(client, vide):
+    # Comme le macro : les dates d'un bloc se LISENT (dérivées de ses semaines)
+    # et ne s'écrivent pas — le PATCH les refuse (FRE-219).
     bloc = _arbre(client)["blocks"][0]
-    _echo(client, "patch", f"/blocks/{bloc['id']}",
-          _garder(bloc, ("name", "startDate", "endDate")))
+    _echo(client, "patch", f"/blocks/{bloc['id']}", _garder(bloc, ("name",)))
 
 
 def test_semaine(client, vide):

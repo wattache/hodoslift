@@ -164,16 +164,15 @@ def test_TOUT_ce_que_la_LECTURE_rend_peut_etre_REECRIT(monde):
     de la fixture, ce test passerait sans rien prouver."""
     c = _client()
     monde.execute(text(
-        "UPDATE training_blocks SET s1_start_date = NULL, s1_end_date = NULL, "
-        "start_date = NULL, end_date = NULL"))
+        "UPDATE training_blocks SET s1_start_date = NULL, s1_end_date = NULL"))
     monde.execute(text("UPDATE training_weeks SET start_date = NULL, end_date = NULL"))
     monde.execute(text("UPDATE training_sessions SET session_date = NULL"))
 
     for macro in _macros(c):
         for bloc in macro["blocks"]:
+            # Les dates d'un bloc se lisent, elles ne s'écrivent pas (FRE-219).
             r = c.post(f"/programs/p1/macros/{macro['id']}/blocks", headers=_AUTH, json={
-                "name": bloc["name"], "startDate": bloc["startDate"],
-                "endDate": bloc["endDate"], "base": bloc["base"]})
+                "name": bloc["name"], "base": bloc["base"]})
             assert r.status_code == 201, f"bloc {bloc['name']} : {r.status_code} {r.text[:200]}"
             # ⚠️ LE CONTENU SE RÉÉCRIT DANS UNE SEMAINE NEUVE, plus par-dessus la
             # semaine lue (FRE-84 : `PUT …/content` ne remplit qu'une semaine
@@ -357,6 +356,17 @@ def test_patcher_un_macro_avec_des_dates_est_refuse_pas_planté(monde):
     macro = _un(monde, "SELECT id FROM training_macros WHERE program_id = :p ORDER BY number LIMIT 1")
     r = _client().patch(f"/programs/p1/macros/{macro}", headers=_AUTH,
                         json={"startDate": "2026-01-01"})
+    assert r.status_code == 422
+
+
+def test_patcher_un_bloc_avec_des_dates_est_refuse_aussi(monde):
+    """Même règle pour le bloc (FRE-219) : ses dates se DÉDUISENT de ses
+    semaines (`blocs_lus`), `training_blocks` n'en a plus de colonnes. Un PATCH
+    qui en porte est refusé en 422, pas écrit dans le vide ni planté."""
+    bloc = _un(monde, "SELECT b.id FROM training_blocks b JOIN training_macros m ON m.id = b.macro_id "
+                      "WHERE m.program_id = :p ORDER BY b.number LIMIT 1")
+    r = _client().patch(f"/programs/p1/blocks/{bloc}", headers=_AUTH,
+                        json={"endDate": "2026-01-31"})
     assert r.status_code == 422
 
 

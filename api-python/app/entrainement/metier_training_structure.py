@@ -112,7 +112,9 @@ _CHAMPS = {
     # Pas de dates : `training_macros` n'en a pas de colonnes (cf. `MacroPatch`).
     "macro": {"name": "name", "trainingFrequency": "training_frequency",
               "coachNotes": "coach_notes"},
-    "bloc": {"name": "name", "startDate": "start_date", "endDate": "end_date"},
+    # Pas de dates non plus : la période d'un bloc se DÉDUIT de ses semaines
+    # (`blocs_lus`), il n'en a pas de colonnes.
+    "bloc": {"name": "name"},
     "semaine": {"name": "name", "hidden": "hidden", "startDate": "start_date",
                 "endDate": "end_date", "athleteWeightKg": "athlete_weight_kg",
                 "athleteHeightCm": "athlete_height_cm"},
@@ -413,8 +415,9 @@ def retirer_la_relecture_de(conn, session_id) -> None:
 
 
 def premiere_semaine_du_bloc(conn, block_id: str):
+    """La première semaine du bloc, avec son compte de séances — `None` s'il n'en a pas."""
     return conn.execute(text(
-        "SELECT id, number FROM training_weeks WHERE block_id = CAST(:b AS uuid) "
+        "SELECT id, number, session_count FROM semaines_lues WHERE block_id = CAST(:b AS uuid) "
         "ORDER BY number LIMIT 1"), {"b": block_id}).mappings().first()
 
 

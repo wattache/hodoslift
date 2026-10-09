@@ -50,9 +50,10 @@ class MacroPatch(_Patch):
 
 
 class BlockPatch(_Patch):
+    """⚠️ PAS de dates, comme le macro : la période d'un bloc se DÉDUIT de ses
+    semaines (`blocs_lus`). `training_blocks` n'a plus de colonnes de dates."""
+
     name: str | None = Field(default=None, max_length=_STR_MAX)
-    startDate: DateISO = Field(default=None, pattern=_DATE)
-    endDate: DateISO = Field(default=None, pattern=_DATE)
 
 
 class WeekPatch(_Patch):
@@ -145,8 +146,7 @@ class BlockCreate(BaseModel):
 
     id: UUID | None = None
     name: str | None = Field(default=None, max_length=_STR_MAX)
-    startDate: DateISO = Field(default=None, pattern=_DATE)
-    endDate: DateISO = Field(default=None, pattern=_DATE)
+    # Pas de dates : cf. `BlockPatch`.
     week: WeekCreate | None = None
     base: dict[str, Any] | None = None
 

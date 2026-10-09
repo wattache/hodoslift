@@ -12619,30 +12619,6 @@
             ],
             "title": "Name"
           },
-          "startDate": {
-            "anyOf": [
-              {
-                "type": "string",
-                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Startdate"
-          },
-          "endDate": {
-            "anyOf": [
-              {
-                "type": "string",
-                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Enddate"
-          },
           "week": {
             "anyOf": [
               {
@@ -12683,35 +12659,12 @@
               }
             ],
             "title": "Name"
-          },
-          "startDate": {
-            "anyOf": [
-              {
-                "type": "string",
-                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Startdate"
-          },
-          "endDate": {
-            "anyOf": [
-              {
-                "type": "string",
-                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Enddate"
           }
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "BlockPatch"
+        "title": "BlockPatch",
+        "description": "⚠️ PAS de dates, comme le macro : la période d'un bloc se DÉDUIT de ses\nsemaines (`blocs_lus`). `training_blocks` n'a plus de colonnes de dates."
       },
       "Body_televerser_media_bilan_medias_demo_post": {
         "properties": {

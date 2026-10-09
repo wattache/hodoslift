@@ -1352,14 +1352,10 @@ CREATE TABLE training_blocks (
     number    integer NOT NULL,
     name      text,                    -- 13 blocs sur 124 seulement → naviguer
                                        -- par nom n'est PAS fiable (vécu le 13/08)
-    start_date date,
-    end_date   date,
-    -- Aucun bloc ne l'a jamais violé ; il la reçoit quand même, en même temps
-    -- que `training_weeks` (FRE-138). Ses dates viennent des mêmes gestes, et
-    -- une contrainte qui ne tient que sur une des deux tables laisse la moitié
-    -- de la porte ouverte.
-    CONSTRAINT training_blocks_dates
-        CHECK (end_date IS NULL OR start_date IS NULL OR end_date >= start_date),
+    -- ⚠️ PAS DE DATES (FRE-219) : la période d'un bloc est celle de ses
+    -- semaines, de la première datée à la dernière (`blocs_lus.debut`/`fin`).
+    -- Des colonnes propres ont porté une seconde définition, qui a divergé — un
+    -- bloc borné à sa seule S1 laissait un trou d'un mois dans la frise.
     -- ---- la BASE, partie CONFIGURATION (les lignes ont leurs tables) --------
     -- Lues EN BLOC par le générateur de semaine, jamais interrogées en travers :
     -- elles restent des documents, conformément à la règle du schéma.
@@ -1694,6 +1690,48 @@ CREATE TABLE training_base_accessories (
     UNIQUE (block_id, position) DEFERRABLE INITIALLY DEFERRED
 );
 CREATE INDEX ON training_base_accessories (block_id);
+
+-- CE QU'UN BLOC DIT DE LUI-MÊME À LA LECTURE (FRE-219), pour l'arbre et la
+-- charpente, qui le lisent ici plutôt que de le recalculer chacun en Python.
+--
+-- `debut`/`fin` : UNE SEULE DÉFINITION de la période d'un bloc — de sa première
+-- semaine datée à sa dernière. Une semaine masquée compte : elle occupe le
+-- temps qu'elle occupe. Sans semaine datée, NULL. `training_blocks` n'a plus
+-- de dates propres : elles ont porté une seconde définition, qui a divergé.
+--
+-- `a_une_base` : c'est le serveur qui dit ce qu'« avoir une trame » veut dire,
+-- et nulle part ailleurs. Les quatre morceaux comptent : une grille de jours
+-- et une sélection de mouvements sans une seule ligne, c'est une trame
+-- commencée, qui se duplique.
+--
+-- `visible_a_l_athlete` : un bloc dont TOUTES les semaines sont masquées — ou
+-- qui n'en a aucune — n'a rien à montrer à l'athlète (FRE-158) ; qui programme
+-- le voit quand même.
+CREATE VIEW blocs_lus AS
+SELECT b.id, b.macro_id, b.legacy_id, b.number, b.name,
+       b.day_split, b.selected_principals, b.granularity,
+       b.s1_start_date, b.s1_end_date,
+       m.program_id,
+       (SELECT min(w.start_date) FROM training_weeks w WHERE w.block_id = b.id) AS debut,
+       (SELECT max(w.end_date)   FROM training_weeks w WHERE w.block_id = b.id) AS fin,
+       EXISTS (SELECT 1 FROM training_weeks w WHERE w.block_id = b.id AND NOT w.hidden)
+           AS visible_a_l_athlete,
+       (b.day_split IS NOT NULL AND jsonb_array_length(b.day_split) > 0)
+    OR (b.selected_principals IS NOT NULL AND cardinality(b.selected_principals) > 0)
+    OR EXISTS (SELECT 1 FROM training_base_principles  x WHERE x.block_id = b.id)
+    OR EXISTS (SELECT 1 FROM training_base_accessories x WHERE x.block_id = b.id)
+           AS a_une_base
+  FROM training_blocks b
+  JOIN training_macros m ON m.id = b.macro_id;
+
+-- Une semaine et son COMPTE de séances (FRE-119) : la barre du programme
+-- éteint la pastille d'une semaine vide, il lui faut savoir s'il y a des
+-- séances, pas les recevoir.
+CREATE VIEW semaines_lues AS
+SELECT w.id, w.block_id, w.legacy_id, w.number, w.name, w.hidden,
+       w.start_date, w.end_date, w.athlete_weight_kg, w.athlete_height_cm,
+       (SELECT count(*) FROM training_sessions s WHERE s.week_id = w.id)::int AS session_count
+  FROM training_weeks w;
 
 -- ============================================================================
 -- ANALYTICS — projection dérivée (pas une table de domaine)
