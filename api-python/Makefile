@@ -8,7 +8,7 @@ MIN_INSTANCES  = 1
 # `../cloudrun.mk`, partagé avec l'api Go.
 include ../cloudrun.mk
 
-.PHONY: install lock dev test lint openapi deploy version schema-verifier invariants contrat migrations
+.PHONY: install lock dev test lint openapi carte deploy version schema-verifier invariants contrat migrations
 
 install: ## Installe les deps (uv : crée .venv + respecte uv.lock)
 	uv sync
@@ -24,6 +24,11 @@ lint: ## Noms indéfinis, imports et variables morts (ruff, lint seul)
 
 openapi: ## Écrit docs/openapi.json — LE CONTRAT, à régénérer après tout changement de réponse
 	uv run python scripts/exporter_openapi.py
+
+# Lue depuis un Postgres jetable chargé avec le fichier de schéma (Docker), pas
+# depuis le fichier lui-même : la carte ne peut pas dire autre chose que la base.
+carte: ## Écrit docs/carte-de-brokkr.html — le schéma par domaine ; à régénérer avec chaque migration
+	python3 docs/carte.py
 
 
 # brokkr vérifie les jetons sans identité Google (`app/socle/firebase_admin_app.py`) :
