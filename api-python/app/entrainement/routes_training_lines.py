@@ -275,7 +275,7 @@ def move_exercise(
         ligne = metier.exercice(conn, program_id, exercise_id)
         cible = metier.seance(conn, program_id, payload.sessionId)
         source_id, cible_id = str(ligne["session_id"]), str(cible["id"])
-        if metier.semaine_de_la_seance(conn, source_id) != metier.semaine_de_la_seance(conn, cible_id):
+        if not metier.meme_semaine(conn, source_id, cible_id):
             raise ErreurMetier("seance_d_une_autre_semaine", status.HTTP_409_CONFLICT,
                                detail="la séance cible n'est pas dans la même semaine")
         deplaces = metier.deplacer_vers(conn, ligne, cible_id, payload.position) if source_id != cible_id else []

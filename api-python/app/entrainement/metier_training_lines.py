@@ -369,17 +369,21 @@ def ids_de_la_seance(conn, session_id: str) -> set[str]:
 
 
 def poser_l_ordre(conn, exercise_ids: list[str]) -> None:
-    for position, eid in enumerate(exercise_ids):
-        conn.execute(
-            text("UPDATE training_exercises SET position = :p "
-                 "WHERE id = CAST(:eid AS uuid)"),
-            {"p": position, "eid": eid},
-        )
+    """Pose les positions dans l'ordre de la liste — UN UPDATE, pas un par ligne."""
+    conn.execute(
+        text("UPDATE training_exercises e SET position = t.ord - 1 "
+             "FROM unnest(CAST(:ids AS uuid[])) WITH ORDINALITY AS t(id, ord) "
+             "WHERE e.id = t.id"),
+        {"ids": list(exercise_ids)},
+    )
 
 
-def semaine_de_la_seance(conn, session_id) -> str:
-    return str(conn.execute(text("SELECT week_id FROM training_sessions WHERE id = CAST(:s AS uuid)"),
-                            {"s": session_id}).scalar())
+def meme_semaine(conn, session_a, session_b) -> bool:
+    """Les deux séances sont-elles dans la même semaine ? Une requête, pas deux."""
+    return bool(conn.execute(text(
+        "SELECT (SELECT week_id FROM training_sessions WHERE id = CAST(:a AS uuid)) "
+        "     = (SELECT week_id FROM training_sessions WHERE id = CAST(:b AS uuid))"),
+        {"a": session_a, "b": session_b}).scalar())
 
 
 def deplacer_vers(conn, ligne, session_id: str, position: int | None) -> list[str]:
@@ -410,8 +414,8 @@ def deplacer_vers(conn, ligne, session_id: str, position: int | None) -> list[st
     conn.execute(text("UPDATE training_exercises SET position = position + :n "
                       "WHERE session_id = CAST(:s AS uuid) AND position >= :p"),
                  {"n": n, "s": session_id, "p": rang})
-    for i, eid in enumerate(ids):
-        conn.execute(text("UPDATE training_exercises SET session_id = CAST(:s AS uuid), position = :p "
-                          "WHERE id = CAST(:e AS uuid)"),
-                     {"s": session_id, "p": rang + i, "e": eid})
+    conn.execute(text("UPDATE training_exercises e SET session_id = CAST(:s AS uuid), position = :p + t.ord - 1 "
+                      "FROM unnest(CAST(:ids AS uuid[])) WITH ORDINALITY AS t(id, ord) "
+                      "WHERE e.id = t.id"),
+                 {"s": session_id, "p": rang, "ids": ids})
     return ids

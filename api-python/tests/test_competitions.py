@@ -782,6 +782,24 @@ def test_le_score_est_celui_de_la_vue_meme_quand_la_casse_divise_un_mouvement(au
     assert got["participants"][0]["score"] == 110.0
 
 
+def test_recompose_all_se_borne_a_UNE_competition_quand_on_la_nomme(auth_as, sql):
+    """`version_actuelle` relit la version d'une compétition DANS sa transaction
+    d'écriture, sous verrou : relire le club entier pour n'en garder qu'une
+    faisait dix SELECT globaux par PATCH (FRE-222).
+
+    MUTATION QUI ROUGIT : retirer le `WHERE :cid` d'une des cinq lectures."""
+    from app.competitions import metier_competitions as metier
+    client = auth_as(uid="coach-1")
+    client.put("/competitions/c1", json=_DOC, headers=_AUTH)
+    client.put("/competitions/c2", json={**_DOC, "name": "Autre"}, headers=_AUTH)
+    cid = sql.execute(text("SELECT id FROM competitions WHERE legacy_id = 'c1'")).scalar()
+    assert [c["id"] for c in metier.recompose_all(sql)] == ["c1", "c2"]
+    [seule] = metier.recompose_all(sql, cid=cid)
+    assert seule["id"] == "c1"
+    # Bornée, elle rend le MÊME document que la lecture globale — version comprise.
+    assert seule == next(c for c in metier.recompose_all(sql) if c["id"] == "c1")
+
+
 def test_comp_absente_404(auth_as, sql):
     client = auth_as(uid="coach-1")
     assert client.patch("/competitions/nope", json={"name": "X", "version": "x"}, headers=_AUTH).status_code == 404

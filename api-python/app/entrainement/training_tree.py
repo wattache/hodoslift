@@ -11,6 +11,7 @@ et ne sort pas de l'API. `athlete` recompose prénom et nom par jointure ; le
 poids et la taille, mesures datées, vivent sur la semaine.
 """
 
+from typing import NamedTuple
 from uuid import UUID
 
 from sqlalchemy import text
@@ -171,9 +172,30 @@ _BLOC = text("""
     WHERE b.id = CAST(:bid AS uuid) AND m.program_id = :pid
 """)
 
+# Le bloc SEUL, dans la projection de `_BLOCS` : `read_block` rend le même
+# `BlocLu` que `read_tree`, par les mêmes `_sortie_*`, sans lire le programme.
+_BLOC_LU = text("""
+    SELECT b.id, b.macro_id, b.number, b.name,
+           b.day_split, b.selected_principals, b.granularity,
+           b.s1_start_date, b.s1_end_date,
+           b.debut, b.fin, b.visible_a_l_athlete, b.a_une_base
+    FROM blocs_lus b
+    WHERE b.program_id = :pid AND b.id = CAST(:bid AS uuid)
+""")
+
 _SEMAINES_DU_BLOC = text("""
-    SELECT w.id, w.hidden FROM training_weeks w
+    SELECT w.id, w.block_id, w.number, w.name, w.hidden, w.start_date, w.end_date,
+           w.athlete_weight_kg, w.athlete_height_cm, w.session_count
+    FROM semaines_lues w
     WHERE w.block_id = CAST(:bid AS uuid) ORDER BY w.number, w.legacy_id
+""")
+
+_OBJECTIFS_DU_BLOC = text("""
+    SELECT o.block_id AS bloc_uuid, o.id, o.exercise, o.variant, o.format, o.sets,
+           o.reps, o.weight_min, o.weight_max, o.assistance, o.atteint_le
+    FROM block_objectives o
+    WHERE o.block_id = CAST(:bid AS uuid)
+    ORDER BY o.position
 """)
 
 _SEANCES_DU_BLOC = text("""
@@ -505,53 +527,95 @@ def read_tree(conn, program_id: str, voit_les_masquees: bool = True) -> dict:
         .mappings().all(), "block_id")
     objectifs = _grouper(conn.execute(_OBJECTIFS, p).mappings().all(), "bloc_uuid")
 
-    sortie_macros = []
-    for m in macros:
-        sortie_blocs = []
-        for b in _blocs_visibles(blocs.get(str(m["id"]), []), voit_les_masquees):
-            bid = str(b["id"])
-            sortie_semaines = []
-            for w in _visibles(semaines.get(bid, []), voit_les_masquees):
-                sortie_seances = [_sortie_seance(s, exercices)
-                                  for s in seances.get(str(w["id"]), [])]
-                sortie_semaines.append({
-                    "id": str(w["id"]),
-                    "weekNumber": w["number"],
-                    "name": w["name"],
-                    "hidden": w["hidden"],
-                    "startDate": _iso(w["start_date"]),
-                    "endDate": _iso(w["end_date"]),
-                    # Le poids et la taille sont des mesures DATÉES (celles de
-                    # cette semaine) ; le nom vient de la fiche athlète.
-                    "athlete": {
-                        **identite,
-                        # ⚠️ `None` et non `0` (FRE-137) : cf. `read_structure`.
-"weight": float(w["athlete_weight_kg"]) if w["athlete_weight_kg"] is not None else None,
-                        "height": float(w["athlete_height_cm"]) if w["athlete_height_cm"] is not None else None,
-                    },
-                    "sessions": sortie_seances,
-                })
-            sortie_blocs.append({
-                "id": bid,
-                "blockNumber": b["number"],
-                "name": b["name"],
-                **_bornes(b),
-                "base": _sortie_base(b, principes.get(bid, []), accessoires.get(bid, [])),
-                # Jamais absent, même vide : le front lit la clé sans la tester.
-                "objectives": [_sortie_objectif(o) for o in objectifs.get(bid, [])],
-                "objectivesVersion": version_des_objectifs(objectifs.get(bid, [])),
-                "weeks": sortie_semaines,
-            })
-        sortie_macros.append({
-            "id": str(m["id"]),
-            "macroNumber": m["number"],
-            "name": m["name"],
-            # `trainingFrequency` et `coachNotes` sont NULLABLES au contrat.
-            "trainingFrequency": m["training_frequency"],
-            "coachNotes": m["coach_notes"],
-            "blocks": sortie_blocs,
-        })
-    return {"macros": sortie_macros}
+    lu = _Lu(identite, seances, exercices, principes, accessoires, objectifs)
+    return {"macros": [{
+        "id": str(m["id"]),
+        "macroNumber": m["number"],
+        "name": m["name"],
+        # `trainingFrequency` et `coachNotes` sont NULLABLES au contrat.
+        "trainingFrequency": m["training_frequency"],
+        "coachNotes": m["coach_notes"],
+        "blocks": [_sortie_bloc(b, semaines.get(str(b["id"]), []), lu, voit_les_masquees)
+                   for b in _blocs_visibles(blocs.get(str(m["id"]), []), voit_les_masquees)],
+    } for m in macros]}
+
+
+class _Lu(NamedTuple):
+    """Ce que les projections d'un bloc lisent, groupé par parent."""
+
+    identite: dict
+    seances: dict
+    exercices: dict
+    principes: dict
+    accessoires: dict
+    objectifs: dict
+
+
+def _sortie_semaine(w, lu: _Lu) -> dict:
+    return {
+        "id": str(w["id"]),
+        "weekNumber": w["number"],
+        "name": w["name"],
+        "hidden": w["hidden"],
+        "startDate": _iso(w["start_date"]),
+        "endDate": _iso(w["end_date"]),
+        # Le poids et la taille sont des mesures DATÉES (celles de cette
+        # semaine) ; le nom vient de la fiche athlète.
+        "athlete": {
+            **lu.identite,
+            # ⚠️ `None` et non `0` (FRE-137) : cf. `read_structure`.
+            "weight": float(w["athlete_weight_kg"]) if w["athlete_weight_kg"] is not None else None,
+            "height": float(w["athlete_height_cm"]) if w["athlete_height_cm"] is not None else None,
+        },
+        "sessions": [_sortie_seance(s, lu.exercices) for s in lu.seances.get(str(w["id"]), [])],
+    }
+
+
+def _sortie_bloc(b, semaines: list, lu: _Lu, voit_les_masquees: bool) -> dict:
+    """UN `BlocLu`, pour `read_tree` comme pour `read_block` : une seule projection."""
+    bid = str(b["id"])
+    return {
+        "id": bid,
+        "blockNumber": b["number"],
+        "name": b["name"],
+        **_bornes(b),
+        "base": _sortie_base(b, lu.principes.get(bid, []), lu.accessoires.get(bid, [])),
+        # Jamais absent, même vide : le front lit la clé sans la tester.
+        "objectives": [_sortie_objectif(o) for o in lu.objectifs.get(bid, [])],
+        "objectivesVersion": version_des_objectifs(lu.objectifs.get(bid, [])),
+        "weeks": [_sortie_semaine(w, lu) for w in _visibles(semaines, voit_les_masquees)],
+    }
+
+
+def read_block(conn, program_id: str, block_id: str) -> dict | None:
+    """UN bloc dans la forme de `read_tree` — `BlocLu` —, par des lectures bornées au bloc.
+
+    Pour les gestes qui relisent ce qu'ils viennent d'écrire (`next-week`,
+    `generate-week`) : la même projection que l'arbre, sans lire l'historique
+    entier du programme à chaque « + Semaine ». Les semaines masquées sont là :
+    l'appelant est du staff par construction.
+
+    Rend `None` si le bloc n'appartient pas à ce programme.
+    """
+    p = {"pid": program_id, "bid": block_id}
+    bloc = conn.execute(_BLOC_LU, p).mappings().first()
+    if bloc is None:
+        return None
+    athlete = conn.execute(_ATHLETE, p).mappings().first()
+    identite = ({"firstName": athlete["first_name"], "lastName": athlete["last_name"]}
+                if athlete else {"firstName": "", "lastName": ""})
+    semaines = conn.execute(_SEMAINES_DU_BLOC, p).mappings().all()
+    lu = _Lu(
+        identite,
+        _grouper(conn.execute(_SEANCES_DU_BLOC, p).mappings().all(), "week_id"),
+        _grouper(conn.execute(_EXERCICES_DU_BLOC, p).mappings().all(), "session_id"),
+        _grouper(conn.execute(text(_BASE_LIGNES_DU_BLOC.format(table="training_base_principles")), p)
+                 .mappings().all(), "block_id"),
+        _grouper(conn.execute(text(_BASE_LIGNES_DU_BLOC.format(table="training_base_accessories")), p)
+                 .mappings().all(), "block_id"),
+        _grouper(conn.execute(_OBJECTIFS_DU_BLOC, p).mappings().all(), "bloc_uuid"),
+    )
+    return _sortie_bloc(bloc, semaines, lu, voit_les_masquees=True)
 
 
 def lire_base(conn, block_uuid: str) -> dict:
