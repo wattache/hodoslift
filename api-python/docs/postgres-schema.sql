@@ -1801,6 +1801,22 @@ $$;
 -- LES SÉRIES TENUES (FRE-110), extraites de l'ETL le 07/09 pour que la LECTURE
 -- VIVANTE du suivi les calcule à l'identique (FRE-148). Deux appelants, une
 -- définition : la divergence devient impossible au lieu d'être surveillée.
+-- LA TRACE DE RÉALISATION (FRE-71, FRE-216) : un RPE ressenti — global ou par
+-- série, FAIL compris — et rien d'autre. C'est la seule preuve qu'une série a
+-- eu lieu : une sensation ne se donne pas à la place de celui qui a poussé.
+--
+-- ⚠️ `cardinality(...) > 0` et non `IS NOT NULL` : un `text[]` peut valoir
+-- `{}`, qui n'est pas une trace. Et le BRUT, pas `ff_rpe_by_set` : `['FAIL']`
+-- est une trace — la série a eu lieu, et a échoué — que le parseur numérique
+-- écarte. L'arbre (`records.py`, le guichet, les suppressions) et la
+-- projection (`training_sets.tracee`, colonne engendrée) appellent CETTE
+-- fonction : il n'y a pas de second dialecte.
+CREATE OR REPLACE FUNCTION ff_tracee(felt_rpe text, felt_rpe_by_set text[]) RETURNS boolean
+LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
+    SELECT coalesce(btrim(felt_rpe), '') <> ''
+        OR cardinality(coalesce(felt_rpe_by_set, '{}')) > 0
+$$;
+
 CREATE OR REPLACE FUNCTION ff_series_tenues(sets text, felt_rpe_by_set text[])
 RETURNS integer
 LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
@@ -2032,6 +2048,10 @@ CREATE TABLE training_sets (
     felt_rpe       numeric,                -- NULL si non numérique (ex. "FAIL")
     felt_rpe_raw   text,                   -- la saisie brute ("Sub5", "FAIL"…)
     rpe_by_set     numeric[],
+    felt_rpe_by_set_raw text[],            -- la saisie brute par série, FAIL compris
+    -- RÉALISÉ, par LA fonction de l'arbre (FRE-216) : engendrée, elle ne peut
+    -- pas dire autre chose que `records.py` sur la même ligne.
+    tracee         boolean GENERATED ALWAYS AS (ff_tracee(felt_rpe_raw, felt_rpe_by_set_raw)) STORED,
     -- Répétitions et charge par série, projetées. Elles servent la
     -- DISPERSION d'une ligne, que la moyenne écrase.
     reps_by_set    numeric[],
@@ -2065,6 +2085,22 @@ CREATE INDEX ON training_sets (exercise);
 -- exercice d'une prog balayait les 10 000 lignes.
 CREATE INDEX training_sets_exercise_id ON training_sets (exercise_id);
 CREATE INDEX ON training_sets (program_id, macro_number, block_number, week_number);
+
+-- Les lignes RÉALISÉES (FRE-216) : une trace, et pas dans le futur. Sans date,
+-- c'est de l'historique dont ni la séance ni la semaine ne sont datées, pas du
+-- futur — le sélecteur de mouvements les garde ; les agrégats, qui rangent par
+-- semaine, ajoutent `session_date IS NOT NULL`.
+CREATE VIEW series_realisees AS
+SELECT * FROM training_sets
+ WHERE tracee AND (session_date IS NULL OR session_date <= current_date);
+
+-- Les lignes de TRAVAIL : réalisées, et de l'entraînement — ni échauffement ni
+-- rééducation (FRE-10). Un échauffement chargé déplace un poids réel, mais le
+-- tonnage, la charge max et les courbes sont ceux du travail. NULL =
+-- entraînement (les lignes d'avant le champ), d'où IS DISTINCT FROM.
+CREATE VIEW series_de_travail AS
+SELECT * FROM series_realisees
+ WHERE kind IS DISTINCT FROM 'warmup' AND kind IS DISTINCT FROM 'rehab';
 
 -- Objectifs d'un BLOC (basculés 2026-08-03). Premier morceau de l'arbre
 -- d'entraînement à quitter Firestore : là-bas, un objectif était RECOPIÉ sur

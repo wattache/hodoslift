@@ -101,7 +101,12 @@ _SEANCES = text("""
 # `e.*` volontairement : énumérer les colonnes ferait disparaître sans erreur un
 # champ ajouté et oublié ici. C'est `_EXERCICE_SORTIE`, plus bas, qui dit ce qui
 # sort : elle est le CONTRAT.
-_EXERCICES = text("""
+#
+# Une seule requête, deux PORTÉES (le programme, un bloc — FRE-119) : deux copies
+# du calcul de `mechano` divergeraient au premier ajustement de la formule
+# (FRE-103). Seul le fragment de portée change.
+def _exercices(portee: str):
+    return text(f"""
     SELECT e.*,
            -- MÉCANOTRANSDUCTION (FRE-103) : dérivé, pas stocké sur la ligne.
            --
@@ -129,14 +134,19 @@ _EXERCICES = text("""
            -- ressenti — donc invisible au suivi et aux records. La règle vit
            -- dans `records.py`, à côté de la trace ; ici on ne fait que la
            -- lire, et la séance en fait un compte.
-           {sans_ressenti} AS sans_ressenti
+           {travail_note_sans_ressenti("e")} AS sans_ressenti
     FROM training_exercises e
     JOIN training_sessions s ON s.id = e.session_id
     JOIN training_weeks w ON w.id = s.week_id
+    {portee}
+    ORDER BY e.position
+""")
+
+
+_EXERCICES = _exercices("""
     JOIN training_blocks b ON b.id = w.block_id
     JOIN training_macros m ON m.id = b.macro_id
-    WHERE m.program_id = :pid ORDER BY e.position
-""".replace("{sans_ressenti}", travail_note_sans_ressenti("e")))
+    WHERE m.program_id = :pid""")
 
 _BASE_LIGNES = """
     SELECT l.* FROM {table} l
@@ -186,18 +196,7 @@ _SEANCES_DU_BLOC = text("""
     WHERE w.block_id = CAST(:bid AS uuid) ORDER BY s.position
 """)
 
-_EXERCICES_DU_BLOC = text(_EXERCICES.text.replace(
-    """    JOIN training_weeks w ON w.id = s.week_id
-    JOIN training_blocks b ON b.id = w.block_id
-    JOIN training_macros m ON m.id = b.macro_id
-    WHERE m.program_id = :pid ORDER BY e.position""",
-    """    JOIN training_weeks w ON w.id = s.week_id
-    WHERE w.block_id = CAST(:bid AS uuid) ORDER BY e.position"""))
-
-# ⚠️ DÉRIVÉE de `_EXERCICES`, pas recopiée : deux copies du calcul de `mechano`
-# divergeraient au premier ajustement de la formule (FRE-103). Seule la PORTÉE
-# change, et l'assertion lève si le remplacement ne prend plus.
-assert ":bid" in _EXERCICES_DU_BLOC.text, "la portée par bloc n'a pas pris"
+_EXERCICES_DU_BLOC = _exercices("WHERE w.block_id = CAST(:bid AS uuid)")
 
 _BASE_LIGNES_DU_BLOC = """
     SELECT l.* FROM {table} l

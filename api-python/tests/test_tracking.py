@@ -388,10 +388,40 @@ def test_un_RPE_PAR_SERIE_suffit_aussi(suivi):
     """L'autre moitié de la trace : le RPE se saisit série par série, et un seul
     suffit à prouver que la ligne a eu lieu."""
     suivi.execute(text(
-        "UPDATE training_sets SET rpe_by_set = ARRAY[7]::numeric[] WHERE weight_kg = 150"))
+        "UPDATE training_sets SET rpe_by_set = ARRAY[7]::numeric[], felt_rpe_by_set_raw = ARRAY['7'] "
+        "WHERE weight_kg = 150"))
     charges = {float(r.charge_max_kg) for r in
                suivi.execute(WEEKS_SQL, {"legacy": "ath-1", "exercise": "SQUAT"}).all()}
     assert charges == {100, 150}
+
+
+def test_un_ECHEC_par_serie_est_une_trace_aussi(suivi):
+    """⚠️ `['FAIL']` EST UNE TRACE : la série a eu lieu, et a échoué (FRE-216).
+    Le dialecte de la projection la perdait — `rpe_by_set IS NOT NULL`, et
+    `ff_rpe_by_set` écarte ce qui n'est pas un nombre — là où l'arbre la voyait.
+    `tracee` se déduit du BRUT, par `ff_tracee`, comme l'arbre.
+
+    MUTATION QUI ROUGIT : engendrer `tracee` depuis `rpe_by_set`."""
+    suivi.execute(text(
+        "UPDATE training_sets SET felt_rpe_by_set_raw = ARRAY['FAIL'] WHERE weight_kg = 150"))
+    charges = {float(r.charge_max_kg) for r in
+               suivi.execute(WEEKS_SQL, {"legacy": "ath-1", "exercise": "SQUAT"}).all()}
+    assert charges == {100, 150}
+
+
+@pytest.mark.parametrize("felt_rpe, par_serie, tracee", [
+    ("8", None, True),
+    (" ", None, False),
+    (None, ["FAIL"], True),
+    (None, ["7", ""], True),
+    (None, [], False),
+    (None, None, False),
+])
+def test_ff_tracee_est_LA_definition_de_realise(pg, felt_rpe, par_serie, tracee):
+    """Un ressenti — global ou par série, FAIL compris — et rien d'autre ; `{}`
+    et le blanc ne sont pas des traces."""
+    assert pg.execute(text("SELECT ff_tracee(:g, CAST(:s AS text[]))"),
+                      {"g": felt_rpe, "s": par_serie}).scalar() is tracee
 
 
 def test_une_CHARGE_REALISEE_seule_ne_suffit_plus(suivi):
@@ -506,6 +536,17 @@ def series(pg):
 def _lire(pg, ):
     return {(r.mouvement, r.semaine): (r.sets_faits, r.sets_prescrits)
             for r in pg.execute(SERIES_PAR_LIFT_SQL, {"legacy": "ath-2"}).all()}
+
+
+def test_un_tableau_VIDE_par_serie_n_est_pas_une_trace(series):
+    """`{}` n'est pas un ressenti : rien n'est fait. La formulation en ligne de
+    cette requête (`felt_rpe_by_set IS NOT NULL`) le comptait comme une trace ;
+    `ff_tracee` ne le fait pas (FRE-216).
+
+    MUTATION QUI ROUGIT : remettre `IS NOT NULL` à la place de `ff_tracee`."""
+    pg, ligne = series
+    ligne("SQUAT", -7, 3, 3, None, rpe_by_set=[])
+    assert list(_lire(pg).values()) == [(0, 3)]
 
 
 def test_une_serie_calee_se_lit_dans_l_ECART_avec_le_prescrit(series):
