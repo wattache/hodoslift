@@ -15,7 +15,9 @@ ne parle qu'à lui.
 - Les données vivent dans **Postgres** (Neon, `europe-central`) : athlètes,
   programmes et l'arbre d'entraînement complet, compétitions, bibliothèque,
   bilans kiné, journaux. Le schéma de référence est
-  [`docs/postgres-schema.sql`](docs/postgres-schema.sql).
+  [`docs/postgres-schema.sql`](docs/postgres-schema.sql) ; sa carte par domaine,
+  [`docs/carte-de-brokkr.html`](docs/carte-de-brokkr.html), s'ouvre dans un
+  navigateur et se régénère par `make carte`.
 - Le **contrat** est [`docs/openapi.json`](docs/openapi.json), exporté du code et
   vérifié par `make contrat`, que `make deploy` joue. Le front en génère ses types.
 

@@ -60,7 +60,7 @@ self.addEventListener('fetch', (event) => {
 // brokkr pousse `{titre, corps, url}` quand le coach génère une semaine. Le
 // worker n'affiche que ce qu'il reçoit : aucune donnée n'est lue ici.
 self.addEventListener('push', (event) => {
-  let contenu = { titre: 'Hodos', corps: '', url: '/' };
+  let contenu = { titre: 'HodosLift', corps: '', url: '/' };
   try { contenu = { ...contenu, ...event.data.json() }; } catch { /* un texte nu : le titre suffit */ }
   event.waitUntil(self.registration.showNotification(contenu.titre, {
     body: contenu.corps,

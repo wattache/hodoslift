@@ -5,9 +5,8 @@ La meilleure charge de chaque mouvement principal, de 1 à 10 répétitions.
 ⚠️ Calculé sur les tables VIVANTES, pas sur `training_sets` : la projection ne se
 reconstruit que la nuit, et un PR doit s'afficher dès que l'athlète note son RPE.
 
-⚠️ La règle de « réalisé » est TRANSPOSÉE de `TRACE` (`app/suivi/metier_tracking.py`),
-qui parle à la projection typée ; ici tout est du texte. Deux dialectes d'une
-règle dérivent : `test_records.py` compare les deux formulations sur la même donnée.
+⚠️ La règle de « réalisé » est `ff_tracee` (`docs/postgres-schema.sql`), la même
+que `training_sets.tracee` : un seul dialecte, pas deux à comparer.
 """
 
 from __future__ import annotations
@@ -19,21 +18,13 @@ from sqlalchemy import text
 # Les cinq mouvements qui ont une colonne dans le tableau.
 MOUVEMENTS = ["MUSCLE UP", "PULL UP", "CHIN UP", "DIPS", "SQUAT"]
 
-# ⚠️ La TRACE, version arbre vivant : un RPE ressenti — global ou par série — et
-# rien d'autre. C'est la seule preuve qu'une série a eu lieu : une sensation ne
-# se donne pas à la place de celui qui a poussé (FRE-71).
+# ⚠️ La TRACE, sur l'arbre vivant : `ff_tracee`, LA définition de « réalisé »
+# (FRE-71, FRE-216) — un RPE ressenti, global ou par série, FAIL compris. La
+# projection (`training_sets.tracee`) appelle la même fonction.
 #
 # ⚠️ PUBLIQUE (FRE-130) : `metier_training_structure` (ce qu'une suppression va
-# détruire) et le guichet l'empruntent. La définition de « réalisé » n'existe
-# qu'ICI ; préfixe `x` = `training_exercises`.
-#
-# `cardinality(...) > 0` et non `IS NOT NULL` : la colonne est un `text[]` qui
-# peut valoir `{}`. La projection a déjà ce `nullif(…, '{}')` (`ff_rpe_by_set`),
-# le brut non.
-TRACE_ARBRE = """
-    (coalesce(btrim(x.felt_rpe), '') <> ''
-     OR cardinality(coalesce(x.felt_rpe_by_set, '{}')) > 0)
-"""
+# détruire) et le guichet l'empruntent ; préfixe `x` = `training_exercises`.
+TRACE_ARBRE = "ff_tracee(x.felt_rpe, x.felt_rpe_by_set)"
 
 
 def travail_note_sans_ressenti(alias: str = "x") -> str:
@@ -51,7 +42,7 @@ def travail_note_sans_ressenti(alias: str = "x") -> str:
     Définie ICI, à côté de la trace, et paramétrée par l'alias : la lecture de
     l'arbre (`training_tree`) l'emprunte sans en recopier une seconde version.
     """
-    trace = TRACE_ARBRE.replace("x.", f"{alias}.")
+    trace = f"ff_tracee({alias}.felt_rpe, {alias}.felt_rpe_by_set)"
     return f"""
     ((coalesce(btrim({alias}.reps_done), '') <> ''
       OR coalesce(btrim({alias}.weight_done), '') <> ''
@@ -70,25 +61,12 @@ _A_UN_ECHEC = """
              WHERE upper(btrim(v)) = 'FAIL')
 """
 
-# ⚠️ Les séries tenues se COMPTENT, elles ne se déduisent pas d'une position.
-#
-# Pas « tout ce qui précède le premier FAIL » : un athlète reprend après un échec.
-#
-#     ['7.5','8','8','8.5','8.5','8.5','FAIL','9','8.5','9']  → 9 séries, pas 6
-#     ['FAIL','8','9.5']                                      → 2 séries, pas 0
-#
-# ⚠️ Pas non plus `sets - nombre_de_FAIL`, qui INVENTE : sur `sets = 3` noté
-# `['FAIL']`, elle affirme deux séries dont rien ne porte la trace. On ne compte
-# que ce qui est NOTÉ. Sous-estimer est le bon sens de l'erreur : un record se
-# prouve.
-#
-# ⚠️ Et une case unique ne se lit PAS comme « la dernière série » : le tableau se
-# lit position par position, donc `['FAIL']` est la série 1. Une notation qui
-# change de sens selon le nombre de cases remplies se paie longtemps.
-_SERIES_TENUES = """
-    (SELECT count(*) FROM unnest(coalesce(x.felt_rpe_by_set, '{}')) v
-      WHERE btrim(v) <> '' AND upper(btrim(v)) <> 'FAIL')
-"""
+# ⚠️ Les séries tenues se COMPTENT par `ff_series_tenues` — la même fonction que
+# la projection et le guichet, et la seule : elle sait qu'un athlète reprend
+# après un échec, qu'on ne compte que ce qui est NOTÉ, et que `['FAIL']` est la
+# série 1. Avec un échec, elle compte ; sans, elle rend le prescrit arrondi —
+# ici on garde alors `x.sets` tel quel, pour le libellé.
+_SERIES_TENUES = "ff_series_tenues(x.sets, x.felt_rpe_by_set)"
 
 _RECORDS_SQL = text(f"""
     WITH lignes AS (

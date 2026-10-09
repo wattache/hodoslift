@@ -123,6 +123,25 @@ def test_la_CASSE_du_mouvement_n_empêche_pas_de_compter(compet):
     assert _lire(compet)["total_bareme_kg"] == 160
 
 
+def test_meilleurs_ris_ne_lit_que_les_athletes_demandes(compet):
+    """Le sélecteur sert SES fiches ; les scores des autres ne se lisent pas
+    (FRE-221). Le barème reste en Python, la requête se borne.
+
+    MUTATION QUI ROUGIT : retirer `cs.athlete_id = ANY(:ids)` de
+    `_RIS_CANDIDATS_SQL`."""
+    from app.personnes.metier_athletes import meilleurs_ris
+    pg = compet["pg"]
+    aid = pg.execute(text(
+        "INSERT INTO athletes (legacy_id, coach_uid, first_name) VALUES ('bob', 'coach-1', 'Bob') "
+        "RETURNING id")).scalar()
+    pg.execute(text("UPDATE competition_participants SET athlete_id = :a WHERE id = :p"),
+               {"a": aid, "p": compet["participant"]})
+    for mouvement, poids in (("MUSCLE UP", 30), ("PULL UP", 40), ("DIPS", 50), ("SQUAT", 100)):
+        _essai(compet, mouvement, poids)
+    assert meilleurs_ris(pg, []) == {}
+    assert meilleurs_ris(pg, [aid])[aid]["risTotal"] == 220.0
+
+
 def test_un_participant_SANS_essai_a_un_total_nul(compet):
     """Il est inscrit, il n'a rien soulevé : zéro, et pas d'absence de ligne —
     c'est ce qui permet de le distinguer d'un athlète sans compétition."""

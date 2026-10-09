@@ -1,7 +1,7 @@
 import type { ExerciseEditing } from "@/api/types";
 import i18n from "@/i18n";
 import { parseSeconds, formatSeconds } from "@/lib/time";
-import { tempsDuGroupe, type NatureDeGroupe } from "@/lib/groupe";
+import { debutDansLEmom, tempsDuGroupe, type NatureDeGroupe } from "@/lib/groupe";
 import { isFreeRest } from "./rest";
 
 /** LE FORMATAGE D'UNE LIGNE D'EXERCICE — une seule fois (FRE-91).
@@ -162,12 +162,23 @@ export function champsDuGroupe(
 }
 
 /** Le talon d'un groupe : ce qui se passe à la fin du tour, là où l'athlète
- *  regarde avant de repartir (maquette 2a). `""` quand il n'y a rien à dire. */
+ *  regarde avant de repartir (maquette 2a). `""` quand il n'y a rien à dire.
+ *
+ *  EMOM : il se lit au MINUTEUR, comme les repères des lignes (`debutDansLEmom`)
+ *  — l'heure où démarre le tour suivant, ou « 0'00 » au dernier. Sans tours ni
+ *  intervalle, il n'y a pas d'heure à donner : rien. */
 export function talonDuGroupe(
-  nature: NatureDeGroupe, ligne: Pick<ExerciseEditing, "sets">, repos: string,
+  nature: NatureDeGroupe, ligne: Pick<ExerciseEditing, "sets" | "clusterMode">, repos: string, membres = 1,
 ): string {
   const sets = (ligne.sets || "").trim();
-  if (nature === "emom") return i18n.t("session.talonEmom", { n: sets || "—" });
+  if (nature === "emom") {
+    const temps = tempsDuGroupe(nature, membres, ligne.sets, ligne.clusterMode);
+    if (temps?.total == null) return "";
+    const tours = Number.parseInt(sets, 10);
+    return tours > 1
+      ? i18n.t("session.talonEmomTours", { n: tours, debut: debutDansLEmom(membres, temps) })
+      : i18n.t("session.talonEmomFin");
+  }
   if (nature === "amrap" || nature === "dropset") return "";
   return [i18n.t("session.finDuTour"), repos ? `${i18n.t("session.repos")} ${repos}` : "", sets ? `×${sets}` : ""]
     .filter(Boolean).join(" · ");

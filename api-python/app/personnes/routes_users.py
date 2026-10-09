@@ -40,14 +40,10 @@ _UPSERT_ME_SQL = text(
     "INSERT INTO users (uid, email, display_name) VALUES (:uid, :email, :name) "
     "ON CONFLICT (uid) DO NOTHING"
 )
+# Les rôles viennent de la vue `comptes`, comme pour les gardes d'`authz`.
 _PROFILE_SQL = text(
-    """
-    SELECT u.email, u.display_name, u.is_admin, u.preferences,
-           EXISTS(SELECT 1 FROM coaches c WHERE c.uid = u.uid) AS is_coach,
-           EXISTS(SELECT 1 FROM kines k WHERE k.uid = u.uid) AS is_kine,
-           (SELECT a.legacy_id FROM athletes a WHERE a.user_uid = u.uid LIMIT 1) AS athlete_id
-    FROM users u WHERE u.uid = :uid
-    """
+    "SELECT email, display_name, is_admin, preferences, est_coach, est_kine, athlete_id "
+    "FROM comptes WHERE uid = :uid"
 )
 
 
@@ -70,11 +66,11 @@ def get_me(claims: dict = Depends(verify_token)) -> dict:
         "uid": uid,
         "email": row["email"],
         "displayName": row["display_name"],
-        "isCoach": bool(row["is_coach"]),
+        "isCoach": bool(row["est_coach"]),
         # Le front en a besoin pour router un kiné vers ses athlètes suivis, comme
         # `isCoach` le fait pour un coach. Dérivé de la table, jamais stocké sur
         # `users` : un booléen recopié finit par diverger du lien réel.
-        "isKine": bool(row["is_kine"]),
+        "isKine": bool(row["est_kine"]),
         "isAdmin": bool(row["is_admin"]),
         "athleteId": row["athlete_id"],
         "preferences": preferences_lues(row["preferences"]),
@@ -314,17 +310,9 @@ def set_user_kine(
 
 
 _LIST_USERS_SQL = text(
-    """
-    SELECT u.uid, u.email, u.display_name, u.is_admin,
-           EXISTS(SELECT 1 FROM coaches c WHERE c.uid = u.uid) AS is_coach,
-           EXISTS(SELECT 1 FROM kines k WHERE k.uid = u.uid) AS is_kine,
-           (SELECT c.structure FROM coaches c WHERE c.uid = u.uid) AS coach_structure,
-           (SELECT k.structure FROM kines k WHERE k.uid = u.uid) AS kine_structure,
-           (SELECT array_agg(DISTINCT a.structure ORDER BY a.structure)
-              FROM athletes a WHERE a.user_uid = u.uid) AS athlete_structures
-    FROM users u
-    ORDER BY u.display_name, u.email
-    """
+    "SELECT uid, email, display_name, is_admin, est_coach, est_kine, "
+    "coach_structure, kine_structure, athlete_structures "
+    "FROM comptes ORDER BY display_name, email"
 )
 
 
@@ -342,8 +330,8 @@ def list_users(claims: dict = Depends(require_admin)) -> list:
             "uid": r["uid"],
             "email": r["email"],
             "displayName": r["display_name"],
-            "isCoach": bool(r["is_coach"]),
-            "isKine": bool(r["is_kine"]),
+            "isCoach": bool(r["est_coach"]),
+            "isKine": bool(r["est_kine"]),
             "isAdmin": bool(r["is_admin"]),
             "coachStructure": r["coach_structure"],
             "kineStructure": r["kine_structure"],

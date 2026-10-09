@@ -28,7 +28,7 @@ export function AuthLogo() {
   return (
     <img
       src="/marque/symbole.svg"
-      alt="Hodos"
+      alt="HodosLift"
       className="mx-auto mb-4 h-16 w-16"
     />
   );

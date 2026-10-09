@@ -381,6 +381,22 @@ def test_un_bloc_SANS_semaine_rend_une_séance_avec_une_ligne_VIDE(monde):
     assert seances[0]["exercises"][0]["name"] is None
 
 
+def test_read_block_rend_le_MEME_bloc_que_l_arbre_entier(monde):
+    """« + Semaine » relit le bloc par `read_block`, borné au bloc, et non plus
+    par `read_tree` (FRE-222). Même projection, au champ près : un champ qui
+    n'arriverait que d'un côté ferait diverger la semaine rendue de celle que
+    le front relit en rechargeant l'arbre.
+
+    MUTATION QUI ROUGIT : borner `_SEANCES_DU_BLOC` à une autre clé, ou omettre
+    les objectifs dans `read_block`."""
+    from app.entrainement.training_tree import read_block, read_tree
+    pg, bloc = monde["pg"], monde["bloc"]
+    attendu = next(b for m in read_tree(pg, "p1")["macros"] for b in m["blocks"] if b["id"] == bloc)
+    assert read_block(pg, "p1", bloc) == attendu
+    assert attendu["weeks"] and attendu["weeks"][0]["sessions"], "le décor doit porter du contenu"
+    assert read_block(pg, "p1", "00000000-0000-0000-0000-000000000000") is None
+
+
 def test_la_S1_d_un_bloc_VIDE_prend_les_dates_de_la_BASE(monde):
     """⚠️ C'EST PAR CE CHEMIN QUE LE STOCK SE RECONSTITUAIT (FRE-138). Sur un bloc
     neuf — qui n'a plus de S1 depuis la règle « bloc sans semaine » —, « + Semaine »

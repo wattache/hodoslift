@@ -7,7 +7,7 @@ Chaque cas est une étape réelle d'une compétition : avant le premier essai,
 pendant, après un raté, à la fin.
 """
 
-from app.competitions.scoring import compute_projection, compute_score
+from app.competitions.scoring import compute_projection
 
 
 def essai(p=0.0, r=0.0, o=0.0, *, fait="", charge=0.0):
@@ -76,4 +76,5 @@ def test_a_la_fin_les_trois_totaux_egalent_le_score():
     rien à projeter."""
     fini = [mouvement(essai(40, 42.5, 45, fait="rep", charge=42.5), essai(45, 47.5, 50, fait="norep", charge=47.5)),
             mouvement(essai(100, 105, 110, fait="rep", charge=105), essai(110, 115, 120, fait="rep", charge=115))]
-    assert pro(*fini) == (compute_score(fini),) * 3 == (157.5, 157.5, 157.5)
+    # 157,5 = le score que la vue `competition_scores` rend pour ces essais.
+    assert pro(*fini) == (157.5, 157.5, 157.5)

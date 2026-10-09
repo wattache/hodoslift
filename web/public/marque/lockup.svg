@@ -4,10 +4,10 @@
      sur une grotesque système — c'est-à-dire sur une autre marque.
 
      ⚠️ ET C'EST POURQUOI LE CADRE EST LARGE. Mesuré dans la VRAIE police :
-     « HODOS » finit à x=123, la signature à x=139 — le cadre en fait 260, donc
-     près de la moitié est vide. Ce n'est pas un oubli. Chargé en <img>, ce
+     « HODOSLIFT » finit vers x=178, la signature à x=139 — le cadre en fait 260 :
+     un tiers reste vide. Ce n'est pas un oubli. Chargé en <img>, ce
      fichier n'accède pas aux polices de la page et retombe sur une grotesque
      système, où les deux lignes s'élargissent nettement. Un cadre ajusté au
      millimètre les rognerait dans le cas le plus courant. Ne pas resserrer sans
      vectoriser d'abord. -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 44" width="260" height="44" role="img" aria-label="Hodos par French Forge"><title>Hodos par French Forge</title><g transform="translate(2,6)"><rect x="2" y="21" width="5.5" height="9" fill="#D4A843" fill-opacity="0.38"/><rect x="9.5" y="15" width="5.5" height="15" fill="#D4A843" fill-opacity="0.66"/><rect x="17" y="7" width="5.5" height="23" fill="#D4A843"/><rect x="24.5" y="19" width="5.5" height="11" fill="#A9A5B0"/></g><text x="46" y="27" font-family="Barlow Condensed, Barlow, Helvetica, sans-serif" font-weight="700" font-size="30" letter-spacing="1.4" fill="#D4A843">HODOS</text><text x="47" y="39" font-family="IBM Plex Mono, monospace" font-size="7" letter-spacing="1.9" fill="#9A96A2">BY FRENCH FORGE</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 44" width="260" height="44" role="img" aria-label="HodosLift par French Forge"><title>HodosLift par French Forge</title><g transform="translate(2,6)"><rect x="2" y="21" width="5.5" height="9" fill="#D4A843" fill-opacity="0.38"/><rect x="9.5" y="15" width="5.5" height="15" fill="#D4A843" fill-opacity="0.66"/><rect x="17" y="7" width="5.5" height="23" fill="#D4A843"/><rect x="24.5" y="19" width="5.5" height="11" fill="#A9A5B0"/></g><text x="46" y="27" font-family="Barlow Condensed, Barlow, Helvetica, sans-serif" font-weight="700" font-size="30" letter-spacing="1.4" fill="#EEECF2">HODOS<tspan fill="#D4A843">LIFT</tspan></text><text x="47" y="39" font-family="IBM Plex Mono, monospace" font-size="7" letter-spacing="1.9" fill="#9A96A2">BY FRENCH FORGE</text></svg>

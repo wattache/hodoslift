@@ -8,42 +8,50 @@
   ],
   "settings": {
     // --- Terminaux nommés : menu déroulant du "+" dans le panneau Terminal ---
-    // `${workspaceFolder}` = le premier dossier, la racine du monorepo.
+    // ⚠️ CHEMINS ABSOLUS : en multi-root, `${workspaceFolder}` est ambigu (cinq
+    // dossiers) et n'est pas résolu dans les profils de terminal.
     "terminal.integrated.profiles.osx": {
-      "🚀 dev (mprocs)": {
+      "🚀 dev (mprocs · PROD)": {
         "path": "zsh",
-        "args": ["-lic", "cd ${workspaceFolder} && exec mprocs"],
+        "args": ["-lic", "cd /Users/elgusto/projects/hodos && exec make dev"],
         "icon": "run-all",
         "color": "terminal.ansiRed"
       },
+      "🧪 dev-local (mprocs · bac à sable)": {
+        "path": "zsh",
+        "args": ["-lic", "cd /Users/elgusto/projects/hodos && exec make dev-local"],
+        "icon": "beaker",
+        "color": "terminal.ansiMagenta"
+      },
       "🤖 claude": {
         "path": "zsh",
-        "args": ["-lic", "cd ${workspaceFolder} && { command -v claude >/dev/null && exec claude || { echo '⚠️  CLI claude absent — installe-le : npm i -g @anthropic-ai/claude-code'; exec zsh; }; }"],
+        "args": ["-lic", "cd /Users/elgusto/projects/hodos && { command -v claude >/dev/null && exec claude || { echo '⚠️  CLI claude absent — installe-le : npm i -g @anthropic-ai/claude-code'; exec zsh; }; }"],
         "icon": "sparkle",
         "color": "terminal.ansiBlue"
       },
       "🌐 web": {
         "path": "zsh",
-        "args": ["-lic", "cd ${workspaceFolder}/web && exec zsh"],
+        "args": ["-lic", "cd /Users/elgusto/projects/hodos/web && exec zsh"],
         "icon": "globe",
         "color": "terminal.ansiGreen"
       },
       "⚙️ api-python (shell)": {
         "path": "zsh",
-        "args": ["-lic", "cd ${workspaceFolder}/api-python && exec zsh"],
+        "args": ["-lic", "cd /Users/elgusto/projects/hodos/api-python && exec zsh"],
         "icon": "server-process",
         "color": "terminal.ansiCyan"
       },
       "☁️ infra": {
         "path": "zsh",
-        "args": ["-lic", "cd ${workspaceFolder}/infra && exec zsh"],
+        "args": ["-lic", "cd /Users/elgusto/projects/hodos/infra && exec zsh"],
         "icon": "cloud",
         "color": "terminal.ansiYellow"
       }
     },
     "terminal.integrated.tabs.enabled": true,
     // Python côté api-python : le venv uv, créé par `make install` à la racine.
-    "python.defaultInterpreterPath": "${workspaceFolder}/api-python/.venv/bin/python",
+    // Absolu, pour la même raison que les terminaux.
+    "python.defaultInterpreterPath": "/Users/elgusto/projects/hodos/api-python/.venv/bin/python",
     "files.exclude": {
       "**/node_modules": true,
       "**/.venv": true,
@@ -54,12 +62,23 @@
     "version": "2.0.0",
     "tasks": [
       {
-        // Lanceur unique : mprocs démarre web (:5173), api-python (:8080) et api (:8081).
-        "label": "🚀 dev — web + api-python + api (mprocs)",
+        // Cmd+Shift+B. mprocs démarre web (:5173) et api-python (:8080).
+        // ⚠️ SUR LA PRODUCTION : chaque geste de l'écran écrit dans Neon.
+        "label": "🚀 dev — web + api-python (PROD)",
         "type": "shell",
-        "command": "mprocs",
-        "options": { "cwd": "${workspaceFolder}" },
+        "command": "make dev",
+        "options": { "cwd": "/Users/elgusto/projects/hodos" },
         "group": { "kind": "build", "isDefault": true },
+        "presentation": { "panel": "dedicated", "reveal": "always" },
+        "problemMatcher": []
+      },
+      {
+        // La même stack sur le bac à sable (:55433) : rien n'atteint les athlètes.
+        "label": "🧪 dev-local — web + api-python (bac à sable)",
+        "type": "shell",
+        "command": "make dev-local",
+        "options": { "cwd": "/Users/elgusto/projects/hodos" },
+        "group": "build",
         "presentation": { "panel": "dedicated", "reveal": "always" },
         "problemMatcher": []
       }

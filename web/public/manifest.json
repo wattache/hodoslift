@@ -1,6 +1,6 @@
 {
-  "name": "Hodos par French Forge",
-  "short_name": "Hodos",
+  "name": "HodosLift par French Forge",
+  "short_name": "HodosLift",
   "description": "Suivi d'entraînement pour la force athlétique",
   "start_url": "/",
   "display": "standalone",

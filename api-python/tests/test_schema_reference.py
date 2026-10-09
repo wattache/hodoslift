@@ -40,7 +40,8 @@ SCHEMA = (RACINE / "docs" / "postgres-schema.sql").read_text(encoding="utf-8")
 _TEXT_SQL = re.compile(r'text\(\s*(?:"""(.*?)"""|"((?:[^"\\]|\\.)*)")', re.S)
 # Les fragments assemblés en f-string (`_COMMON_COLS`) restent dans le même
 # fichier : on prend aussi les chaînes triples nues qui contiennent du SQL.
-_MOTS_SQL = re.compile(r'\b(?:FROM|JOIN|INTO|UPDATE)\s+(?:ONLY\s+)?([a-z_][a-z0-9_]*)', re.I)
+# Un nom suivi d'une parenthèse est une fonction (`FROM unnest(...)`), pas une table.
+_MOTS_SQL = re.compile(r'\b(?:FROM|JOIN|INTO|UPDATE)\s+(?:ONLY\s+)?([a-z_][a-z0-9_]*)\b(?!\s*\()', re.I)
 _CTE = re.compile(r'\b(\w+)\s+AS\s*\(', re.I)
 # `DO UPDATE SET` fait capturer « set » par le motif ci-dessus : le mot suivant
 # `UPDATE` n'y est pas une table. Plutôt que de complexifier la regex, on écarte

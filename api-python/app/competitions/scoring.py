@@ -1,8 +1,8 @@
-"""Le score d'un participant de compétition, et le barème du RIS.
+"""La projection P/R/O d'un participant de compétition, et le barème du RIS.
 
-Score : seuls les essais réussis (`result == "rep"`) comptent, le plus lourd par
-mouvement, additionnés. Il n'est JAMAIS lu du body ni stocké : le serveur le
-recalcule à la lecture. La projection P/R/O (FRE-203) aussi.
+Le SCORE n'est pas ici : il est une colonne de la vue `competition_scores`,
+comme le total du barème. Il n'est JAMAIS lu du body ni stocké : le serveur le
+lit de la vue à chaque lecture. La projection P/R/O (FRE-203) se calcule ici.
 
 RIS : ce module ne porte que le BARÈME. Le total auquel il s'applique vient de
 la vue `competition_scores`.
@@ -47,19 +47,6 @@ def compute_projection(movements: list[dict]) -> dict[str, float]:
             totaux[t] += max(reussi, prevu[t])
     return totaux
 
-
-def compute_score(movements: list[dict]) -> float:
-    """Total d'un participant = somme, par mouvement, du poids max des essais réussis."""
-    total = 0.0
-    for mov in movements:
-        best = 0.0
-        for att in mov.get("attempts", []):
-            if att.get("result") == "rep":
-                w = att.get("weight") or 0
-                if w > best:
-                    best = w
-        total += best
-    return total
 
 # --------------------------------------------------------------------------- #
 # LE RIS — Relative Index for Streetlifting (FRE-92)

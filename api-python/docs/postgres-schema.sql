@@ -298,6 +298,26 @@ CREATE TABLE athletes (
     -- mars ».
     archive_le timestamptz
 );
+
+-- LE COMPTE ET SES RÔLES, EN UNE LIGNE (FRE-220). `users` ne porte que
+-- l'identité et `is_admin` ; être coach, kiné ou athlète, c'est une ligne dans
+-- `coaches`, `kines` ou `athletes`. Le profil, l'annuaire et les gardes
+-- (`app/socle/authz.py`) lisent ICI, en une requête, au lieu de refaire chacun
+-- leurs EXISTS.
+CREATE VIEW comptes AS
+SELECT u.uid, u.email, u.display_name, u.is_admin, u.preferences,
+       c.uid IS NOT NULL AS est_coach,
+       c.structure       AS coach_structure,
+       k.uid IS NOT NULL AS est_kine,
+       k.structure       AS kine_structure,
+       -- `athletes.user_uid` est UNIQUE : au plus une fiche, pas de LIMIT 1.
+       a.legacy_id       AS athlete_id,
+       (SELECT array_agg(DISTINCT x.structure ORDER BY x.structure)
+          FROM athletes x WHERE x.user_uid = u.uid) AS athlete_structures
+FROM users u
+LEFT JOIN coaches  c ON c.uid = u.uid
+LEFT JOIN kines    k ON k.uid = u.uid
+LEFT JOIN athletes a ON a.user_uid = u.uid;
 CREATE INDEX ON athletes (coach_uid);
 CREATE INDEX ON athletes (kine_uid);
 
@@ -394,6 +414,33 @@ CREATE TABLE programs (
 -- sont des macrocycles DANS ce programme, pas des programmes distincts.
 CREATE UNIQUE INDEX ON programs (athlete_id);
 CREATE INDEX ON programs (coach_uid);
+
+-- QUI SUIT QUI (FRE-217) : LE lien d'une personne à un athlète, et nulle part
+-- ailleurs. Coach de la fiche ou du programme, kiné, l'athlète lui-même, accès
+-- support en cours. `app/socle/authz.py` en tire les rôles, et les listes
+-- (sélecteur, suivis, signalements, guichet, compétitions) y bornent leurs
+-- lignes par `porte_un_lien(...)`.
+--
+-- ⚠️ UN ACCÈS SUPPORT EN COURS VAUT COACH ET KINÉ, et c'est un lien comme les
+-- autres : il porte sa fin (`jusqu_au`, NULL pour les liens sans terme).
+-- `clock_timestamp()` et non `now()` : l'accès se juge à l'heure réelle, pas au
+-- début de la transaction qui le lit.
+CREATE VIEW liens_athlete AS
+SELECT a.coach_uid AS uid, a.id AS athlete_id, 'coach' AS lien, NULL::timestamptz AS jusqu_au
+  FROM athletes a
+UNION
+SELECT p.coach_uid, p.athlete_id, 'coach', NULL
+  FROM programs p
+UNION
+SELECT a.kine_uid, a.id, 'kine', NULL
+  FROM athletes a WHERE a.kine_uid IS NOT NULL
+UNION
+SELECT a.user_uid, a.id, 'athlete', NULL
+  FROM athletes a WHERE a.user_uid IS NOT NULL
+UNION
+SELECT s.uid, s.athlete_id, l.lien, s.fin
+  FROM acces_support s CROSS JOIN (VALUES ('coach'), ('kine')) AS l(lien)
+ WHERE s.fin > clock_timestamp();
 
 
 -- ============================================================================
@@ -521,6 +568,28 @@ CREATE TABLE douleur_logs (
     UNIQUE (douleur_id, log_date)
 );
 CREATE INDEX ON douleur_logs (douleur_id, log_date DESC);
+
+-- UN SIGNALEMENT EST UN ATHLÈTE ET UN JOUR, PAS UNE DOULEUR (FRE-195) : la
+-- coche du lecteur (`signalement_vu`) porte cette clé-là, et deux douleurs
+-- notées le même jour font UNE ligne. Le tableau des signalements, la file du
+-- guichet et la coche lisent cette agrégation ICI, et `recurrente` avec elle.
+--
+-- ⚠️ `recurrente` compte TOUT l'historique de la douleur, pas la fenêtre lue :
+-- une épaule notée en janvier et en juin est récurrente en juin.
+CREATE VIEW signalements AS
+SELECT d.athlete_id, l.log_date,
+       jsonb_agg(jsonb_build_object(
+           'id', d.id::text, 'nom', d.nom, 'zone', d.zone,
+           'intensite', l.intensite, 'commentaire', l.commentaire,
+           'logs', n.logs, 'recurrente', n.logs > 1
+       ) ORDER BY l.intensite DESC, d.nom) AS douleurs,
+       -- Le repère de « noté après coché » : l'upsert rafraîchit `modifie_le`
+       -- quand on réécrit la même journée.
+       max(l.modifie_le) AS note_le
+  FROM douleur_logs l
+  JOIN douleurs d ON d.id = l.douleur_id
+  JOIN LATERAL (SELECT count(*) AS logs FROM douleur_logs x WHERE x.douleur_id = d.id) n ON true
+ GROUP BY d.athlete_id, l.log_date;
 
 
 -- LES BILANS — le moteur : modèles composés par la kiné, instances passées
@@ -1283,14 +1352,10 @@ CREATE TABLE training_blocks (
     number    integer NOT NULL,
     name      text,                    -- 13 blocs sur 124 seulement → naviguer
                                        -- par nom n'est PAS fiable (vécu le 13/08)
-    start_date date,
-    end_date   date,
-    -- Aucun bloc ne l'a jamais violé ; il la reçoit quand même, en même temps
-    -- que `training_weeks` (FRE-138). Ses dates viennent des mêmes gestes, et
-    -- une contrainte qui ne tient que sur une des deux tables laisse la moitié
-    -- de la porte ouverte.
-    CONSTRAINT training_blocks_dates
-        CHECK (end_date IS NULL OR start_date IS NULL OR end_date >= start_date),
+    -- ⚠️ PAS DE DATES (FRE-219) : la période d'un bloc est celle de ses
+    -- semaines, de la première datée à la dernière (`blocs_lus.debut`/`fin`).
+    -- Des colonnes propres ont porté une seconde définition, qui a divergé — un
+    -- bloc borné à sa seule S1 laissait un trou d'un mois dans la frise.
     -- ---- la BASE, partie CONFIGURATION (les lignes ont leurs tables) --------
     -- Lues EN BLOC par le générateur de semaine, jamais interrogées en travers :
     -- elles restent des documents, conformément à la règle du schéma.
@@ -1626,6 +1691,48 @@ CREATE TABLE training_base_accessories (
 );
 CREATE INDEX ON training_base_accessories (block_id);
 
+-- CE QU'UN BLOC DIT DE LUI-MÊME À LA LECTURE (FRE-219), pour l'arbre et la
+-- charpente, qui le lisent ici plutôt que de le recalculer chacun en Python.
+--
+-- `debut`/`fin` : UNE SEULE DÉFINITION de la période d'un bloc — de sa première
+-- semaine datée à sa dernière. Une semaine masquée compte : elle occupe le
+-- temps qu'elle occupe. Sans semaine datée, NULL. `training_blocks` n'a plus
+-- de dates propres : elles ont porté une seconde définition, qui a divergé.
+--
+-- `a_une_base` : c'est le serveur qui dit ce qu'« avoir une trame » veut dire,
+-- et nulle part ailleurs. Les quatre morceaux comptent : une grille de jours
+-- et une sélection de mouvements sans une seule ligne, c'est une trame
+-- commencée, qui se duplique.
+--
+-- `visible_a_l_athlete` : un bloc dont TOUTES les semaines sont masquées — ou
+-- qui n'en a aucune — n'a rien à montrer à l'athlète (FRE-158) ; qui programme
+-- le voit quand même.
+CREATE VIEW blocs_lus AS
+SELECT b.id, b.macro_id, b.legacy_id, b.number, b.name,
+       b.day_split, b.selected_principals, b.granularity,
+       b.s1_start_date, b.s1_end_date,
+       m.program_id,
+       (SELECT min(w.start_date) FROM training_weeks w WHERE w.block_id = b.id) AS debut,
+       (SELECT max(w.end_date)   FROM training_weeks w WHERE w.block_id = b.id) AS fin,
+       EXISTS (SELECT 1 FROM training_weeks w WHERE w.block_id = b.id AND NOT w.hidden)
+           AS visible_a_l_athlete,
+       (b.day_split IS NOT NULL AND jsonb_array_length(b.day_split) > 0)
+    OR (b.selected_principals IS NOT NULL AND cardinality(b.selected_principals) > 0)
+    OR EXISTS (SELECT 1 FROM training_base_principles  x WHERE x.block_id = b.id)
+    OR EXISTS (SELECT 1 FROM training_base_accessories x WHERE x.block_id = b.id)
+           AS a_une_base
+  FROM training_blocks b
+  JOIN training_macros m ON m.id = b.macro_id;
+
+-- Une semaine et son COMPTE de séances (FRE-119) : la barre du programme
+-- éteint la pastille d'une semaine vide, il lui faut savoir s'il y a des
+-- séances, pas les recevoir.
+CREATE VIEW semaines_lues AS
+SELECT w.id, w.block_id, w.legacy_id, w.number, w.name, w.hidden,
+       w.start_date, w.end_date, w.athlete_weight_kg, w.athlete_height_cm,
+       (SELECT count(*) FROM training_sessions s WHERE s.week_id = w.id)::int AS session_count
+  FROM training_weeks w;
+
 -- ============================================================================
 -- ANALYTICS — projection dérivée (pas une table de domaine)
 -- ============================================================================
@@ -1732,6 +1839,22 @@ $$;
 -- LES SÉRIES TENUES (FRE-110), extraites de l'ETL le 07/09 pour que la LECTURE
 -- VIVANTE du suivi les calcule à l'identique (FRE-148). Deux appelants, une
 -- définition : la divergence devient impossible au lieu d'être surveillée.
+-- LA TRACE DE RÉALISATION (FRE-71, FRE-216) : un RPE ressenti — global ou par
+-- série, FAIL compris — et rien d'autre. C'est la seule preuve qu'une série a
+-- eu lieu : une sensation ne se donne pas à la place de celui qui a poussé.
+--
+-- ⚠️ `cardinality(...) > 0` et non `IS NOT NULL` : un `text[]` peut valoir
+-- `{}`, qui n'est pas une trace. Et le BRUT, pas `ff_rpe_by_set` : `['FAIL']`
+-- est une trace — la série a eu lieu, et a échoué — que le parseur numérique
+-- écarte. L'arbre (`records.py`, le guichet, les suppressions) et la
+-- projection (`training_sets.tracee`, colonne engendrée) appellent CETTE
+-- fonction : il n'y a pas de second dialecte.
+CREATE OR REPLACE FUNCTION ff_tracee(felt_rpe text, felt_rpe_by_set text[]) RETURNS boolean
+LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
+    SELECT coalesce(btrim(felt_rpe), '') <> ''
+        OR cardinality(coalesce(felt_rpe_by_set, '{}')) > 0
+$$;
+
 CREATE OR REPLACE FUNCTION ff_series_tenues(sets text, felt_rpe_by_set text[])
 RETURNS integer
 LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
@@ -1963,6 +2086,10 @@ CREATE TABLE training_sets (
     felt_rpe       numeric,                -- NULL si non numérique (ex. "FAIL")
     felt_rpe_raw   text,                   -- la saisie brute ("Sub5", "FAIL"…)
     rpe_by_set     numeric[],
+    felt_rpe_by_set_raw text[],            -- la saisie brute par série, FAIL compris
+    -- RÉALISÉ, par LA fonction de l'arbre (FRE-216) : engendrée, elle ne peut
+    -- pas dire autre chose que `records.py` sur la même ligne.
+    tracee         boolean GENERATED ALWAYS AS (ff_tracee(felt_rpe_raw, felt_rpe_by_set_raw)) STORED,
     -- Répétitions et charge par série, projetées. Elles servent la
     -- DISPERSION d'une ligne, que la moyenne écrase.
     reps_by_set    numeric[],
@@ -1996,6 +2123,22 @@ CREATE INDEX ON training_sets (exercise);
 -- exercice d'une prog balayait les 10 000 lignes.
 CREATE INDEX training_sets_exercise_id ON training_sets (exercise_id);
 CREATE INDEX ON training_sets (program_id, macro_number, block_number, week_number);
+
+-- Les lignes RÉALISÉES (FRE-216) : une trace, et pas dans le futur. Sans date,
+-- c'est de l'historique dont ni la séance ni la semaine ne sont datées, pas du
+-- futur — le sélecteur de mouvements les garde ; les agrégats, qui rangent par
+-- semaine, ajoutent `session_date IS NOT NULL`.
+CREATE VIEW series_realisees AS
+SELECT * FROM training_sets
+ WHERE tracee AND (session_date IS NULL OR session_date <= current_date);
+
+-- Les lignes de TRAVAIL : réalisées, et de l'entraînement — ni échauffement ni
+-- rééducation (FRE-10). Un échauffement chargé déplace un poids réel, mais le
+-- tonnage, la charge max et les courbes sont ceux du travail. NULL =
+-- entraînement (les lignes d'avant le champ), d'où IS DISTINCT FROM.
+CREATE VIEW series_de_travail AS
+SELECT * FROM series_realisees
+ WHERE kind IS DISTINCT FROM 'warmup' AND kind IS DISTINCT FROM 'rehab';
 
 -- Objectifs d'un BLOC (basculés 2026-08-03). Premier morceau de l'arbre
 -- d'entraînement à quitter Firestore : là-bas, un objectif était RECOPIÉ sur

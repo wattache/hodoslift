@@ -224,14 +224,13 @@ def inserer_ligne(conn, table: str, parent_col: str, parent_id, position: int,
 def creer_bloc(conn, macro_id, payload: BlockCreate) -> dict:
     base = payload.base or {}
     block_id = inserer_avec_numero(conn, "training_blocks", "macro_id", macro_id, lambda numero: conn.execute(text(
-        "INSERT INTO training_blocks (id, macro_id, legacy_id, number, name, start_date, "
-        "end_date, day_split, selected_principals, granularity, s1_start_date, s1_end_date) "
+        "INSERT INTO training_blocks (id, macro_id, legacy_id, number, name, "
+        "day_split, selected_principals, granularity, s1_start_date, s1_end_date) "
         "VALUES (coalesce(CAST(:id AS uuid), gen_random_uuid()), :m, gen_random_uuid()::text, "
-        ":n, :name, :d1, :d2, CAST(:ds AS jsonb), :sp, CAST(:g AS jsonb), :s1, :s2) "
+        ":n, :name, CAST(:ds AS jsonb), :sp, CAST(:g AS jsonb), :s1, :s2) "
         "ON CONFLICT (id) DO NOTHING RETURNING id"),
         {"id": str(payload.id) if payload.id else None,
          "m": macro_id, "n": numero, "name": payload.name,
-         "d1": payload.startDate, "d2": payload.endDate,
          "ds": json_ou_none(base.get("daySplit")), "sp": base.get("selectedPrincipaux"),
          "g": json_ou_none(base.get("granularity")),
          # ⚠️ `date_ou_none`, pas `.get()` nu : `base` arrive ici en dictionnaire

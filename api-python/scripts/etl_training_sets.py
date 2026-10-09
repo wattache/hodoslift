@@ -148,6 +148,9 @@ WITH prescription AS (
         ff_rpe(e.felt_rpe)       AS felt_rpe,
         nullif(btrim(e.felt_rpe), '')         AS felt_rpe_raw,
         ff_rpe_by_set(e.felt_rpe_by_set)      AS rpe_by_set,
+        -- Le BRUT aussi : c'est de lui que `tracee` (colonne engendrée) se
+        -- déduit, par `ff_tracee`, la même fonction que l'arbre (FRE-216).
+        e.felt_rpe_by_set                     AS felt_rpe_by_set_raw,
         ff_reps_by_set(e.reps_done_by_set)     AS reps_by_set,
         ff_charge_by_set(e.weight_done_by_set) AS weight_by_set,
         ff_num(e.rest)                        AS rest_s,
@@ -271,7 +274,8 @@ _COLONNES = (
     "exercise, exercise_id, variant, assistance, tempo, format, tier, "
     "superset_group, sets, reps, reps_high, reps_done, reps_unit, kind, "
     "bodyweight, weight_kg, weight_done_kg, aimed_rpe, felt_rpe, felt_rpe_raw, "
-    "rpe_by_set, reps_by_set, weight_by_set, rest_s, sets_prevus, tonnage_kg, tonnage_prevu_kg, mechano, athlete_feedback, coach_note"
+    "rpe_by_set, felt_rpe_by_set_raw, reps_by_set, weight_by_set, rest_s, sets_prevus, tonnage_kg, "
+    "tonnage_prevu_kg, mechano, athlete_feedback, coach_note"
 )
 
 _INSERT = text(f"INSERT INTO training_sets ({_COLONNES}) SELECT {_COLONNES} FROM ({_PROJECTION}) src")

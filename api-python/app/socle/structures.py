@@ -16,7 +16,7 @@ qu'il y a réellement — là où il n'en a aucun, il voit, il ne coache pas.
 from fastapi import status
 from sqlalchemy import text
 
-from app.socle.authz import is_admin
+from app.socle.authz import compte
 from app.socle.db import get_session
 from app.socle.erreurs import ErreurMetier
 
@@ -26,21 +26,27 @@ PREMIERE = "french-forge"
 
 _MES_STRUCTURES_SQL = text(
     """
-    SELECT s.slug, s.nom,
-           EXISTS(SELECT 1 FROM coaches c WHERE c.uid = :uid AND c.structure = s.slug) AS est_coach,
-           -- ⚠️ Y EXERCER, OU Y SUIVRE UN ATHLÈTE. Le lien kiné est libre
-           -- entre structures (`PATCH /athletes/{id}/kine`) : sans cette
-           -- seconde branche, un kiné qui suit un athlète d'une AUTRE
-           -- structure ne l'a dans aucun menu, et « mes suivis » ne le montre
-           -- dans aucune vue — une écriture permise, lisible
-           -- nulle part.
-           (EXISTS(SELECT 1 FROM kines   k WHERE k.uid = :uid AND k.structure = s.slug)
-            OR EXISTS(SELECT 1 FROM athletes a WHERE a.kine_uid = :uid AND a.structure = s.slug)) AS est_kine,
-           (SELECT a.legacy_id FROM athletes a
-             WHERE a.user_uid = :uid AND a.structure = s.slug LIMIT 1)            AS athlete_id,
-           EXISTS(SELECT 1 FROM users u WHERE u.uid = :uid AND u.is_admin)         AS est_admin
-    FROM structures s
-    ORDER BY s.slug <> :premiere, s.nom
+    WITH r AS (
+        SELECT s.slug, s.nom,
+               EXISTS(SELECT 1 FROM coaches c WHERE c.uid = :uid AND c.structure = s.slug) AS est_coach,
+               -- ⚠️ Y EXERCER, OU Y SUIVRE UN ATHLÈTE. Le lien kiné est libre
+               -- entre structures (`PATCH /athletes/{id}/kine`) : sans cette
+               -- seconde branche, un kiné qui suit un athlète d'une AUTRE
+               -- structure ne l'a dans aucun menu, et « mes suivis » ne le montre
+               -- dans aucune vue — une écriture permise, lisible
+               -- nulle part.
+               (EXISTS(SELECT 1 FROM kines   k WHERE k.uid = :uid AND k.structure = s.slug)
+                OR EXISTS(SELECT 1 FROM athletes a WHERE a.kine_uid = :uid AND a.structure = s.slug)) AS est_kine,
+               (SELECT a.legacy_id FROM athletes a
+                 WHERE a.user_uid = :uid AND a.structure = s.slug LIMIT 1)            AS athlete_id
+        FROM structures s
+    )
+    SELECT slug, nom, est_coach, est_kine, athlete_id
+    FROM r
+    -- En être : y coacher, y exercer, y avoir sa fiche — ou être admin.
+    WHERE est_coach OR est_kine OR athlete_id IS NOT NULL
+       OR EXISTS(SELECT 1 FROM comptes k WHERE k.uid = :uid AND k.is_admin)
+    ORDER BY slug <> :premiere, nom
     """
 )
 
@@ -59,16 +65,12 @@ def structures_de(uid: str) -> list[dict]:
         {"slug": r["slug"], "nom": r["nom"], "isCoach": bool(r["est_coach"]),
          "isKine": bool(r["est_kine"]), "athleteId": r["athlete_id"]}
         for r in rows
-        if r["est_admin"] or r["est_coach"] or r["est_kine"] or r["athlete_id"]
     ]
 
 
 def slugs_de(uid: str) -> set[str]:
     """Les slugs des structures de ce compte — pour borner une liste."""
     return {s["slug"] for s in structures_de(uid)}
-
-
-_STRUCTURE_DU_COACH_SQL = text("SELECT structure FROM coaches WHERE uid = :uid")
 
 
 def structure_ecrite(session, uid: str, demandee: str | None) -> str:
@@ -82,10 +84,11 @@ def structure_ecrite(session, uid: str, demandee: str | None) -> str:
     Raises:
         ErreurMetier: `reserve_aux_coachs` (403) si un coach nomme une autre
             structure que la sienne."""
-    sienne = session.execute(_STRUCTURE_DU_COACH_SQL, {"uid": uid}).scalar()
+    qui = compte(uid, session)
+    sienne = qui.coach_structure
     if demandee is None or demandee == sienne:
         return sienne
-    if is_admin(uid):
+    if qui.admin:
         return demandee
     raise ErreurMetier("reserve_aux_coachs", status.HTTP_403_FORBIDDEN,
                        "on n'écrit que dans la structure où l'on coache")

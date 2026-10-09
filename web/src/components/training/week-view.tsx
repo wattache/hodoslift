@@ -5,6 +5,7 @@ import type { ExerciseKind, ObjectifTechnique, SessionEditing, WeekEditing } fro
 import { formatLong, todayISO } from "@/lib/dates-ui";
 import { sessionTonnage, formatKg } from "@/lib/tonnage";
 import { avancementDeLaSeance, seanceAOuvrir, seanceEstCompletee } from "@/lib/realise";
+import { lireSeanceEnCours, noterSeanceEnCours } from "@/lib/seance-en-cours";
 import { couleurDeLEcart, ecartDeLaSeance, formatAverageRPE, rpeDotColor, sessionAverageRPE } from "@/lib/rpe";
 import { SessionTable } from "./session-table";
 import { WeekOverview } from "./week-overview";
@@ -102,7 +103,7 @@ export function WeekView({ week, sessionInitiale, mode = "athlete", allowCoachMo
   // lit les traces : recalculée à chaque rendu, noter un RPE dans la séance
   // ouverte lui donnait une trace, et l'écran sautait à la suivante sous le
   // doigt, pli compris (`chrono`, `saisie-par-frequence` le gardent).
-  const calculee = seanceAOuvrir(seancesDeLaSemaine, todayISO())?.id ?? null;
+  const calculee = seanceAOuvrir(seancesDeLaSemaine, todayISO(), lireSeanceEnCours(week.id))?.id ?? null;
   const [ouverture, setOuverture] = useState({ semaine: week.id, seance: calculee });
   // Figée seulement si elle est de CETTE semaine et y existe encore.
   const figee = ouverture.semaine === week.id && seancesDeLaSemaine.some(x => x.id === ouverture.seance)
@@ -149,6 +150,7 @@ export function WeekView({ week, sessionInitiale, mode = "athlete", allowCoachMo
    *  Partent avec lui : `openId`, `collapsedIds` et `toggleSession`. */
   const ouvrirLaSeance = (id: string) => {
     setSeanceChoisie(id);
+    noterSeanceEnCours(week.id, id);
     if (toutLaSemaine) {
       // Côté coach, toutes les séances sont là : on descend jusqu'au jour cliqué.
       requestAnimationFrame(() => {
@@ -255,10 +257,11 @@ export function WeekView({ week, sessionInitiale, mode = "athlete", allowCoachMo
               dragIdx={dragSessionIdx}
               setDragIdx={setDragSessionIdx}
               mode={effectiveMode}
-              onFeltRPEChange={(idx, v) => onFeltRPEChange?.(s.id ?? "", idx, v)}
-              onFeltRPEGlobal={(idx, v) => onFeltRPEGlobal?.(s.id ?? "", idx, v)}
-              onUpdateSetRPE={onUpdateSetRPE ? (idx, set, v) => onUpdateSetRPE(s.id ?? "", idx, set, v) : undefined}
-              onUpdateSetValue={onUpdateSetValue ? (idx, set, champ, v) => onUpdateSetValue(s.id ?? "", idx, set, champ, v) : undefined}
+              // Noter, c'est être dans cette séance : on la retient (`seance-en-cours`).
+              onFeltRPEChange={(idx, v) => { noterSeanceEnCours(week.id, s.id ?? ""); onFeltRPEChange?.(s.id ?? "", idx, v); }}
+              onFeltRPEGlobal={(idx, v) => { noterSeanceEnCours(week.id, s.id ?? ""); onFeltRPEGlobal?.(s.id ?? "", idx, v); }}
+              onUpdateSetRPE={onUpdateSetRPE ? (idx, set, v) => { noterSeanceEnCours(week.id, s.id ?? ""); onUpdateSetRPE(s.id ?? "", idx, set, v); } : undefined}
+              onUpdateSetValue={onUpdateSetValue ? (idx, set, champ, v) => { noterSeanceEnCours(week.id, s.id ?? ""); onUpdateSetValue(s.id ?? "", idx, set, champ, v); } : undefined}
               onUpdateForm={onUpdateForm ? (v) => onUpdateForm(s.id ?? "", v) : undefined}
               onUpdateField={(idx, field, value) => onUpdateField?.(s.id ?? "", idx, field, value)}
               onSetExerciseKind={onSetExerciseKind ? (idx, kind) => onSetExerciseKind(s.id ?? "", idx, kind) : undefined}

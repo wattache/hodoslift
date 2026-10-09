@@ -55,7 +55,8 @@ export function seanceEstEntamee(seance: SeanceFaisable): boolean {
 
 type SeanceOuvrable = SeanceFaisable & { id?: string | null; sessionDate?: string | null };
 
-/** La séance qu'on ouvre d'emblée dans la semaine : la première SANS AUCUNE
+/** La séance qu'on ouvre d'emblée dans la semaine : celle EN COURS s'il y en a
+ *  une (`seance-en-cours`), sinon la première SANS AUCUNE
  *  trace, pas celle du jour (William, 20/09) — « on ne peut jamais présupposer
  *  de quand l'athlète fera sa séance, mais a priori il fera la prochaine ». Et
  *  pas la première non complétée (24/09) : une ligne oubliée en début de semaine
@@ -63,8 +64,11 @@ type SeanceOuvrable = SeanceFaisable & { id?: string | null; sessionDate?: strin
  *
  *  Une séance VIDE n'est pas « à faire » : on la saute. Quand tout est entamé,
  *  la date garde le dernier mot ; à défaut, la première. */
-export function seanceAOuvrir<S extends SeanceOuvrable>(seances: readonly S[], aujourdhui: string): S | null {
-  return seances.find((s) => s.exercises.length > 0 && !seanceEstEntamee(s))
+export function seanceAOuvrir<S extends SeanceOuvrable>(
+  seances: readonly S[], aujourdhui: string, enCours: string | null = null,
+): S | null {
+  return (enCours ? seances.find((s) => s.id === enCours) : undefined)
+    ?? seances.find((s) => s.exercises.length > 0 && !seanceEstEntamee(s))
     ?? seances.find((s) => (s.sessionDate ?? '') === aujourdhui)
     ?? seances[0]
     ?? null;

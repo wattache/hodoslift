@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { seanceAOuvrir, seanceEstEntamee } from '@/lib/realise';
+import { DUREE_SEANCE_EN_COURS_MS, lireSeanceEnCours, noterSeanceEnCours } from '@/lib/seance-en-cours';
 
 /** QUELLE SÉANCE S'OUVRE D'EMBLÉE — William, 20/09 puis 24/09.
  *
@@ -53,5 +54,34 @@ describe('seanceAOuvrir', () => {
   });
   it('semaine sans séance : rien', () => {
     expect(seanceAOuvrir([], '2026-09-24')).toBeNull();
+  });
+});
+
+/** REPRENDRE LA SÉANCE QU'ON FAIT — William, 07/10. Premier exercice noté sur
+ *  Samedi, détour par Spotify : au retour, Samedi est entamée et la règle
+ *  d'arrivée ouvrait Dimanche, vide.
+ *
+ *  MUTATION QUI ROUGIT : ignorer `enCours` dans `seanceAOuvrir` — Dimanche sort
+ *  à la place de Samedi. */
+describe('la séance en cours', () => {
+  const enPleineSeance = [...semaineDeWilliam.slice(0, 4), seance('samedi', 1, 6), seance('dimanche', 0, 5)];
+
+  it('rouvre la séance entamée où l’on était, pas la suivante vide', () => {
+    expect(seanceAOuvrir(enPleineSeance, '2026-10-07', 'samedi')?.id).toBe('samedi');
+  });
+  it('une séance retenue qui n’existe plus ne compte pas', () => {
+    expect(seanceAOuvrir(enPleineSeance, '2026-10-07', 'supprimee')?.id).toBe('dimanche');
+  });
+
+  it('se lit dans la même semaine, et seulement le temps d’une séance', () => {
+    const m = new Map<string, string>();
+    vi.stubGlobal('localStorage', { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => m.set(k, v) });
+    const t0 = 1_000_000;
+    noterSeanceEnCours('s1', 'samedi', t0);
+    expect(lireSeanceEnCours('s1', t0 + DUREE_SEANCE_EN_COURS_MS)).toBe('samedi');
+    expect(lireSeanceEnCours('s2', t0)).toBeNull();
+    // Le lendemain, la séance laissée à moitié ne ramène plus l'écran.
+    expect(lireSeanceEnCours('s1', t0 + DUREE_SEANCE_EN_COURS_MS + 1)).toBeNull();
+    vi.unstubAllGlobals();
   });
 });

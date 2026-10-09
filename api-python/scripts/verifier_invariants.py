@@ -302,20 +302,17 @@ INVARIANTS: list[Invariant] = [
     # voulue : elle est un oubli, et elle a laissé passer deux semaines.
     Invariant(
         cle="dates_inversees",
-        affirmation="une semaine ou un bloc ne se termine pas avant d'avoir "
-                    "commencé",
-        source="docs/postgres-schema.sql — training_weeks, training_blocks "
+        affirmation="une semaine ne se termine pas avant d'avoir commencé",
+        # Un bloc n'a plus de dates propres (FRE-219) : sa période est celle de
+        # ses semaines, cet invariant la couvre donc aussi.
+        source="docs/postgres-schema.sql — training_weeks "
                "(CHECK depuis FRE-138, comme calendar_events et competitions)",
         compte="""
-            SELECT (SELECT count(*) FROM training_weeks  WHERE end_date < start_date)
-                 + (SELECT count(*) FROM training_blocks WHERE end_date < start_date)
+            SELECT count(*) FROM training_weeks WHERE end_date < start_date
         """,
         exemples="""
             SELECT 'semaine' AS quoi, w.id::text, w.number::text, w.start_date, w.end_date
               FROM training_weeks w WHERE w.end_date < w.start_date
-            UNION ALL
-            SELECT 'bloc', b.id::text, b.number::text, b.start_date, b.end_date
-              FROM training_blocks b WHERE b.end_date < b.start_date
         """,
         reparation=(
             "docs/migrations/2026-09-09_une_semaine_ne_finit_pas_avant_de_commencer.sql\n"

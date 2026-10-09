@@ -135,7 +135,7 @@ def list_my_athletes(
         rows = metier.mine_own(session, uid=uid, structure=structure)
         # Le tableau de bord lit CETTE route : le RIS y sort, servi et non
         # recalculé par l'écran.
-        ris = metier.meilleurs_ris(session)
+        ris = metier.meilleurs_ris(session, [row["id"] for row in rows])
     return [
         metier.map_common(row) | ris.get(row["id"], {})
         | {"email": row["email"], "linkedUserId": row["user_uid"],

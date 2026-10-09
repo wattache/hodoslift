@@ -23,7 +23,7 @@ from app.entrainement.arbre_creation import (
 from app.entrainement.prescription import normaliser_groupes
 from app.entrainement.records import TRACE_ARBRE
 from app.socle.erreurs import ErreurMetier
-from app.entrainement.training_tree import read_tree
+from app.entrainement.training_tree import read_block
 
 
 OBJECTIFS_DU_BLOC = text(
@@ -112,7 +112,9 @@ _CHAMPS = {
     # Pas de dates : `training_macros` n'en a pas de colonnes (cf. `MacroPatch`).
     "macro": {"name": "name", "trainingFrequency": "training_frequency",
               "coachNotes": "coach_notes"},
-    "bloc": {"name": "name", "startDate": "start_date", "endDate": "end_date"},
+    # Pas de dates non plus : la période d'un bloc se DÉDUIT de ses semaines
+    # (`blocs_lus`), il n'en a pas de colonnes.
+    "bloc": {"name": "name"},
     "semaine": {"name": "name", "hidden": "hidden", "startDate": "start_date",
                 "endDate": "end_date", "athleteWeightKg": "athlete_weight_kg",
                 "athleteHeightCm": "athlete_height_cm"},
@@ -252,34 +254,35 @@ def en_semaine_lue(semaine: dict[str, Any], identifiant: str) -> dict[str, Any]:
 def bloc_de_l_arbre(conn, program_id: str, block_id: str) -> dict[str, Any]:
     """Rend le bloc AVEC ses semaines et leur réalisé, dans la forme du contrat.
 
-    ⚠️ Par `read_tree`, comme `relire_semaine` : le calcul de la semaine suivante
-    lit des lignes complètes, et une requête dédiée divergerait du contrat.
+    ⚠️ Par `read_block`, la projection de `read_tree` bornée au bloc : le calcul
+    de la semaine suivante lit des lignes complètes, et une requête dédiée
+    divergerait du contrat. Bornée, parce que c'est le bouton « + Semaine » du
+    coach, pas un geste rare — et que l'historique grossit chaque semaine.
 
     Raises:
         ErreurMetier: `objet_arbre_introuvable` (404)."""
-    for macro in read_tree(conn, program_id)["macros"]:
-        for bloc in macro["blocks"]:
-            if bloc["id"] == block_id:
-                return bloc
-    raise ErreurMetier("objet_arbre_introuvable", status.HTTP_404_NOT_FOUND,
-                       detail="bloc introuvable")
+    bloc = read_block(conn, program_id, block_id)
+    if bloc is None:
+        raise ErreurMetier("objet_arbre_introuvable", status.HTTP_404_NOT_FOUND,
+                           detail="bloc introuvable")
+    return bloc
 
 
 def relire_semaine(conn, program_id: str, week_id: str) -> dict[str, Any]:
     """Rend la semaine telle qu'elle EXISTE, relue par le chemin de lecture normal.
 
-    ⚠️ `read_tree` plutôt qu'une requête dédiée : la réponse est identique, au
-    champ près, à ce que le front reçoit en rechargeant l'arbre. Une seconde
-    requête finit par diverger sur un champ ajouté d'un seul côté. Le coût —
-    quelques SELECT — porte sur un geste rare.
+    ⚠️ Par `read_block` plutôt qu'une requête dédiée : la réponse est identique,
+    au champ près, à ce que le front reçoit en rechargeant l'arbre. Une seconde
+    requête finit par diverger sur un champ ajouté d'un seul côté.
 
     Raises:
         ErreurMetier: `objet_arbre_introuvable` (404)."""
-    for macro in read_tree(conn, program_id)["macros"]:
-        for bloc in macro["blocks"]:
-            for semaine in bloc["weeks"]:
-                if semaine["id"] == week_id:
-                    return semaine
+    block_id = conn.execute(text("SELECT block_id FROM training_weeks WHERE id = CAST(:w AS uuid)"),
+                            {"w": week_id}).scalar()
+    bloc = read_block(conn, program_id, str(block_id)) if block_id is not None else None
+    for semaine in (bloc or {}).get("weeks", []):
+        if semaine["id"] == week_id:
+            return semaine
     raise ErreurMetier("objet_arbre_introuvable", status.HTTP_404_NOT_FOUND,
                        detail="semaine introuvable après génération")
 
@@ -413,8 +416,9 @@ def retirer_la_relecture_de(conn, session_id) -> None:
 
 
 def premiere_semaine_du_bloc(conn, block_id: str):
+    """La première semaine du bloc, avec son compte de séances — `None` s'il n'en a pas."""
     return conn.execute(text(
-        "SELECT id, number FROM training_weeks WHERE block_id = CAST(:b AS uuid) "
+        "SELECT id, number, session_count FROM semaines_lues WHERE block_id = CAST(:b AS uuid) "
         "ORDER BY number LIMIT 1"), {"b": block_id}).mappings().first()
 
 
@@ -477,6 +481,7 @@ def ids_des_seances(conn, week_id) -> set[str]:
 
 
 def poser_l_ordre_des_seances(conn, ids: list[str]) -> None:
-    for position, sid in enumerate(ids):
-        conn.execute(text("UPDATE training_sessions SET position = :p "
-                          "WHERE id = CAST(:id AS uuid)"), {"p": position, "id": sid})
+    """Pose les positions dans l'ordre de la liste — UN UPDATE, pas un par séance."""
+    conn.execute(text("UPDATE training_sessions s SET position = t.ord - 1 "
+                      "FROM unnest(CAST(:ids AS uuid[])) WITH ORDINALITY AS t(id, ord) "
+                      "WHERE s.id = t.id"), {"ids": list(ids)})

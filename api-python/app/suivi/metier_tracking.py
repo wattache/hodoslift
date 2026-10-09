@@ -33,29 +33,26 @@ from sqlalchemy import text
 #
 # La date reste en garde-fou (`REALISE`) : une ligne datée demain n'a pas eu
 # lieu, quoi qu'elle porte par ailleurs.
-TRACE = "(felt_rpe_raw IS NOT NULL OR rpe_by_set IS NOT NULL)"
-
+# La trace est `training_sets.tracee`, engendrée par `ff_tracee` — la même
+# fonction que l'arbre (FRE-216). Les requêtes d'ici ne la recopient pas : elles
+# lisent les vues `series_realisees` (une trace, pas dans le futur) et
+# `series_de_travail` (idem, sans échauffement ni rééducation — FRE-10).
+#
 # ⚠️ La trace est PARTAGÉE, la politique de date ne l'est pas : les agrégats
 # exigent une date pour ranger la ligne dans une semaine, le sélecteur garde les
-# lignes sans date. `REALISE` COMPOSE `TRACE` au lieu de la recopier (FRE-71) :
-# une copie finit par perdre une des deux colonnes.
-REALISE = f"""
-    AND session_date <= current_date
-    AND {TRACE}
-"""
+# lignes sans date — la vue les garde, chaque agrégat ajoute
+# `session_date IS NOT NULL`.
 
 # Les mouvements de l'athlète, les plus travaillés d'abord, pour le sélecteur du
-# front. Un mouvement seulement PRÉVU n'y figure pas, d'où `TRACE`.
+# front. Un mouvement seulement PRÉVU n'y figure pas.
 #
 # ⚠️ Ici on GARDE les lignes sans date, contrairement aux agrégats : une ligne
 # sans `session_date` n'est pas du futur, c'est de l'historique dont ni la séance
 # ni la semaine ne sont datées. Les écarter ferait disparaître du sélecteur des
 # mouvements réellement travaillés.
 EXERCISES_SQL = text(
-    "SELECT exercise, count(*) AS n FROM training_sets "
+    "SELECT exercise, count(*) AS n FROM series_realisees "
     "WHERE athlete_id = :legacy "
-    "  AND (session_date IS NULL OR session_date <= current_date) "
-    f"  AND {TRACE} "
     "GROUP BY exercise ORDER BY n DESC, exercise"
 )
 
@@ -64,7 +61,7 @@ EXERCISES_SQL = text(
 # été SOULEVÉ. Calculée en fenêtre, pour filtrer ensuite les lignes qui SONT au
 # max (tonnage, format et échecs du top set).
 WEEKS_SQL = text(
-    f"""
+    """
     WITH base AS (
         SELECT date_trunc('week', session_date)::date AS semaine,
                coalesce(weight_done_kg, weight_kg) AS charge_eff,
@@ -74,15 +71,11 @@ WEEKS_SQL = text(
                max(coalesce(weight_done_kg, weight_kg))
                    OVER (PARTITION BY date_trunc('week', session_date))
                    AS charge_max_kg
-        FROM training_sets
+        -- FRE-10 : seul l'ENTRAÎNEMENT compte (tonnage, volume, charge max,
+        -- records) — c'est ce que `series_de_travail` écarte.
+        FROM series_de_travail
         WHERE athlete_id = :legacy AND exercise = :exercise
-          AND session_date IS NOT NULL {REALISE}
-          -- FRE-10 : seul l'ENTRAÎNEMENT compte (tonnage, volume, charge max,
-          -- records). NULL = entraînement (les lignes d'avant le champ), d'où
-          -- IS DISTINCT FROM et NON <> : `kind <> 'warmup'` vaut NULL pour une
-          -- ligne sans kind et l'EXCLURAIT à tort — soit tout l'historique.
-          AND kind IS DISTINCT FROM 'warmup'
-          AND kind IS DISTINCT FROM 'rehab'
+          AND session_date IS NOT NULL
     )
     SELECT semaine,
            max(charge_max_kg) AS charge_max_kg,
@@ -111,7 +104,7 @@ WEEKS_SQL = text(
            -- comptait pour 180 répétitions, soit 11,8 % du volume total, alors
            -- qu'aucune n'a été exécutée. `reps` y porte des secondes. Le
            -- tonnage, lui, s'auto-corrige : l'ETL le laisse NULL et `sum()` les
-           -- ignore. IS DISTINCT FROM pour couvrir les lignes sans unité d'une
+           -- ignore. IS DISTINCT FROM, pour couvrir les lignes sans unité d'une
            -- projection antérieure à la migration "" → "count".
            sum(sets * coalesce(reps_done, reps))
                FILTER (WHERE reps_unit IS DISTINCT FROM 'sec') AS reps_total,
@@ -154,22 +147,20 @@ WEEKS_SQL = text(
 # format du top set, tonnage, séances, échecs. Même filtre de réalisé, même
 # exclusion échauffement/kiné.
 COURBES_SQL = text(
-    f"""
+    """
     WITH base AS (
         SELECT date_trunc('week', session_date)::date AS semaine,
-               (SELECT coalesce(array_agg(v ORDER BY v), '{{}}')
-                  FROM unnest(coalesce(variant, '{{}}')) v
+               (SELECT coalesce(array_agg(v ORDER BY v), '{}')
+                  FROM unnest(coalesce(variant, '{}')) v
                  WHERE btrim(v) <> '') AS variantes,
                coalesce(nullif(btrim(tempo), ''), '') AS tempo_cle,
                coalesce(nullif(btrim(format), ''), '') AS format_cle,
                coalesce(weight_done_kg, weight_kg) AS charge_eff,
                tonnage_kg, sets, reps, reps_done, felt_rpe_raw,
                week_number, session_index
-        FROM training_sets
+        FROM series_de_travail
         WHERE athlete_id = :legacy AND exercise = :exercise
-          AND session_date IS NOT NULL {REALISE}
-          AND kind IS DISTINCT FROM 'warmup'
-          AND kind IS DISTINCT FROM 'rehab'
+          AND session_date IS NOT NULL
     ), fenetre AS (
         SELECT *,
                max(charge_eff) OVER (PARTITION BY variantes, tempo_cle, format_cle, semaine) AS charge_max_kg,
@@ -199,7 +190,7 @@ COURBES_SQL = text(
 # sur un seul mouvement, il fait paraître l'athlète plus frais qu'il ne l'est.
 # C'est la charge vécue de la semaine qui compte, pas celle d'un exercice.
 ATHLETE_WEEKS_SQL = text(
-    f"""
+    """
     SELECT date_trunc('week', session_date)::date AS semaine,
            avg(felt_rpe) AS felt_rpe,
            avg(aimed_rpe) AS aimed_rpe,
@@ -208,8 +199,8 @@ ATHLETE_WEEKS_SQL = text(
            -- dessus (un pic de RPE se lit autrement s'il ouvre un bloc).
            min(macro_number) AS macro_number,
            min(block_number) AS block_number
-    FROM training_sets
-    WHERE athlete_id = :legacy AND session_date IS NOT NULL {REALISE}
+    FROM series_realisees
+    WHERE athlete_id = :legacy AND session_date IS NOT NULL
     GROUP BY semaine
     ORDER BY semaine
     """
@@ -220,7 +211,7 @@ ATHLETE_WEEKS_SQL = text(
 # RPE cible est exclu — mieux vaut une barre absente qu'un écart calculé sur du
 # vide.
 RPE_BLOCKS_SQL = text(
-    f"""
+    """
     SELECT macro_number, block_number,
            min(session_date) AS from_date,
            max(session_date) AS to_date,
@@ -232,8 +223,8 @@ RPE_BLOCKS_SQL = text(
            avg(aimed_rpe) FILTER (WHERE felt_rpe IS NOT NULL) AS aimed_rpe,
            avg(felt_rpe - aimed_rpe) AS gap,
            count(*) FILTER (WHERE aimed_rpe IS NOT NULL AND felt_rpe IS NOT NULL) AS rated
-    FROM training_sets
-    WHERE athlete_id = :legacy AND session_date IS NOT NULL {REALISE}
+    FROM series_realisees
+    WHERE athlete_id = :legacy AND session_date IS NOT NULL
       AND macro_number IS NOT NULL AND block_number IS NOT NULL
     GROUP BY macro_number, block_number
     HAVING count(*) FILTER (WHERE aimed_rpe IS NOT NULL AND felt_rpe IS NOT NULL) > 0
@@ -295,8 +286,7 @@ SERIES_PAR_LIFT_SQL = text(
                -- peut pas exister sans que la série ait eu lieu. Ici sur les
                -- colonnes de l'ARBRE, dont l'ETL tire `felt_rpe_raw` et
                -- `rpe_by_set` — mêmes champs, avant projection.
-               (nullif(btrim(e.felt_rpe), '') IS NOT NULL
-                OR e.felt_rpe_by_set IS NOT NULL) AS faite
+               ff_tracee(e.felt_rpe, e.felt_rpe_by_set) AS faite
         FROM training_exercises e
         JOIN training_sessions  s ON s.id = e.session_id
         JOIN training_weeks     w ON w.id = s.week_id
@@ -330,8 +320,7 @@ SERIES_PAR_LIFT_SQL = text(
 )
 
 LAST_SESSION_SQL = text(
-    "SELECT max(session_date) FROM training_sets "
-    f"WHERE athlete_id = :legacy {REALISE}"
+    "SELECT max(session_date) FROM series_realisees WHERE athlete_id = :legacy"
 )
 
 ONE_RM_SQL = text(

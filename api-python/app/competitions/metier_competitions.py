@@ -14,10 +14,10 @@ import json
 from fastapi import status
 from sqlalchemy import text
 
-from app.socle.authz import derive_participant_uids, is_admin
+from app.socle.authz import compte, derive_participant_uids, porte_un_lien
 from app.socle.structures import slugs_de
 from app.competitions.schemas_competition import Participant
-from app.competitions.scoring import compute_ris, compute_projection, compute_score
+from app.competitions.scoring import compute_ris, compute_projection
 from app.socle.empreinte import empreinte
 from app.socle.erreurs import ErreurMetier
 
@@ -247,9 +247,10 @@ def exiger_sa_structure(session, uid: str, comp_id: str) -> None:
         ErreurMetier: `competition_introuvable` (404, pas 403).
     """
     sienne = session.execute(STRUCTURE_DE_COMP_SQL, {"legacy": comp_id}).scalar()
-    if sienne is None or is_admin(uid):
+    if sienne is None:
         return
-    if session.execute(STRUCTURE_DU_COACH_SQL, {"uid": uid}).scalar() != sienne:
+    qui = compte(uid, session)
+    if not qui.admin and qui.coach_structure != sienne:
         raise ErreurMetier("competition_introuvable", status.HTTP_404_NOT_FOUND, "compétition introuvable")
 
 
@@ -259,7 +260,7 @@ def exiger_sa_structure(session, uid: str, comp_id: str) -> None:
 _Y_CONCOURT_SQL = text(
     "SELECT 1 FROM competition_participants cp JOIN athletes a ON a.id = cp.athlete_id "
     "JOIN competitions k ON k.id = cp.competition_id "
-    "WHERE k.legacy_id = :legacy AND (a.user_uid = :uid OR a.coach_uid = :uid) LIMIT 1")
+    f"WHERE k.legacy_id = :legacy AND {porte_un_lien('coach', 'athlete')} LIMIT 1")
 
 
 def exiger_de_la_voir(session, uid: str, comp_id: str) -> None:
@@ -539,12 +540,17 @@ def clear_children(session, cid) -> None:
 # Lecture : recomposition du doc imbriqué
 # --------------------------------------------------------------------------- #
 
+# `:cid` NULL = toutes les compétitions ; sinon UNE, et chaque lecture s'y borne
+# (FRE-222) : relire la version d'une compétition dans sa transaction d'écriture
+# ne recompose plus le club entier.
+_UNE_OU_TOUTES = "(CAST(:cid AS uuid) IS NULL OR {col} = CAST(:cid AS uuid))"
 _READ_COMPS = text(
     "SELECT id, legacy_id, name, start_date, end_date, location, max_attempts, created_by, structure "
-    "FROM competitions ORDER BY start_date, legacy_id"
+    f"FROM competitions WHERE {_UNE_OU_TOUTES.format(col='id')} ORDER BY start_date, legacy_id"
 )
 _READ_MOVEMENTS = text(
-    "SELECT competition_id, id, movement, position FROM competition_movements ORDER BY competition_id, position"
+    "SELECT competition_id, id, movement, position FROM competition_movements "
+    f"WHERE {_UNE_OU_TOUTES.format(col='competition_id')} ORDER BY competition_id, position"
 )
 # ⚠️ Le total du barème vient de la VUE `competition_scores`, pas d'un calcul
 # ici : le refaire en Python serait une SECONDE définition de la même règle
@@ -552,10 +558,11 @@ _READ_MOVEMENTS = text(
 # La vue agrège, Python applique le barème.
 _READ_PARTICIPANTS = text(
     "SELECT cp.id, cp.competition_id, cp.name, cp.competes_on, cp.bodyweight_kg, cp.gender, "
-    "cp.weight_category, a.user_uid, cs.total_bareme_kg "
+    "cp.weight_category, a.user_uid, cs.score, cs.total_bareme_kg "
     "FROM competition_participants cp "
     "LEFT JOIN athletes a ON a.id = cp.athlete_id "
     "LEFT JOIN competition_scores cs ON cs.participant_id = cp.id "
+    f"WHERE {_UNE_OU_TOUTES.format(col='cp.competition_id')} "
     "ORDER BY cp.competition_id, cp.name"
 )
 _ATTEMPTS_COLS = (
@@ -566,6 +573,7 @@ _ATTEMPTS_COLS = (
 _READ_ATTEMPTS = text(
     f"SELECT {_ATTEMPTS_COLS} FROM competition_attempts ca "
     "JOIN competition_movements cm ON cm.id = ca.movement_id "
+    f"WHERE {_UNE_OU_TOUTES.format(col='cm.competition_id')} "
     "ORDER BY ca.participant_id, cm.position, ca.attempt_index"
 )
 
@@ -576,6 +584,7 @@ _READ_FLIGHTS = text(
     "FROM competition_flights f "
     "LEFT JOIN competition_flight_categories fc ON fc.flight_id = f.id "
     "LEFT JOIN weight_categories wc ON wc.gender = fc.gender AND wc.code = fc.weight_category "
+    f"WHERE {_UNE_OU_TOUTES.format(col='f.competition_id')} "
     "ORDER BY f.competition_id, f.position, fc.gender, wc.position"
 )
 
@@ -601,13 +610,14 @@ def _recompose_attempt(r) -> dict:
     return att
 
 
-def recompose_all(session) -> list[dict]:
-    """Toutes les compétitions, recomposées dans la forme imbriquée du contrat."""
-    comps = session.execute(_READ_COMPS).mappings().all()
-    movements = session.execute(_READ_MOVEMENTS).mappings().all()
-    participants = session.execute(_READ_PARTICIPANTS).mappings().all()
-    attempts = session.execute(_READ_ATTEMPTS).mappings().all()
-    flights = session.execute(_READ_FLIGHTS).mappings().all()
+def recompose_all(session, cid=None) -> list[dict]:
+    """Les compétitions recomposées dans la forme imbriquée du contrat — toutes, ou UNE (`cid`)."""
+    p = {"cid": cid}
+    comps = session.execute(_READ_COMPS, p).mappings().all()
+    movements = session.execute(_READ_MOVEMENTS, p).mappings().all()
+    participants = session.execute(_READ_PARTICIPANTS, p).mappings().all()
+    attempts = session.execute(_READ_ATTEMPTS, p).mappings().all()
+    flights = session.execute(_READ_FLIGHTS, p).mappings().all()
 
     flights_by_comp: dict = {}
     flight_de_categorie: dict = {}
@@ -648,7 +658,10 @@ def recompose_all(session) -> list[dict]:
         part_att = att_by_part.get(p["id"], {})
         ordered = [mv for mv in mv_by_comp.get(p["competition_id"], []) if mv in part_att]
         pdoc["movements"] = [{"name": mv, "attempts": part_att[mv]} for mv in ordered]
-        pdoc["score"] = compute_score(pdoc["movements"])
+        # ⚠️ Le score aussi vient de la VUE : elle agrège sur `upper(movement)`,
+        # là où « SQUAT » et « Squat » coexistent dans `competition_movements`.
+        # Un calcul sur le nom brut en ferait deux mouvements.
+        pdoc["score"] = float(p["score"])
         # Vers quoi il se dirige, selon les trois hypothèses du plan (FRE-203).
         pdoc["projection"] = compute_projection(pdoc["movements"])
         # ⚠️ Le RIS est SERVI, pas calculé par le navigateur (FRE-92) : une seule
@@ -702,10 +715,12 @@ def version_de_competition(doc: dict) -> str:
 def version_actuelle(session, legacy_id: str) -> str:
     """La version de UNE compétition, relue dans la transaction en cours.
 
-    `recompose_all` relit tout : à l'échelle du club, c'est le prix d'UNE seule
-    définition de la recomposition.
+    Par `recompose_all`, bornée à elle : UNE seule définition de la
+    recomposition, sans relire le club entier sous le verrou d'écriture.
     """
-    return next(c["version"] for c in recompose_all(session) if c["id"] == legacy_id)
+    cid = session.execute(text("SELECT id FROM competitions WHERE legacy_id = :l"),
+                          {"l": legacy_id}).scalar()
+    return next(c["version"] for c in recompose_all(session, cid=cid) if c["id"] == legacy_id)
 
 
 def load_participants_internal(session, cid) -> list[dict]:
@@ -858,7 +873,7 @@ def competitions_de_mes_athletes(session, uid: str) -> set:
     return {r[0] for r in session.execute(text(
         "SELECT DISTINCT k.legacy_id FROM competition_participants cp "
         "JOIN athletes a ON a.id = cp.athlete_id JOIN competitions k ON k.id = cp.competition_id "
-        "WHERE a.coach_uid = :uid"), {"uid": uid}).all()}
+        f"WHERE {porte_un_lien('coach')}"), {"uid": uid}).all()}
 
 
 # Les athlètes de la structure de la compétition, pour l'écran d'inscription

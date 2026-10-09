@@ -37,8 +37,8 @@ def monde(pg):
         "INSERT INTO training_macros (program_id, legacy_id, number, name) "
         "VALUES ('p1','m1',1,'Prépa') RETURNING id")).scalar()
     bloc = pg.execute(text(
-        "INSERT INTO training_blocks (macro_id, legacy_id, number, name, start_date, end_date) "
-        f"VALUES ('{macro}','b1',1,'Intensification', DATE '2026-05-01', DATE '2026-05-28') "
+        "INSERT INTO training_blocks (macro_id, legacy_id, number, name) "
+        f"VALUES ('{macro}','b1',1,'Intensification') "
         "RETURNING id")).scalar()
     pleine = pg.execute(text(
         "INSERT INTO training_weeks (block_id, legacy_id, number, name, start_date, end_date, "
@@ -67,17 +67,32 @@ def _lire(client):
     return r.json()
 
 
+def test_une_semaine_MASQUEE_compte_dans_les_bornes_du_bloc(monde, auth_as):
+    """Elle occupe le temps qu'elle occupe : l'athlète ne la reçoit pas, mais le
+    bloc s'étend toujours jusqu'à sa fin — sinon la frise se rétracte quand le
+    coach masque la dernière semaine, et le bloc suivant semble commencer dans
+    un trou.
+
+    MUTATION QUI ROUGIT : `AND NOT w.hidden` dans `blocs_lus.fin`."""
+    monde.execute(text("INSERT INTO users (uid, email) VALUES ('ath-1','a@x.fr')"))
+    monde.execute(text("UPDATE athletes SET user_uid = 'ath-1' WHERE legacy_id = 'a1'"))
+    monde.execute(text("UPDATE training_weeks SET hidden = true WHERE legacy_id = 'w2'"))
+    bloc = _lire(auth_as(uid="ath-1"))["macros"][0]["blocks"][0]
+    assert [w["weekNumber"] for w in bloc["weeks"]] == [1]
+    assert (bloc["startDate"], bloc["endDate"]) == ("2026-05-01", "2026-05-14")
+
+
 def test_la_charpente_porte_ce_que_la_frise_LIT(monde, auth_as):
     """Le calendrier dessine des blocs et des semaines datés, avec les objectifs
     du bloc — c'est tout, et il doit tout trouver ici.
 
-    ⚠️ LA PÉRIODE D'UN BLOC EST CELLE DE SES SEMAINES (William, 24/09). Le décor
-    stocke exprès une fin de bloc au 28 mai dans `training_blocks.end_date`,
-    alors que ses semaines s'arrêtent au 14 : c'est la divergence réelle qui
-    laissait un trou d'un mois dans la frise (un bloc borné à sa seule S1). Ce
-    qui sort, c'est le 14.
+    ⚠️ LA PÉRIODE D'UN BLOC EST CELLE DE SES SEMAINES (William, 24/09) : de la
+    première datée à la dernière, `blocs_lus.debut`/`fin`. Une fin de bloc
+    stockée à part (le 28 mai, quand ses semaines s'arrêtaient au 14) a laissé
+    un trou d'un mois dans la frise ; `training_blocks` n'a plus de dates
+    propres (FRE-219), la divergence est devenue impossible, pas corrigée.
 
-    MUTATION QUI ROUGIT : rendre `b["end_date"]` au lieu de `_bornes`."""
+    MUTATION QUI ROUGIT : `max(w.start_date)` à la place de `min` dans la vue."""
     structure = _lire(auth_as(uid="coach-1"))
 
     macro = structure["macros"][0]

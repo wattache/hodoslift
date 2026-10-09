@@ -11,6 +11,7 @@ et ne sort pas de l'API. `athlete` recompose prénom et nom par jointure ; le
 poids et la taille, mesures datées, vivent sur la semaine.
 """
 
+from typing import NamedTuple
 from uuid import UUID
 
 from sqlalchemy import text
@@ -34,7 +35,7 @@ def _visibles(semaines, voit_les_masquees: bool):
     return semaines if voit_les_masquees else [w for w in semaines if not w["hidden"]]
 
 
-def _blocs_visibles(blocs_du_macro, semaines, voit_les_masquees):
+def _blocs_visibles(blocs_du_macro, voit_les_masquees):
     """Les blocs qui ont encore quelque chose à montrer à ce lecteur (FRE-158).
 
     ⚠️ Un bloc dont TOUTES les semaines sont masquées ne sort pas — et ses
@@ -45,25 +46,22 @@ def _blocs_visibles(blocs_du_macro, semaines, voit_les_masquees):
     bloc neuf naît sans semaine, le coach le compose, l'athlète n'a rien à y voir.
 
     Qui programme garde tout : le bloc en construction vit chez lui, et c'est lui
-    qui démasque.
+    qui démasque. La règle est celle de `blocs_lus.visible_a_l_athlete`.
     """
     if voit_les_masquees:
         return list(blocs_du_macro)
-    return [b for b in blocs_du_macro if _visibles(semaines.get(str(b["id"]), []), False)]
+    return [b for b in blocs_du_macro if b["visible_a_l_athlete"]]
 
-def _bornes(semaines: list) -> dict:
-    """Un bloc s'étend sur ses SEMAINES : de la première datée à la dernière.
+def _bornes(bloc) -> dict:
+    """Un bloc s'étend sur ses SEMAINES : `blocs_lus.debut` et `fin`.
 
-    ⚠️ UNE SEULE DÉFINITION, CALCULÉE ICI. `training_blocks.start_date` et
-    `end_date` existent encore en colonnes, mais rien ne les lit : elles ont
-    porté une seconde définition de la même période, et elle a divergé — un bloc
-    borné à sa seule S1 laissait un trou d'un mois dans la frise. Une semaine
-    masquée compte : elle occupe le temps qu'elle occupe. Sans semaine datée, le
-    bloc n'a pas de période, et le rend : `''` des deux côtés."""
-    debuts = [w["start_date"] for w in semaines if w["start_date"]]
-    fins = [w["end_date"] for w in semaines if w["end_date"]]
-    return {"startDate": _iso(min(debuts)) if debuts else "",
-            "endDate": _iso(max(fins)) if fins else ""}
+    ⚠️ UNE SEULE DÉFINITION, dans la vue. `training_blocks` n'a plus de dates
+    propres : elles ont porté une seconde définition de la même période, et
+    elle a divergé — un bloc borné à sa seule S1 laissait un trou d'un mois dans
+    la frise. Sans semaine datée, le bloc n'a pas de période, et le rend : `''`
+    des deux côtés, jamais `null`."""
+    return {"startDate": _iso(bloc["debut"]) if bloc["debut"] else "",
+            "endDate": _iso(bloc["fin"]) if bloc["fin"] else ""}
 
 
 _MACROS = text("""
@@ -71,19 +69,22 @@ _MACROS = text("""
     FROM training_macros WHERE program_id = :pid ORDER BY number, legacy_id
 """)
 
+# Les blocs et les semaines viennent de leurs VUES (FRE-219) : bornes, trame,
+# visibilité et compte de séances y sont posés une fois, pour l'arbre comme
+# pour la charpente.
 _BLOCS = text("""
     SELECT b.id, b.macro_id, b.number, b.name,
            b.day_split, b.selected_principals, b.granularity,
-           b.s1_start_date, b.s1_end_date
-    FROM training_blocks b
-    JOIN training_macros m ON m.id = b.macro_id
-    WHERE m.program_id = :pid ORDER BY b.number, b.legacy_id
+           b.s1_start_date, b.s1_end_date,
+           b.debut, b.fin, b.visible_a_l_athlete, b.a_une_base
+    FROM blocs_lus b
+    WHERE b.program_id = :pid ORDER BY b.number, b.legacy_id
 """)
 
 _SEMAINES = text("""
     SELECT w.id, w.block_id, w.number, w.name, w.hidden, w.start_date, w.end_date,
-           w.athlete_weight_kg, w.athlete_height_cm
-    FROM training_weeks w
+           w.athlete_weight_kg, w.athlete_height_cm, w.session_count
+    FROM semaines_lues w
     JOIN training_blocks b ON b.id = w.block_id
     JOIN training_macros m ON m.id = b.macro_id
     WHERE m.program_id = :pid ORDER BY w.number, w.legacy_id
@@ -101,7 +102,12 @@ _SEANCES = text("""
 # `e.*` volontairement : énumérer les colonnes ferait disparaître sans erreur un
 # champ ajouté et oublié ici. C'est `_EXERCICE_SORTIE`, plus bas, qui dit ce qui
 # sort : elle est le CONTRAT.
-_EXERCICES = text("""
+#
+# Une seule requête, deux PORTÉES (le programme, un bloc — FRE-119) : deux copies
+# du calcul de `mechano` divergeraient au premier ajustement de la formule
+# (FRE-103). Seul le fragment de portée change.
+def _exercices(portee: str):
+    return text(f"""
     SELECT e.*,
            -- MÉCANOTRANSDUCTION (FRE-103) : dérivé, pas stocké sur la ligne.
            --
@@ -129,14 +135,19 @@ _EXERCICES = text("""
            -- ressenti — donc invisible au suivi et aux records. La règle vit
            -- dans `records.py`, à côté de la trace ; ici on ne fait que la
            -- lire, et la séance en fait un compte.
-           {sans_ressenti} AS sans_ressenti
+           {travail_note_sans_ressenti("e")} AS sans_ressenti
     FROM training_exercises e
     JOIN training_sessions s ON s.id = e.session_id
     JOIN training_weeks w ON w.id = s.week_id
+    {portee}
+    ORDER BY e.position
+""")
+
+
+_EXERCICES = _exercices("""
     JOIN training_blocks b ON b.id = w.block_id
     JOIN training_macros m ON m.id = b.macro_id
-    WHERE m.program_id = :pid ORDER BY e.position
-""".replace("{sans_ressenti}", travail_note_sans_ressenti("e")))
+    WHERE m.program_id = :pid""")
 
 _BASE_LIGNES = """
     SELECT l.* FROM {table} l
@@ -144,19 +155,6 @@ _BASE_LIGNES = """
     JOIN training_macros m ON m.id = b.macro_id
     WHERE m.program_id = :pid ORDER BY l.position
 """
-
-# ⚠️ Un COMPTE, pas les séances (FRE-119) : la barre du programme éteint la
-# pastille d'une semaine vide, il lui faut savoir s'il y a des séances, pas les
-# recevoir.
-_COMPTE_SEANCES = text("""
-    SELECT w.id AS week_id, count(s.id) AS n
-    FROM training_weeks w
-    JOIN training_blocks b ON b.id = w.block_id
-    JOIN training_macros m ON m.id = b.macro_id
-    LEFT JOIN training_sessions s ON s.week_id = w.id
-    WHERE m.program_id = :pid
-    GROUP BY w.id
-""")
 
 # Les mêmes lectures, bornées au BLOC (FRE-119). Elles ne remontent pas jusqu'au
 # programme : `_BLOC` vérifie déjà l'appartenance du bloc.
@@ -174,9 +172,30 @@ _BLOC = text("""
     WHERE b.id = CAST(:bid AS uuid) AND m.program_id = :pid
 """)
 
+# Le bloc SEUL, dans la projection de `_BLOCS` : `read_block` rend le même
+# `BlocLu` que `read_tree`, par les mêmes `_sortie_*`, sans lire le programme.
+_BLOC_LU = text("""
+    SELECT b.id, b.macro_id, b.number, b.name,
+           b.day_split, b.selected_principals, b.granularity,
+           b.s1_start_date, b.s1_end_date,
+           b.debut, b.fin, b.visible_a_l_athlete, b.a_une_base
+    FROM blocs_lus b
+    WHERE b.program_id = :pid AND b.id = CAST(:bid AS uuid)
+""")
+
 _SEMAINES_DU_BLOC = text("""
-    SELECT w.id, w.hidden FROM training_weeks w
+    SELECT w.id, w.block_id, w.number, w.name, w.hidden, w.start_date, w.end_date,
+           w.athlete_weight_kg, w.athlete_height_cm, w.session_count
+    FROM semaines_lues w
     WHERE w.block_id = CAST(:bid AS uuid) ORDER BY w.number, w.legacy_id
+""")
+
+_OBJECTIFS_DU_BLOC = text("""
+    SELECT o.block_id AS bloc_uuid, o.id, o.exercise, o.variant, o.format, o.sets,
+           o.reps, o.weight_min, o.weight_max, o.assistance, o.atteint_le
+    FROM block_objectives o
+    WHERE o.block_id = CAST(:bid AS uuid)
+    ORDER BY o.position
 """)
 
 _SEANCES_DU_BLOC = text("""
@@ -186,41 +205,12 @@ _SEANCES_DU_BLOC = text("""
     WHERE w.block_id = CAST(:bid AS uuid) ORDER BY s.position
 """)
 
-_EXERCICES_DU_BLOC = text(_EXERCICES.text.replace(
-    """    JOIN training_weeks w ON w.id = s.week_id
-    JOIN training_blocks b ON b.id = w.block_id
-    JOIN training_macros m ON m.id = b.macro_id
-    WHERE m.program_id = :pid ORDER BY e.position""",
-    """    JOIN training_weeks w ON w.id = s.week_id
-    WHERE w.block_id = CAST(:bid AS uuid) ORDER BY e.position"""))
-
-# ⚠️ DÉRIVÉE de `_EXERCICES`, pas recopiée : deux copies du calcul de `mechano`
-# divergeraient au premier ajustement de la formule (FRE-103). Seule la PORTÉE
-# change, et l'assertion lève si le remplacement ne prend plus.
-assert ":bid" in _EXERCICES_DU_BLOC.text, "la portée par bloc n'a pas pris"
+_EXERCICES_DU_BLOC = _exercices("WHERE w.block_id = CAST(:bid AS uuid)")
 
 _BASE_LIGNES_DU_BLOC = """
     SELECT l.* FROM {table} l
     WHERE l.block_id = CAST(:bid AS uuid) ORDER BY l.position
 """
-
-# ⚠️ Un BOOLÉEN plutôt que la trame (FRE-119) : le menu « dupliquer la trame d'un
-# autre bloc » doit savoir lesquels en portent une, sans les charger. C'est le
-# serveur qui dit ce qu'« avoir une trame » veut dire, et nulle part ailleurs.
-#
-# Les quatre morceaux comptent : une grille de jours et une sélection de
-# mouvements sans une seule ligne, c'est une trame commencée, qui se duplique.
-_BLOCS_AVEC_BASE = text("""
-    SELECT b.id,
-           (b.day_split IS NOT NULL AND jsonb_array_length(b.day_split) > 0)
-        OR (b.selected_principals IS NOT NULL AND cardinality(b.selected_principals) > 0)
-        OR EXISTS (SELECT 1 FROM training_base_principles x WHERE x.block_id = b.id)
-        OR EXISTS (SELECT 1 FROM training_base_accessories x WHERE x.block_id = b.id)
-           AS a_une_base
-    FROM training_blocks b
-    JOIN training_macros m ON m.id = b.macro_id
-    WHERE m.program_id = :pid
-""")
 
 _OBJECTIFS = text("""
     SELECT o.block_id AS bloc_uuid, o.id, o.exercise, o.variant, o.format, o.sets,
@@ -413,11 +403,11 @@ def read_structure(conn, program_id: str, voit_les_masquees: bool = True) -> dic
     construction — seules les routes de lecture ont la question à poser.
 
     ⚠️ La BASE n'est pas ici : elle multiplierait le poids de la réponse pour une
-    donnée que seul le coach lit. `hasBase` dit seulement si elle existe ; son
-    contenu vient de `read_block_content`.
+    donnée que seul le coach lit. `hasBase` (`blocs_lus.a_une_base`) dit
+    seulement si elle existe ; son contenu vient de `read_block_content`.
 
     ⚠️ `sessionCount` plutôt que `sessions` : la barre éteint la pastille d'une
-    semaine vide, il lui faut le compte, pas le contenu.
+    semaine vide, il lui faut le compte, pas le contenu (`semaines_lues`).
     """
     p = {"pid": program_id}
     athlete = conn.execute(_ATHLETE, p).mappings().first()
@@ -428,10 +418,6 @@ def read_structure(conn, program_id: str, voit_les_masquees: bool = True) -> dic
     blocs = _grouper(conn.execute(_BLOCS, p).mappings().all(), "macro_id")
     semaines = _grouper(conn.execute(_SEMAINES, p).mappings().all(), "block_id")
     objectifs = _grouper(conn.execute(_OBJECTIFS, p).mappings().all(), "bloc_uuid")
-    comptes = {str(r["week_id"]): r["n"]
-               for r in conn.execute(_COMPTE_SEANCES, p).mappings().all()}
-    trames = {str(r["id"]): r["a_une_base"]
-              for r in conn.execute(_BLOCS_AVEC_BASE, p).mappings().all()}
 
     return {"macros": [{
         "id": str(m["id"]),
@@ -443,10 +429,10 @@ def read_structure(conn, program_id: str, voit_les_masquees: bool = True) -> dic
             "id": str(b["id"]),
             "blockNumber": b["number"],
             "name": b["name"],
-            **_bornes(semaines.get(str(b["id"]), [])),
+            **_bornes(b),
             "objectives": [_sortie_objectif(o) for o in objectifs.get(str(b["id"]), [])],
             "objectivesVersion": version_des_objectifs(objectifs.get(str(b["id"]), [])),
-            "hasBase": trames.get(str(b["id"]), False),
+            "hasBase": b["a_une_base"],
             "weeks": [{
                 "id": str(w["id"]),
                 "weekNumber": w["number"],
@@ -462,9 +448,9 @@ def read_structure(conn, program_id: str, voit_les_masquees: bool = True) -> dic
 "weight": float(w["athlete_weight_kg"]) if w["athlete_weight_kg"] is not None else None,
                     "height": float(w["athlete_height_cm"]) if w["athlete_height_cm"] is not None else None,
                 },
-                "sessionCount": comptes.get(str(w["id"]), 0),
+                "sessionCount": w["session_count"],
             } for w in _visibles(semaines.get(str(b["id"]), []), voit_les_masquees)],
-        } for b in _blocs_visibles(blocs.get(str(m["id"]), []), semaines, voit_les_masquees)],
+        } for b in _blocs_visibles(blocs.get(str(m["id"]), []), voit_les_masquees)],
     } for m in macros]}
 
 
@@ -541,53 +527,95 @@ def read_tree(conn, program_id: str, voit_les_masquees: bool = True) -> dict:
         .mappings().all(), "block_id")
     objectifs = _grouper(conn.execute(_OBJECTIFS, p).mappings().all(), "bloc_uuid")
 
-    sortie_macros = []
-    for m in macros:
-        sortie_blocs = []
-        for b in _blocs_visibles(blocs.get(str(m["id"]), []), semaines, voit_les_masquees):
-            bid = str(b["id"])
-            sortie_semaines = []
-            for w in _visibles(semaines.get(bid, []), voit_les_masquees):
-                sortie_seances = [_sortie_seance(s, exercices)
-                                  for s in seances.get(str(w["id"]), [])]
-                sortie_semaines.append({
-                    "id": str(w["id"]),
-                    "weekNumber": w["number"],
-                    "name": w["name"],
-                    "hidden": w["hidden"],
-                    "startDate": _iso(w["start_date"]),
-                    "endDate": _iso(w["end_date"]),
-                    # Le poids et la taille sont des mesures DATÉES (celles de
-                    # cette semaine) ; le nom vient de la fiche athlète.
-                    "athlete": {
-                        **identite,
-                        # ⚠️ `None` et non `0` (FRE-137) : cf. `read_structure`.
-"weight": float(w["athlete_weight_kg"]) if w["athlete_weight_kg"] is not None else None,
-                        "height": float(w["athlete_height_cm"]) if w["athlete_height_cm"] is not None else None,
-                    },
-                    "sessions": sortie_seances,
-                })
-            sortie_blocs.append({
-                "id": bid,
-                "blockNumber": b["number"],
-                "name": b["name"],
-                **_bornes(semaines.get(bid, [])),
-                "base": _sortie_base(b, principes.get(bid, []), accessoires.get(bid, [])),
-                # Jamais absent, même vide : le front lit la clé sans la tester.
-                "objectives": [_sortie_objectif(o) for o in objectifs.get(bid, [])],
-                "objectivesVersion": version_des_objectifs(objectifs.get(bid, [])),
-                "weeks": sortie_semaines,
-            })
-        sortie_macros.append({
-            "id": str(m["id"]),
-            "macroNumber": m["number"],
-            "name": m["name"],
-            # `trainingFrequency` et `coachNotes` sont NULLABLES au contrat.
-            "trainingFrequency": m["training_frequency"],
-            "coachNotes": m["coach_notes"],
-            "blocks": sortie_blocs,
-        })
-    return {"macros": sortie_macros}
+    lu = _Lu(identite, seances, exercices, principes, accessoires, objectifs)
+    return {"macros": [{
+        "id": str(m["id"]),
+        "macroNumber": m["number"],
+        "name": m["name"],
+        # `trainingFrequency` et `coachNotes` sont NULLABLES au contrat.
+        "trainingFrequency": m["training_frequency"],
+        "coachNotes": m["coach_notes"],
+        "blocks": [_sortie_bloc(b, semaines.get(str(b["id"]), []), lu, voit_les_masquees)
+                   for b in _blocs_visibles(blocs.get(str(m["id"]), []), voit_les_masquees)],
+    } for m in macros]}
+
+
+class _Lu(NamedTuple):
+    """Ce que les projections d'un bloc lisent, groupé par parent."""
+
+    identite: dict
+    seances: dict
+    exercices: dict
+    principes: dict
+    accessoires: dict
+    objectifs: dict
+
+
+def _sortie_semaine(w, lu: _Lu) -> dict:
+    return {
+        "id": str(w["id"]),
+        "weekNumber": w["number"],
+        "name": w["name"],
+        "hidden": w["hidden"],
+        "startDate": _iso(w["start_date"]),
+        "endDate": _iso(w["end_date"]),
+        # Le poids et la taille sont des mesures DATÉES (celles de cette
+        # semaine) ; le nom vient de la fiche athlète.
+        "athlete": {
+            **lu.identite,
+            # ⚠️ `None` et non `0` (FRE-137) : cf. `read_structure`.
+            "weight": float(w["athlete_weight_kg"]) if w["athlete_weight_kg"] is not None else None,
+            "height": float(w["athlete_height_cm"]) if w["athlete_height_cm"] is not None else None,
+        },
+        "sessions": [_sortie_seance(s, lu.exercices) for s in lu.seances.get(str(w["id"]), [])],
+    }
+
+
+def _sortie_bloc(b, semaines: list, lu: _Lu, voit_les_masquees: bool) -> dict:
+    """UN `BlocLu`, pour `read_tree` comme pour `read_block` : une seule projection."""
+    bid = str(b["id"])
+    return {
+        "id": bid,
+        "blockNumber": b["number"],
+        "name": b["name"],
+        **_bornes(b),
+        "base": _sortie_base(b, lu.principes.get(bid, []), lu.accessoires.get(bid, [])),
+        # Jamais absent, même vide : le front lit la clé sans la tester.
+        "objectives": [_sortie_objectif(o) for o in lu.objectifs.get(bid, [])],
+        "objectivesVersion": version_des_objectifs(lu.objectifs.get(bid, [])),
+        "weeks": [_sortie_semaine(w, lu) for w in _visibles(semaines, voit_les_masquees)],
+    }
+
+
+def read_block(conn, program_id: str, block_id: str) -> dict | None:
+    """UN bloc dans la forme de `read_tree` — `BlocLu` —, par des lectures bornées au bloc.
+
+    Pour les gestes qui relisent ce qu'ils viennent d'écrire (`next-week`,
+    `generate-week`) : la même projection que l'arbre, sans lire l'historique
+    entier du programme à chaque « + Semaine ». Les semaines masquées sont là :
+    l'appelant est du staff par construction.
+
+    Rend `None` si le bloc n'appartient pas à ce programme.
+    """
+    p = {"pid": program_id, "bid": block_id}
+    bloc = conn.execute(_BLOC_LU, p).mappings().first()
+    if bloc is None:
+        return None
+    athlete = conn.execute(_ATHLETE, p).mappings().first()
+    identite = ({"firstName": athlete["first_name"], "lastName": athlete["last_name"]}
+                if athlete else {"firstName": "", "lastName": ""})
+    semaines = conn.execute(_SEMAINES_DU_BLOC, p).mappings().all()
+    lu = _Lu(
+        identite,
+        _grouper(conn.execute(_SEANCES_DU_BLOC, p).mappings().all(), "week_id"),
+        _grouper(conn.execute(_EXERCICES_DU_BLOC, p).mappings().all(), "session_id"),
+        _grouper(conn.execute(text(_BASE_LIGNES_DU_BLOC.format(table="training_base_principles")), p)
+                 .mappings().all(), "block_id"),
+        _grouper(conn.execute(text(_BASE_LIGNES_DU_BLOC.format(table="training_base_accessories")), p)
+                 .mappings().all(), "block_id"),
+        _grouper(conn.execute(_OBJECTIFS_DU_BLOC, p).mappings().all(), "bloc_uuid"),
+    )
+    return _sortie_bloc(bloc, semaines, lu, voit_les_masquees=True)
 
 
 def lire_base(conn, block_uuid: str) -> dict:

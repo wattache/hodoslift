@@ -92,7 +92,7 @@ export function CartesCoach({
             <div className="flex items-start gap-2">
               <span className="w-5 shrink-0 pt-1 font-mono text-[11px] text-muted-foreground">
                 {enGroupe && natureDuGroupe === "emom"
-                  ? <span className="text-metric">{debutDansLEmom(session.exercises.slice(0, i).filter(o => o.groupId === ex.groupId).length, tempsDuGroupe("emom", membres, ex.sets, ex.clusterMode)?.intervalle ?? null)}</span>
+                  ? <span className="text-metric">{debutDansLEmom(session.exercises.slice(0, i).filter(o => o.groupId === ex.groupId).length, tempsDuGroupe("emom", membres, ex.sets, ex.clusterMode))}</span>
                   : enGroupe ? t("session.placeDansLeTour", { rang: rangDansLeGroupe(session.exercises, i) + 1, total: membres })
                   : i + 1}
               </span>

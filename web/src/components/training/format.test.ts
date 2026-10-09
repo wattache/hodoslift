@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import i18n from '@/i18n';
 import {
   formatBadgeSuffix, formatReps, formatRest, formatRestActual,
-  formatRestWithActual, formatSeries, formatTimeValue,
+  formatRestWithActual, formatSeries, formatTimeValue, talonDuGroupe,
 } from './format';
 
 /** ⚠️ LA LANGUE EST FIXÉE, PARCE QUE CES SPECS PARLENT DU FORMAT, PAS DES MOTS.
@@ -201,5 +201,23 @@ describe('la langue', () => {
     } finally {
       await i18n.changeLanguage('fr');
     }
+  });
+});
+
+/** LE TALON D'UN EMOM SE LIT AU MINUTEUR — William, 07/10 : « on repart à
+ *  MIN 1 » ne voulait rien dire une fois les repères en décompte.
+ *
+ *  MUTATION QUI ROUGIT : rendre l'ancien libellé (`{{n}} tours · on repart à
+ *  MIN 1`) — ni « Fin à 0'00 » ni l'heure du tour suivant ne sortent. */
+describe('talonDuGroupe, EMOM', () => {
+  it('un seul tour : on a jusqu’à 0\'00', () => {
+    expect(talonDuGroupe('emom', { sets: '1', clusterMode: '120' }, '', 6)).toBe("Fin à 0'00");
+  });
+  it('plusieurs tours : l’heure où démarre le suivant', () => {
+    // 3 mouvements × 3 tours × 1' : 9'00, 8'00, 7'00, puis le tour 2 à 6'00.
+    expect(talonDuGroupe('emom', { sets: '3', clusterMode: '60' }, '', 3)).toBe("3 tours · tour suivant à 6'00");
+  });
+  it('sans tours, pas d’heure à donner', () => {
+    expect(talonDuGroupe('emom', { sets: '', clusterMode: '60' }, '', 3)).toBe('');
   });
 });

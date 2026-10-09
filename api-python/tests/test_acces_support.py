@@ -99,6 +99,35 @@ def test_l_athlete_ouvert_entre_dans_mine_avec_sa_fin(auth_as, monde):
     assert c.get("/athletes/mine", headers=_AUTH).json() == []
 
 
+def test_l_athlete_ouvert_entre_dans_la_file_les_suivis_et_les_signalements(auth_as, monde):
+    """⚠️ LA RÈGLE ENTIÈRE, PAS LA MOITIÉ (FRE-217). L'accès support entrait dans
+    l'autorisation et le sélecteur, pas dans ce que le staff LIT de l'athlète :
+    l'admin voyait la fiche, pas sa file. Le lien vit dans `liens_athlete`, et
+    tout ce qui borne par le staff le lit là.
+
+    MUTATION QUI ROUGIT : remettre `a.coach_uid = :uid OR a.kine_uid = :uid`
+    dans une seule de ces trois requêtes."""
+    monde.execute(text(
+        "INSERT INTO douleurs (id, athlete_id, nom, zone) VALUES "
+        "('dddddddd-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001', 'Épaule', 'épaule')"))
+    monde.execute(text(
+        "INSERT INTO douleur_logs (douleur_id, log_date, intensite) VALUES "
+        "('dddddddd-0000-0000-0000-000000000001', current_date, 6)"))
+    c = auth_as(uid="william")
+
+    def ce_qu_il_voit():
+        return (
+            [d["athlete"]["athleteId"] for d in c.get("/guichet", headers=_AUTH).json()["dossiers"]
+             if d["type"] == "douleur"],
+            [a["id"] for a in c.get("/athletes/suivis", headers=_AUTH).json()],
+            [s["athleteId"] for s in c.get("/athletes/signalements", headers=_AUTH).json()],
+        )
+
+    assert ce_qu_il_voit() == ([], [], [])
+    c.post("/athletes/sofiane/support", json={}, headers=_AUTH)
+    assert ce_qu_il_voit() == (["sofiane"], ["sofiane"], ["sofiane"])
+
+
 def test_ouvert_deux_fois_il_se_PROLONGE(auth_as, monde):
     c = auth_as(uid="william")
     c.post("/athletes/sofiane/support", json={"heures": 1}, headers=_AUTH)

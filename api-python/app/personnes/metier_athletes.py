@@ -14,6 +14,7 @@ import json
 from sqlalchemy import text
 
 from app.competitions.scoring import compute_ris
+from app.socle.authz import porte_un_lien
 
 
 # Colonnes communes aux deux vues (`/suivis` s'y limite ; `/mine` ajoute la PII
@@ -45,12 +46,13 @@ COMMON_COLS = """
 # ⚠️ UN ACCÈS SUPPORT EN COURS EST UN LIEN AUSSI (FRE-202) : l'athlète entre dans
 # la liste le temps qu'il court, avec sa fin — c'est ce qui le fait entrer
 # dans le sélecteur, et ce qui dit au front ce que l'appelant peut y faire.
-_SUPPORT_JUSQU_AU = ("(SELECT max(s.fin) FROM acces_support s WHERE s.uid = :uid "
-                     "AND s.athlete_id = a.id AND s.fin > clock_timestamp())")
+# Les liens sans terme portent NULL, que `max` ignore.
+_SUPPORT_JUSQU_AU = ("(SELECT max(l.jusqu_au) FROM liens_athlete l "
+                     "WHERE l.uid = :uid AND l.athlete_id = a.id)")
 MINE_OWN_SQL = text(
     f"SELECT a.id, {COMMON_COLS}, a.email, a.user_uid, a.kine_uid, a.archive_le, a.birth_date, "
     f"{_SUPPORT_JUSQU_AU} AS support_jusqu_au FROM athletes a "
-    f"WHERE (a.coach_uid = :uid OR a.user_uid = :uid OR {_SUPPORT_JUSQU_AU} IS NOT NULL) "
+    f"WHERE {porte_un_lien('coach', 'athlete')} "
     f"AND (CAST(:structure AS text) IS NULL OR a.structure = :structure) "
     f"ORDER BY a.first_name, a.last_name"
 )
@@ -105,7 +107,7 @@ FICHE_DEJA_LIEE_SQL = text(
 
 # L'ENTRÉE DU KINÉ (FRE-65) : « mes athlètes suivis ».
 SUIVIS_SQL = text(
-    f"SELECT {COMMON_COLS} FROM athletes a WHERE a.kine_uid = :uid "
+    f"SELECT {COMMON_COLS} FROM athletes a WHERE {porte_un_lien('kine')} "
     f"AND (CAST(:structure AS text) IS NULL OR a.structure = :structure) "
     f"ORDER BY a.first_name, a.last_name"
 )
@@ -128,25 +130,19 @@ SUIVIS_SQL = text(
 # noter deux douleurs le même jour : les servir séparément ferait deux lignes
 # qu'une seule coche ferait disparaître ensemble. On agrège donc par jour, et
 # la ligne porte LA LISTE de ce qui a été noté.
-SIGNALEMENTS_SQL = text("""
-    SELECT a.legacy_id, a.first_name, a.last_name, l.log_date,
-           (SELECT p.id FROM programs p WHERE p.athlete_id = a.id LIMIT 1) AS program_id,
-           jsonb_agg(jsonb_build_object(
-               'id', d.id::text, 'nom', d.nom, 'zone', d.zone,
-               'intensite', l.intensite, 'commentaire', l.commentaire,
-               -- ⚠️ `recurrente` SE DÉDUIT ICI AUSSI, du même compte qu'ailleurs :
-               -- la règle vit côté serveur, en un seul endroit.
-               'logs', (SELECT count(*) FROM douleur_logs x WHERE x.douleur_id = d.id),
-               'recurrente', (SELECT count(*) FROM douleur_logs x WHERE x.douleur_id = d.id) > 1
-           ) ORDER BY l.intensite DESC, d.nom) AS douleurs
-    FROM douleur_logs l
-    JOIN douleurs d ON d.id = l.douleur_id
-    JOIN athletes a ON a.id = d.athlete_id
-    WHERE (a.kine_uid = :uid OR a.coach_uid = :uid)
+#
+# L'agrégation par jour, et `recurrente` avec elle, vient de la vue
+# `signalements` : la file du guichet et la coche lisent la même.
+SIGNALEMENTS_SQL = text(f"""
+    SELECT a.legacy_id, a.first_name, a.last_name, s.log_date,
+           (SELECT p.id FROM programs p WHERE p.athlete_id = a.id) AS program_id,
+           s.douleurs
+    FROM signalements s
+    JOIN athletes a ON a.id = s.athlete_id
+    WHERE {porte_un_lien('coach', 'kine')}
       AND a.archive_le IS NULL
-      AND l.log_date >= :depuis
-    GROUP BY a.legacy_id, a.first_name, a.last_name, l.log_date, a.id
-    ORDER BY l.log_date DESC, a.first_name, a.last_name
+      AND s.log_date >= :depuis
+    ORDER BY s.log_date DESC, a.first_name, a.last_name
 """)
 
 
@@ -164,11 +160,10 @@ SIGNALEMENTS_SQL = text("""
 # Idempotentes : `ON CONFLICT DO NOTHING`, et décocher l'absent rend 200.
 
 SIGNALEMENT_EXISTE_SQL = text("""
-    SELECT DISTINCT a.id
-      FROM douleur_logs l
-      JOIN douleurs d ON d.id = l.douleur_id
-      JOIN athletes a ON a.id = d.athlete_id
-     WHERE a.legacy_id = :legacy AND l.log_date = :jour
+    SELECT s.athlete_id
+      FROM signalements s
+      JOIN athletes a ON a.id = s.athlete_id
+     WHERE a.legacy_id = :legacy AND s.log_date = :jour
 """)
 VU_SQL = text("""
     INSERT INTO signalement_vu (athlete_id, log_date, uid) VALUES (:aid, :jour, :uid)
@@ -236,7 +231,9 @@ _RIS_CANDIDATS_SQL = text(
            c.name AS competition, c.start_date
     FROM competition_scores cs
     JOIN competitions c ON c.id = cs.competition_id
-    WHERE cs.athlete_id IS NOT NULL
+    -- Bornée aux athlètes qu'on sert (FRE-221) : la vue agrège par
+    -- sous-requêtes corrélées, et le sélecteur s'ouvre souvent.
+    WHERE cs.athlete_id = ANY(CAST(:ids AS uuid[]))
       AND cs.total_bareme_kg > 0
       AND cs.bodyweight_kg IS NOT NULL
       AND cs.gender IS NOT NULL
@@ -244,14 +241,15 @@ _RIS_CANDIDATS_SQL = text(
 )
 
 
-def meilleurs_ris(session) -> dict:
-    """athlete_id → le meilleur RIS et son contexte, ou rien.
+def meilleurs_ris(session, athlete_ids: list) -> dict:
+    """athlete_id → le meilleur RIS et son contexte, ou rien — pour CES athlètes.
 
     ⚠️ LE MEILLEUR, PAS LE DERNIER. Un RIS est une performance : avec le plus
     récent, une compétition ratée effacerait un titre.
     """
     par_athlete: dict = {}
-    for r in session.execute(_RIS_CANDIDATS_SQL).mappings().all():
+    ids = [str(i) for i in athlete_ids]
+    for r in session.execute(_RIS_CANDIDATS_SQL, {"ids": ids}).mappings().all():
         valeur = compute_ris(float(r["total_bareme_kg"]),
                              float(r["bodyweight_kg"]), r["gender"])
         if valeur is None:

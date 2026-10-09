@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from './auth-context';
 import { AuthCard, AuthLogo, AuthSpinner } from './auth-card';
+import { NomHodosLift } from '@/components/marque-hodos';
 
 /** Bouton Google Identity Services — la voie SANS canal de retour. Popup et
  *  redirect reposent tous deux sur un état qui doit survivre à un aller-retour
@@ -85,7 +86,7 @@ export function LoginPage() {
   return (
     <AuthCard>
       <AuthLogo />
-      <h1 className="text-xl font-semibold tracking-tight">Hodos</h1>
+      <h1 className="text-xl font-semibold tracking-tight"><NomHodosLift /></h1>
       <p className="mt-1 text-sm text-muted-foreground">{t('auth.connecteToiPourAcceder')}</p>
       {error && (
         <div className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">

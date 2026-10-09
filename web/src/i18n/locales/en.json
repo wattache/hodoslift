@@ -1407,7 +1407,8 @@
     "total": "total",
     "duree": "time",
     "finDuTour": "end of round",
-    "talonEmom": "{{n}} rounds · back to MIN 1",
+    "talonEmomTours": "{{n}} rounds · next round at {{debut}}",
+    "talonEmomFin": "Ends at 0'00",
     "toursBoucles": "rounds completed",
     "sansLacherMouvements": "unbroken · {{n}} moves",
     "placeDansLeTour": "{{rang}}/{{total}}",
@@ -1670,8 +1671,8 @@
     "actif": "On for this device ✓",
     "inactif": "Off",
     "enCours": "One moment…",
-    "refuse": "Notifications are blocked for Hodos in the browser settings — allow them there first.",
-    "indisponible": "This browser does not allow it. On iPhone, add Hodos to the Home Screen (Share → Add to Home Screen), then come back here.",
+    "refuse": "Notifications are blocked for HodosLift in the browser settings — allow them there first.",
+    "indisponible": "This browser does not allow it. On iPhone, add HodosLift to the Home Screen (Share → Add to Home Screen), then come back here.",
     "echec": "That did not work — try again, or check the connection."
   },
   "poids": {
