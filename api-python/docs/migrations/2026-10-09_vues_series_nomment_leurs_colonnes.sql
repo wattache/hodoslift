@@ -8,6 +8,10 @@
 --
 -- ⚠️ Une colonne ajoutée à `training_sets` s'ajoute ICI aussi, sinon la vue ne
 -- la rend pas.
+--
+-- ⚠️ LE NOM EST L'ORDRE : celui-ci se range APRÈS `…_une_seule_trace_…`, où les
+-- deux vues naissent. Un nom qui passerait avant tombe sur un DROP de ce qui
+-- n'existe pas encore — sur toute base neuve, bac à sable ou restauration.
 
 BEGIN;
 
@@ -31,7 +35,7 @@ SELECT * FROM series_realisees
  WHERE kind IS DISTINCT FROM 'warmup' AND kind IS DISTINCT FROM 'rehab';
 
 INSERT INTO schema_migrations (fichier)
-VALUES ('2026-10-09_series_realisees_nomme_ses_colonnes.sql')
+VALUES ('2026-10-09_vues_series_nomment_leurs_colonnes.sql')
 ON CONFLICT (fichier) DO NOTHING;
 
 COMMIT;
