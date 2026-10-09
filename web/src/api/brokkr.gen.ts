@@ -3244,24 +3244,20 @@ export interface components {
             id?: string | null;
             /** Name */
             name?: string | null;
-            /** Startdate */
-            startDate?: string | null;
-            /** Enddate */
-            endDate?: string | null;
             week?: components["schemas"]["WeekCreate"] | null;
             /** Base */
             base?: {
                 [key: string]: unknown;
             } | null;
         };
-        /** BlockPatch */
+        /**
+         * BlockPatch
+         * @description ⚠️ PAS de dates, comme le macro : la période d'un bloc se DÉDUIT de ses
+         *     semaines (`blocs_lus`). `training_blocks` n'a plus de colonnes de dates.
+         */
         BlockPatch: {
             /** Name */
             name?: string | null;
-            /** Startdate */
-            startDate?: string | null;
-            /** Enddate */
-            endDate?: string | null;
         };
         /** Body_televerser_media_bilan_medias_demo_post */
         Body_televerser_media_bilan_medias_demo_post: {

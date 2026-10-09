@@ -186,10 +186,11 @@ export function useFileHorsLigne(): EcritureEnAttente[] {
  *  toujours au moins aussi fraîche que l'écran, parce que `garderPourPlusTard`
  *  fusionne la nouvelle valeur PAR-DESSUS l'ancienne. Ce qui est ici est donc le
  *  dernier état connu, jamais un état d'avant. */
-/** Un bloc tel qu'il naît : nu, sans semaine (22/08). */
+/** Un bloc tel qu'il naît : nu, sans semaine (22/08). Ses dates ne s'écrivent
+ *  pas : brokkr les déduit de ses semaines, et un bloc neuf n'en a aucune. */
 function blocNeuf(id: string, numero: number, corps: BlockCreate | null | undefined): MacrocycleEditing['blocks'][number] {
   return {
-    id, blockNumber: numero, name: corps?.name ?? '', startDate: corps?.startDate ?? '', endDate: corps?.endDate ?? '',
+    id, blockNumber: numero, name: corps?.name ?? '', startDate: '', endDate: '',
     base: (corps?.base as BlockBase | null | undefined) ?? createEmptyBlockBase(),
     objectives: [], objectivesVersion: '', weeks: [],
   };
