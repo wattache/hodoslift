@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import text
 
 from app.socle.auth import verify_token
+from app.socle.authz import porte_un_lien
 from app.socle.db import get_session
 from app.socle.erreurs import erreurs
 from app.entrainement.records import TRACE_ARBRE
@@ -22,11 +23,11 @@ from app.suivi.schemas_guichet import Guichet
 
 router = APIRouter(prefix="/guichet", tags=["guichet"])
 
-# ⚠️ Le LIEN décide, pas le rôle : le coach du programme, ou le kiné de son
-# athlète — ceux que `require_program_access("coach")` laisse relire. La route
-# n'a ni paramètre d'athlète ni garde `require_coach` : qui ne staffe personne
-# reçoit une file VIDE en 200, pas un refus.
-_STAFF_DU_PROGRAMME = "(p.coach_uid = :uid OR a.kine_uid = :uid)"
+# ⚠️ Le LIEN décide, pas le rôle : le staff de l'athlète, par `liens_athlete` —
+# ceux que `require_program_access("coach")` laisse relire, accès support
+# compris. La route n'a ni paramètre d'athlète ni garde `require_coach` : qui ne
+# staffe personne reçoit une file VIDE en 200, pas un refus.
+_STAFF = porte_un_lien("coach", "kine")
 
 # ⚠️ Warmup et rehab sont dans la LISTE, pas dans les MESURES — le même partage
 # que `metier_tracking.py`. Un échauffement chargé déplace un poids réel, mais
@@ -63,7 +64,7 @@ _SEANCES_SQL = text(f"""
           JOIN training_macros m ON m.id = b.macro_id
           JOIN programs        p ON p.id = m.program_id
           JOIN athletes        a ON a.id = p.athlete_id
-         WHERE {_STAFF_DU_PROGRAMME}
+         WHERE {_STAFF}
            AND a.archive_le IS NULL
            -- ⚠️ LA BORNE EST LE MARQUEUR, PAS LA DATE DE LA SEMAINE (FRE-179).
            -- Et AUCUNE garde « pas dans le futur » : une semaine préparée
@@ -122,7 +123,7 @@ _SEANCES_SQL = text(f"""
 # `daily_logs`. Et l'agrégation par (athlète, jour) n'est pas cosmétique : la
 # COCHE porte cette clé-là, donc deux douleurs notées le même jour doivent faire
 # UNE ligne — sinon une seule coche en ferait disparaître deux.
-_DOULEURS_SQL = text("""
+_DOULEURS_SQL = text(f"""
     SELECT a.legacy_id, a.first_name, a.last_name, l.log_date,
            (SELECT p.id FROM programs p WHERE p.athlete_id = a.id ORDER BY p.id LIMIT 1) AS program_id,
            jsonb_agg(jsonb_build_object(
@@ -150,7 +151,7 @@ _DOULEURS_SQL = text("""
            ORDER BY s.position, s.id
            LIMIT 1
       ) sj ON true
-     WHERE (a.kine_uid = :uid OR a.coach_uid = :uid)
+     WHERE {_STAFF}
        AND a.archive_le IS NULL
        AND l.log_date >= :depuis
      GROUP BY a.legacy_id, a.first_name, a.last_name, l.log_date, a.id, v.vu_le,
@@ -197,7 +198,7 @@ _SEMAINES_SQL = text(f"""
           JOIN training_macros m ON m.id = b.macro_id
           JOIN programs        p ON p.id = m.program_id
           JOIN athletes        a ON a.id = p.athlete_id
-         WHERE {_STAFF_DU_PROGRAMME} AND a.archive_le IS NULL
+         WHERE {_STAFF} AND a.archive_le IS NULL
     ),
     derniere_programmee AS (
         SELECT DISTINCT ON (program_id) *
@@ -222,9 +223,9 @@ _SEMAINES_SQL = text(f"""
 
 # « N athlètes à jour » — les SIENS, par le lien de l'athlète (coach ou kiné),
 # hors archivés. L'annuaire entier, lui, compte aussi ceux des autres.
-_ATHLETES_SQL = text("""
+_ATHLETES_SQL = text(f"""
     SELECT count(*) FROM athletes a
-     WHERE a.archive_le IS NULL AND (a.coach_uid = :uid OR a.kine_uid = :uid)
+     WHERE a.archive_le IS NULL AND {_STAFF}
 """)
 
 

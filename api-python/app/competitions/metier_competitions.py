@@ -14,7 +14,7 @@ import json
 from fastapi import status
 from sqlalchemy import text
 
-from app.socle.authz import compte, derive_participant_uids
+from app.socle.authz import compte, derive_participant_uids, porte_un_lien
 from app.socle.structures import slugs_de
 from app.competitions.schemas_competition import Participant
 from app.competitions.scoring import compute_ris, compute_projection
@@ -260,7 +260,7 @@ def exiger_sa_structure(session, uid: str, comp_id: str) -> None:
 _Y_CONCOURT_SQL = text(
     "SELECT 1 FROM competition_participants cp JOIN athletes a ON a.id = cp.athlete_id "
     "JOIN competitions k ON k.id = cp.competition_id "
-    "WHERE k.legacy_id = :legacy AND (a.user_uid = :uid OR a.coach_uid = :uid) LIMIT 1")
+    f"WHERE k.legacy_id = :legacy AND {porte_un_lien('coach', 'athlete')} LIMIT 1")
 
 
 def exiger_de_la_voir(session, uid: str, comp_id: str) -> None:
@@ -862,7 +862,7 @@ def competitions_de_mes_athletes(session, uid: str) -> set:
     return {r[0] for r in session.execute(text(
         "SELECT DISTINCT k.legacy_id FROM competition_participants cp "
         "JOIN athletes a ON a.id = cp.athlete_id JOIN competitions k ON k.id = cp.competition_id "
-        "WHERE a.coach_uid = :uid"), {"uid": uid}).all()}
+        f"WHERE {porte_un_lien('coach')}"), {"uid": uid}).all()}
 
 
 # Les athlètes de la structure de la compétition, pour l'écran d'inscription

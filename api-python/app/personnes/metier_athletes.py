@@ -14,6 +14,7 @@ import json
 from sqlalchemy import text
 
 from app.competitions.scoring import compute_ris
+from app.socle.authz import porte_un_lien
 
 
 # Colonnes communes aux deux vues (`/suivis` s'y limite ; `/mine` ajoute la PII
@@ -45,12 +46,13 @@ COMMON_COLS = """
 # ⚠️ UN ACCÈS SUPPORT EN COURS EST UN LIEN AUSSI (FRE-202) : l'athlète entre dans
 # la liste le temps qu'il court, avec sa fin — c'est ce qui le fait entrer
 # dans le sélecteur, et ce qui dit au front ce que l'appelant peut y faire.
-_SUPPORT_JUSQU_AU = ("(SELECT max(s.fin) FROM acces_support s WHERE s.uid = :uid "
-                     "AND s.athlete_id = a.id AND s.fin > clock_timestamp())")
+# Les liens sans terme portent NULL, que `max` ignore.
+_SUPPORT_JUSQU_AU = ("(SELECT max(l.jusqu_au) FROM liens_athlete l "
+                     "WHERE l.uid = :uid AND l.athlete_id = a.id)")
 MINE_OWN_SQL = text(
     f"SELECT a.id, {COMMON_COLS}, a.email, a.user_uid, a.kine_uid, a.archive_le, a.birth_date, "
     f"{_SUPPORT_JUSQU_AU} AS support_jusqu_au FROM athletes a "
-    f"WHERE (a.coach_uid = :uid OR a.user_uid = :uid OR {_SUPPORT_JUSQU_AU} IS NOT NULL) "
+    f"WHERE {porte_un_lien('coach', 'athlete')} "
     f"AND (CAST(:structure AS text) IS NULL OR a.structure = :structure) "
     f"ORDER BY a.first_name, a.last_name"
 )
@@ -105,7 +107,7 @@ FICHE_DEJA_LIEE_SQL = text(
 
 # L'ENTRÉE DU KINÉ (FRE-65) : « mes athlètes suivis ».
 SUIVIS_SQL = text(
-    f"SELECT {COMMON_COLS} FROM athletes a WHERE a.kine_uid = :uid "
+    f"SELECT {COMMON_COLS} FROM athletes a WHERE {porte_un_lien('kine')} "
     f"AND (CAST(:structure AS text) IS NULL OR a.structure = :structure) "
     f"ORDER BY a.first_name, a.last_name"
 )
@@ -128,7 +130,7 @@ SUIVIS_SQL = text(
 # noter deux douleurs le même jour : les servir séparément ferait deux lignes
 # qu'une seule coche ferait disparaître ensemble. On agrège donc par jour, et
 # la ligne porte LA LISTE de ce qui a été noté.
-SIGNALEMENTS_SQL = text("""
+SIGNALEMENTS_SQL = text(f"""
     SELECT a.legacy_id, a.first_name, a.last_name, l.log_date,
            (SELECT p.id FROM programs p WHERE p.athlete_id = a.id LIMIT 1) AS program_id,
            jsonb_agg(jsonb_build_object(
@@ -142,7 +144,7 @@ SIGNALEMENTS_SQL = text("""
     FROM douleur_logs l
     JOIN douleurs d ON d.id = l.douleur_id
     JOIN athletes a ON a.id = d.athlete_id
-    WHERE (a.kine_uid = :uid OR a.coach_uid = :uid)
+    WHERE {porte_un_lien('coach', 'kine')}
       AND a.archive_le IS NULL
       AND l.log_date >= :depuis
     GROUP BY a.legacy_id, a.first_name, a.last_name, l.log_date, a.id

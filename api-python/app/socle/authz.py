@@ -22,12 +22,65 @@ from app.socle.db import get_session
 from app.socle.erreurs import ErreurMetier
 
 
-# Un ACCÈS SUPPORT en cours de l'appelant sur l'athlète (FRE-202). Un fragment et
-# non une fonction : les deux dépendances le lisent DANS leur requête, sans
-# second aller-retour. `clock_timestamp()` et non `now()` : l'accès se juge à
-# l'heure réelle, pas au début de la transaction qui le demande.
-_SUPPORT = ("EXISTS (SELECT 1 FROM acces_support s WHERE s.uid = :uid "
-            "AND s.athlete_id = {athlete} AND s.fin > clock_timestamp())")
+# LE LIEN vit dans la vue `liens_athlete` : coach (de la fiche ou du programme),
+# kiné, athlète, et l'accès support en cours, qui y vaut coach ET kiné (FRE-202).
+# Les deux dépendances en tirent les rôles ; les listes bornent leurs lignes par
+# `porte_un_lien(...)` — un fragment, pas un second aller-retour.
+LIENS = ("coach", "kine", "athlete")
+
+
+def porte_un_lien(*liens: str, athlete: str = "a.id") -> str:
+    """Fragment SQL : l'appelant (`:uid`) porte l'un de ces liens sur l'athlète `athlete`."""
+    assert liens and set(liens) <= set(LIENS), liens
+    valeurs = ", ".join(f"'{lien}'" for lien in liens)
+    return (f"EXISTS (SELECT 1 FROM liens_athlete l WHERE l.athlete_id = {athlete} "
+            f"AND l.uid = :uid AND l.lien IN ({valeurs}))")
+
+
+# Mode d'une route sur un ATHLÈTE → les liens qui l'ouvrent.
+#
+# ⚠️ C'est le LIEN qui ouvre l'accès (`coach_uid`, `kine_uid`), pas le rôle : un
+# kiné déclaré n'a rien sur un athlète qu'il ne suit pas. Le rôle dit QUELS
+# athlètes, pas QUOI : sur l'athlète qu'il suit, le kiné a les droits du coach —
+# d'où `staff`, dont le nom dit QUI il laisse entrer. Un mode qui ment sur son
+# contenu se fait élargir par mégarde.
+#
+# ⚠️ `owner_or_kine` EXCLUT LE COACH : un bilan porte des antécédents et des
+# pathologies, pas de la donnée d'entraînement (bilan-kine.md §7). « Ouvrir large
+# entre gens du staff » ne décide pas du secret médical. Le coach ne voit que le
+# signal dérivé, par le tableau des signalements.
+#
+# ⚠️ `kine` — le plus étroit, fermé à l'athlète LUI-MÊME (FRE-102). Pour les
+# NOTES DE SUIVI : l'observation du praticien, une hypothèse et non un constat.
+# La montrer censurerait ce que le kiné y écrit. Élargir plus tard est trivial ;
+# resserrer ne l'est pas.
+#
+# ⚠️ `coach` — le pendant de `kine`, fermé à l'athlète (FRE-122). Pour les
+# OBJECTIFS TECHNIQUES : l'athlète les lit (`owner_or_staff`), le coach les
+# écrit. Il exclut aussi le KINÉ, contrairement à `staff` : c'est de la
+# PROGRAMMATION. « Ouvrir large » vaut pour ce qu'on regarde, pas pour ce qu'on
+# prescrit.
+_MODES_ATHLETE: dict[str, frozenset[str]] = {
+    "owner": frozenset({"athlete"}),
+    "staff": frozenset({"coach", "kine"}),
+    "owner_or_staff": frozenset({"athlete", "coach", "kine"}),
+    "owner_or_kine": frozenset({"athlete", "kine"}),
+    "kine": frozenset({"kine"}),
+    "coach": frozenset({"coach"}),
+}
+
+# Les liens de l'appelant sur une fiche — `{}` s'il n'en a aucun, NULL si la fiche
+# n'existe pas (le LEFT JOIN garde le 404 distinct du 403).
+_LIENS_SUR_L_ATHLETE = text(
+    "SELECT array_remove(array_agg(l.lien), NULL) AS liens "
+    "FROM athletes a LEFT JOIN liens_athlete l ON l.athlete_id = a.id AND l.uid = :uid "
+    "WHERE a.legacy_id = :legacy GROUP BY a.id"
+)
+_LIENS_SUR_LE_PROGRAMME = text(
+    "SELECT array_remove(array_agg(l.lien), NULL) AS liens "
+    "FROM programs p LEFT JOIN liens_athlete l ON l.athlete_id = p.athlete_id AND l.uid = :uid "
+    "WHERE p.id = :program_id GROUP BY p.id"
+)
 
 
 @dataclass
@@ -56,63 +109,17 @@ class _AthleteAccessDep:
         # Le segment de chemin est `athletes.legacy_id`, pas `id`.
         with get_session() as session:
             row = session.execute(
-                text("SELECT a.coach_uid, a.user_uid, a.kine_uid, "
-                     + _SUPPORT.format(athlete="a.id") + " AS support "
-                     "FROM athletes a WHERE a.legacy_id = :legacy"),
-                {"legacy": athlete_id, "uid": claims["uid"]},
+                _LIENS_SUR_L_ATHLETE, {"legacy": athlete_id, "uid": claims["uid"]},
             ).mappings().first()
         if row is None:
-            raise ErreurMetier("athlete_introuvable", 
+            raise ErreurMetier("athlete_introuvable",
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="athlète introuvable",
             )
 
-        uid = claims["uid"]
-        # ⚠️ C'est le LIEN qui ouvre l'accès (`coach_uid`, `kine_uid`), pas le rôle :
-        # un kiné déclaré n'a rien sur un athlète qu'il ne suit pas. Le rôle dit
-        # QUELS athlètes, pas QUOI : sur l'athlète qu'il suit, le kiné a les droits
-        # du coach — d'où `staff`, dont le nom dit QUI il laisse entrer. Un mode qui
-        # ment sur son contenu se fait élargir par mégarde.
-        #
-        # ⚠️ `owner_or_kine` EXCLUT LE COACH : un bilan porte des antécédents et des
-        # pathologies, pas de la donnée d'entraînement (bilan-kine.md §7). « Ouvrir
-        # large entre gens du staff » ne décide pas du secret médical. Le coach ne
-        # voit que le signal dérivé, par le tableau des signalements.
-        #
-        # ⚠️ UN ACCÈS SUPPORT EN COURS VAUT COACH ET KINÉ (FRE-202) — sur CET athlète,
-        # jusqu'à sa fin, et c'est encore un lien : l'admin se l'ouvre, il expire
-        # seul. Il entre ICI, dans les trois flags, et nulle part ailleurs.
-        support = bool(row["support"])
-        est_staff = uid in (row["coach_uid"], row["kine_uid"]) or support
-        est_kine = (row["kine_uid"] is not None and uid == row["kine_uid"]) or support
-        est_coach = uid == row["coach_uid"] or support
-        # ⚠️ Les modes FERMÉS À L'ATHLÈTE sont traités en premier, et séparément.
-        # Le `else` commence par `authorized = user_uid == uid` : y faire passer un
-        # mode fermé l'autoriserait d'abord pour le lui retirer ensuite — une ligne
-        # déplacée ouvrirait un dossier médical. Ce qui est fermé se lit comme fermé.
-        if self.mode == "staff":
-            authorized = est_staff
-        # ⚠️ `kine` — le plus étroit, fermé à l'athlète LUI-MÊME (FRE-102). Pour
-        # les NOTES DE SUIVI : l'observation du praticien, une hypothèse et non un
-        # constat. La montrer censurerait ce que le kiné y écrit. Élargir plus tard
-        # est trivial ; resserrer ne l'est pas.
-        elif self.mode == "kine":
-            authorized = est_kine
-        # ⚠️ `coach` — le pendant de `kine`, fermé à l'athlète (FRE-122). Pour les
-        # OBJECTIFS TECHNIQUES : l'athlète les lit (`owner_or_staff`), le coach les
-        # écrit. Il exclut aussi le KINÉ, contrairement à `staff` : c'est de la
-        # PROGRAMMATION. « Ouvrir large » vaut pour ce qu'on regarde, pas pour ce
-        # qu'on prescrit.
-        elif self.mode == "coach":
-            authorized = est_coach
-        else:
-            authorized = row["user_uid"] == uid
-            if not authorized and self.mode == "owner_or_staff":
-                authorized = est_staff
-            if not authorized and self.mode == "owner_or_kine":
-                authorized = est_kine
-
-        if not authorized:
+        # Les liens viennent de la vue, le mode dit lesquels ouvrent : rien
+        # d'autre à décider ici.
+        if not (frozenset(row["liens"]) & _MODES_ATHLETE[self.mode]):
             raise ErreurMetier("athlete_hors_perimetre", 
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Accès non autorisé à cet athlète",
@@ -189,38 +196,20 @@ class _ProgramAccessDep:
         program_id: str,
         claims: dict = Depends(verify_token),
     ) -> ProgramAccess:
-        # UNE requête pour les trois rôles : le programme, et (LEFT JOIN) l'athlète
-        # lié, qui porte son compte (`user_uid`) et son kiné (`kine_uid`, FRE-52).
-        # Pas besoin d'interroger `kines` : `kine_uid` est une FK vers cette table.
+        # UNE requête pour les trois rôles : les liens de l'appelant sur l'athlète
+        # du programme, par la vue — le coach du PROGRAMME y figure (`programs`).
         with get_session() as session:
             row = session.execute(
-                text(
-                    "SELECT p.coach_uid, a.user_uid, a.kine_uid, "
-                    + _SUPPORT.format(athlete="a.id") + " AS support "
-                    "FROM programs p LEFT JOIN athletes a ON a.id = p.athlete_id "
-                    "WHERE p.id = :program_id"
-                ),
-                {"program_id": program_id, "uid": claims["uid"]},
+                _LIENS_SUR_LE_PROGRAMME, {"program_id": program_id, "uid": claims["uid"]},
             ).mappings().first()
         if row is None:
-            raise ErreurMetier("programme_introuvable", 
+            raise ErreurMetier("programme_introuvable",
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="programme introuvable",
             )
 
-        uid = claims["uid"]
-        # LA résolution uid → rôles : rien d'autre ne la refait. Une colonne NULL
-        # (`user_uid`, `kine_uid`) n'égale aucun uid : pas de garde à ajouter.
-        roles = frozenset(
-            role for role, porteur in (
-                ("coach", row["coach_uid"]),
-                ("athlete", row["user_uid"]),
-                ("kine", row["kine_uid"]),
-            ) if porteur == uid
-        )
-        # Un accès support en cours ajoute les deux rôles du staff (FRE-202).
-        if row["support"]:
-            roles |= {"coach", "kine"}
+        # LA résolution uid → rôles : la vue la porte, rien d'autre ne la refait.
+        roles = frozenset(row["liens"])
 
         if not (roles & _MODES[self.mode]):
             raise ErreurMetier("programme_hors_perimetre", 

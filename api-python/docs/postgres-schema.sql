@@ -415,6 +415,33 @@ CREATE TABLE programs (
 CREATE UNIQUE INDEX ON programs (athlete_id);
 CREATE INDEX ON programs (coach_uid);
 
+-- QUI SUIT QUI (FRE-217) : LE lien d'une personne à un athlète, et nulle part
+-- ailleurs. Coach de la fiche ou du programme, kiné, l'athlète lui-même, accès
+-- support en cours. `app/socle/authz.py` en tire les rôles, et les listes
+-- (sélecteur, suivis, signalements, guichet, compétitions) y bornent leurs
+-- lignes par `porte_un_lien(...)`.
+--
+-- ⚠️ UN ACCÈS SUPPORT EN COURS VAUT COACH ET KINÉ, et c'est un lien comme les
+-- autres : il porte sa fin (`jusqu_au`, NULL pour les liens sans terme).
+-- `clock_timestamp()` et non `now()` : l'accès se juge à l'heure réelle, pas au
+-- début de la transaction qui le lit.
+CREATE VIEW liens_athlete AS
+SELECT a.coach_uid AS uid, a.id AS athlete_id, 'coach' AS lien, NULL::timestamptz AS jusqu_au
+  FROM athletes a
+UNION
+SELECT p.coach_uid, p.athlete_id, 'coach', NULL
+  FROM programs p
+UNION
+SELECT a.kine_uid, a.id, 'kine', NULL
+  FROM athletes a WHERE a.kine_uid IS NOT NULL
+UNION
+SELECT a.user_uid, a.id, 'athlete', NULL
+  FROM athletes a WHERE a.user_uid IS NOT NULL
+UNION
+SELECT s.uid, s.athlete_id, l.lien, s.fin
+  FROM acces_support s CROSS JOIN (VALUES ('coach'), ('kine')) AS l(lien)
+ WHERE s.fin > clock_timestamp();
+
 
 -- ============================================================================
 -- SUIVI QUOTIDIEN & CALENDRIER
