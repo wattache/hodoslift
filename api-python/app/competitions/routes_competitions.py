@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, Query, status
 
 from app.socle.audit import log_write
 from app.socle.auth import verify_token
-from app.socle.authz import is_admin, is_coach, require_membre
+from app.socle.authz import compte, require_membre
 from app.socle.structures import slugs_de, structure_ecrite
 from app.socle.db import get_session
 from app.competitions.schemas_competition import CoachAvailabilityPut, CompetitionCreate, CompetitionPatch
@@ -53,7 +53,7 @@ def put_competition(
     Le remplacement supprime les enfants et les réinsère, dans UNE transaction.
     """
     uid = claims["uid"]
-    if not is_coach(uid):
+    if not compte(uid).coach:
         raise ErreurMetier("reserve_aux_coachs", status.HTTP_403_FORBIDDEN, "réservé aux coachs")
 
     with get_session() as session:
@@ -110,7 +110,7 @@ def patch_competition(
             la base ; `fin_avant_debut` (422).
     """
     uid = claims["uid"]
-    if not is_coach(uid):
+    if not compte(uid).coach:
         raise ErreurMetier("reserve_aux_coachs", status.HTTP_403_FORBIDDEN, "réservé aux coachs")
 
     provided = payload.model_dump(exclude_none=True, exclude={"version"})
@@ -223,7 +223,7 @@ def delete_competition(
     dépendre du CASCADE.
     """
     uid = claims["uid"]
-    if not is_coach(uid):
+    if not compte(uid).coach:
         raise ErreurMetier("reserve_aux_coachs", status.HTTP_403_FORBIDDEN, "réservé aux coachs")
 
     with get_session() as session:
@@ -266,7 +266,7 @@ def list_competitions(
         coache_dans = metier.structure_du_coach(session, uid=uid)
         # Celles où concourt un athlète que je coache — le meet partagé.
         mes_athletes_y_sont = metier.competitions_de_mes_athletes(session, uid)
-    admin = is_admin(uid)
+    admin = compte(uid).admin
     visibles = [
         c for c in comps
         if admin
@@ -292,7 +292,8 @@ def get_athletes_inscriptibles(comp_id: IdentifiantDeChemin, claims: dict = Depe
             hors de sa structure, ou absente.
     """
     uid = claims["uid"]
-    if not is_coach(uid) and not is_admin(uid):
+    qui = compte(uid)
+    if not qui.coach and not qui.admin:
         raise ErreurMetier("reserve_aux_coachs", status.HTTP_403_FORBIDDEN, "réservé aux coachs")
     with get_session() as session:
         if metier.structure_de_comp(session, legacy=comp_id) is None:
@@ -381,14 +382,15 @@ def put_availability(
     """
     uid = claims["uid"]
     with get_session() as session:
-        if not is_coach(uid):
+        qui = compte(uid, session)
+        if not qui.coach:
             raise ErreurMetier("reserve_aux_coachs", status.HTTP_403_FORBIDDEN, "réservé aux coachs")
         row = metier.competition_row(session, comp_id)
         # ⚠️ FIGURER DANS LA MATRICE, pas coacher dans sa structure (FRE-13) : le
         # coach d'un participant venu d'ailleurs se déclare sur le meet partagé.
         # Hors de la matrice, la compétition n'existe pas pour lui — 404.
         matrice = {c.uid for c in metier.coachs_de_la_comp(session, cid=row.id)}
-        if uid not in matrice and not is_admin(uid):
+        if uid not in matrice and not qui.admin:
             raise ErreurMetier("competition_introuvable", status.HTTP_404_NOT_FOUND, "compétition introuvable")
 
         # Un jour hors de la compétition n'a pas de sens et créerait une ligne

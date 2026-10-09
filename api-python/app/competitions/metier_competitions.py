@@ -14,7 +14,7 @@ import json
 from fastapi import status
 from sqlalchemy import text
 
-from app.socle.authz import derive_participant_uids, is_admin
+from app.socle.authz import compte, derive_participant_uids
 from app.socle.structures import slugs_de
 from app.competitions.schemas_competition import Participant
 from app.competitions.scoring import compute_ris, compute_projection
@@ -247,9 +247,10 @@ def exiger_sa_structure(session, uid: str, comp_id: str) -> None:
         ErreurMetier: `competition_introuvable` (404, pas 403).
     """
     sienne = session.execute(STRUCTURE_DE_COMP_SQL, {"legacy": comp_id}).scalar()
-    if sienne is None or is_admin(uid):
+    if sienne is None:
         return
-    if session.execute(STRUCTURE_DU_COACH_SQL, {"uid": uid}).scalar() != sienne:
+    qui = compte(uid, session)
+    if not qui.admin and qui.coach_structure != sienne:
         raise ErreurMetier("competition_introuvable", status.HTTP_404_NOT_FOUND, "compétition introuvable")
 
 

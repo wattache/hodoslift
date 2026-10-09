@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import text
 
 from app.socle.erreurs import erreurs
-from app.socle.authz import is_admin, require_coach
+from app.socle.authz import require_coach
 from app.socle.db import get_session
 from app.kine.schemas_kine import KineLu
 
@@ -28,8 +28,8 @@ _LIST_KINES_SQL = text(
     """
     SELECT k.uid, u.display_name, u.email
     FROM kines k JOIN users u ON u.uid = k.uid
-    WHERE CAST(:admin AS boolean)
-       OR k.structure = (SELECT c.structure FROM coaches c WHERE c.uid = :uid)
+    WHERE EXISTS(SELECT 1 FROM comptes q
+                  WHERE q.uid = :uid AND (q.is_admin OR q.coach_structure = k.structure))
     ORDER BY u.display_name, u.email
     """
 )
@@ -39,8 +39,7 @@ _LIST_KINES_SQL = text(
 def list_kines(claims: dict = Depends(require_coach)) -> list:
     """Les kinés déclarés, pour le sélecteur d'affectation du coach."""
     with get_session() as session:
-        rows = session.execute(
-            _LIST_KINES_SQL, {"uid": claims["uid"], "admin": is_admin(claims["uid"])}).mappings().all()
+        rows = session.execute(_LIST_KINES_SQL, {"uid": claims["uid"]}).mappings().all()
     return [
         {"uid": r["uid"], "displayName": r["display_name"], "email": r["email"]}
         for r in rows

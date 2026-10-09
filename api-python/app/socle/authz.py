@@ -6,12 +6,13 @@ seul sait quelles colonnes portent les rôles ; les routes ne consomment que
 le jour où une ADHÉSION porte les rôles, seule la requête d'ici change.
 
 ⚠️ C'est le LIEN qui ouvre l'accès, pas le rôle : « kiné DE cet athlète »
-(`athletes.kine_uid`), pas « est kiné ». `is_kine()` répond à une autre question
-— « est-ce un kiné déclaré ? » — pour les modèles de bilan, où il n'y a pas d'athlète.
+(`athletes.kine_uid`), pas « est kiné ». `compte(uid).kine` répond à une autre
+question — « est-ce un kiné déclaré ? » — pour les modèles de bilan, où il n'y a
+pas d'athlète.
 """
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, NamedTuple
 
 from fastapi import Depends, status
 from sqlalchemy import text
@@ -255,52 +256,61 @@ def require_program_access(
     return _ProgramAccessDep(mode)
 
 
-def is_coach(uid: str) -> bool:
-    """Vrai ssi `coaches` porte une ligne pour cet uid : être coach, c'est avoir une ligne."""
-    with get_session() as session:
-        return bool(
-            session.execute(
-                text("SELECT EXISTS(SELECT 1 FROM coaches WHERE uid = :uid)"),
-                {"uid": uid},
-            ).scalar()
-        )
+class Compte(NamedTuple):
+    """Ce qu'un compte EST : une ligne de la vue `comptes`, ou rien.
+
+    Être coach ou kiné, c'est avoir une ligne dans `coaches` ou `kines` ; être
+    athlète, c'est une fiche liée par `athletes.user_uid`. Aucun booléen n'est
+    stocké sur `users` : un drapeau recopié finit par diverger du lien réel.
+    """
+
+    coach: bool
+    kine: bool
+    admin: bool
+    athlete_id: str | None
+    coach_structure: str | None
+
+    @property
+    def membre(self) -> bool:
+        """Un lien RÉEL avec l'application : un rôle, ou une fiche athlète.
+
+        ⚠️ « AUTHENTIFIÉ » N'EST PAS « MEMBRE » (FRE-78). Firebase accepte tout
+        compte Google, sans restriction de domaine : `verify_token` prouve qu'une
+        personne existe chez Google, pas qu'elle a un rapport avec le club. C'est
+        la condition que `AuthGate` applique à l'écran.
+        """
+        return self.coach or self.kine or self.admin or self.athlete_id is not None
 
 
-def is_admin(uid: str) -> bool:
-    """Vrai ssi `users.is_admin` pour cet uid (faux si aucune ligne)."""
-    with get_session() as session:
-        return bool(
-            session.execute(
-                text("SELECT is_admin FROM users WHERE uid = :uid"),
-                {"uid": uid},
-            ).scalar()
-        )
+PERSONNE = Compte(coach=False, kine=False, admin=False, athlete_id=None, coach_structure=None)
+
+_COMPTE_SQL = text(
+    "SELECT est_coach, est_kine, is_admin, athlete_id, coach_structure FROM comptes WHERE uid = :uid"
+)
+
+
+def compte(uid: str, session=None) -> Compte:
+    """Les rôles de ce compte, en UNE requête — `PERSONNE` s'il n'a pas de ligne.
+
+    `session` : pour lire dans la transaction d'une écriture en cours ; sinon
+    une session de lecture propre.
+    """
+    def lire(s) -> Compte:
+        r = s.execute(_COMPTE_SQL, {"uid": uid}).first()
+        if r is None:
+            return PERSONNE
+        return Compte(coach=bool(r[0]), kine=bool(r[1]), admin=bool(r[2]),
+                      athlete_id=r[3], coach_structure=r[4])
+
+    if session is not None:
+        return lire(session)
+    with get_session() as s:
+        return lire(s)
 
 
 def est_membre(uid: str) -> bool:
-    """Un lien RÉEL avec l'application : un rôle, ou une fiche athlète.
-
-    ⚠️ « AUTHENTIFIÉ » N'EST PAS « MEMBRE » (FRE-78). Firebase accepte tout compte
-    Google, sans restriction de domaine : `verify_token` prouve qu'une personne
-    existe chez Google, pas qu'elle a un rapport avec le club. C'est la condition
-    que `AuthGate` applique à l'écran.
-
-    UNE requête, à dessein : cette garde s'exécute sur des routes de liste.
-    """
-    with get_session() as session:
-        return bool(
-            session.execute(
-                text(
-                    """
-                    SELECT EXISTS(SELECT 1 FROM coaches  WHERE uid = :uid)
-                        OR EXISTS(SELECT 1 FROM kines    WHERE uid = :uid)
-                        OR EXISTS(SELECT 1 FROM athletes WHERE user_uid = :uid)
-                        OR EXISTS(SELECT 1 FROM users    WHERE uid = :uid AND is_admin)
-                    """
-                ),
-                {"uid": uid},
-            ).scalar()
-        )
+    """Voir `Compte.membre`. UNE requête : cette garde s'exécute sur des routes de liste."""
+    return compte(uid).membre
 
 
 def require_membre(claims: dict = Depends(verify_token)) -> dict:
@@ -317,17 +327,6 @@ def require_membre(claims: dict = Depends(verify_token)) -> dict:
     return claims
 
 
-def is_kine(uid: str) -> bool:
-    """Vrai ssi `kines` porte une ligne pour cet uid — même règle que `is_coach`."""
-    with get_session() as session:
-        return bool(
-            session.execute(
-                text("SELECT EXISTS(SELECT 1 FROM kines WHERE uid = :uid)"),
-                {"uid": uid},
-            ).scalar()
-        )
-
-
 def require_kine(claims: dict = Depends(verify_token)) -> dict:
     """Dépendance FastAPI : n'autorise que les kinés déclarés.
 
@@ -342,7 +341,7 @@ def require_kine(claims: dict = Depends(verify_token)) -> dict:
     Raises:
         ErreurMetier: 403 `reserve_aux_kines`.
     """
-    if not is_kine(claims["uid"]):
+    if not compte(claims["uid"]).kine:
         raise ErreurMetier("reserve_aux_kines",
             status_code=status.HTTP_403_FORBIDDEN,
             detail="réservé aux kinés",
@@ -352,8 +351,8 @@ def require_kine(claims: dict = Depends(verify_token)) -> dict:
 
 def require_coach(claims: dict = Depends(verify_token)) -> dict:
     """Dépendance FastAPI : n'autorise que les coachs (une ligne dans `coaches`)."""
-    if not is_coach(claims["uid"]):
-        raise ErreurMetier("reserve_aux_coachs", 
+    if not compte(claims["uid"]).coach:
+        raise ErreurMetier("reserve_aux_coachs",
             status_code=status.HTTP_403_FORBIDDEN,
             detail="réservé aux coachs",
         )
@@ -362,8 +361,8 @@ def require_coach(claims: dict = Depends(verify_token)) -> dict:
 
 def require_admin(claims: dict = Depends(verify_token)) -> dict:
     """Dépendance FastAPI : n'autorise que les admins (`users.is_admin`)."""
-    if not is_admin(claims["uid"]):
-        raise ErreurMetier("reserve_aux_admins", 
+    if not compte(claims["uid"]).admin:
+        raise ErreurMetier("reserve_aux_admins",
             status_code=status.HTTP_403_FORBIDDEN,
             detail="réservé aux admins",
         )

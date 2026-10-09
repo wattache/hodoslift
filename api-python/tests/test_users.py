@@ -17,7 +17,7 @@ entre les deux routes serait un piège pour FRE-64.
 import pytest
 from sqlalchemy import text
 
-from app.socle.authz import is_admin, is_coach
+from app.socle.authz import PERSONNE, compte
 
 _AUTH = {"Authorization": "Bearer x"}
 # uuid fixe : `athletes.id` est un vrai uuid, plus un INTEGER de stub.
@@ -61,24 +61,39 @@ def _compte(conn, table, uid) -> int:
 
 
 # --------------------------------------------------------------------------- #
-# is_coach / is_admin depuis Postgres
+# `compte` : les rôles depuis la vue `comptes`
 # --------------------------------------------------------------------------- #
 
 
-def test_is_coach_postgres(sql):
+def test_compte_coach_et_inconnu(sql):
     _make_coach(sql, "c1")
     _user(sql, "u1")
-    assert is_coach("c1") is True
-    assert is_coach("u1") is False  # user sans ligne coaches
-    assert is_coach("inconnu") is False
+    assert compte("c1").coach is True
+    assert compte("u1").coach is False  # user sans ligne coaches
+    assert compte("inconnu") == PERSONNE  # pas de ligne → rien, pas une erreur
 
 
-def test_is_admin_postgres(sql):
+def test_compte_admin(sql):
     _user(sql, "boss", is_admin_=True)
     _user(sql, "lambda", is_admin_=False)
-    assert is_admin("boss") is True
-    assert is_admin("lambda") is False
-    assert is_admin("inconnu") is False  # pas de ligne → False
+    assert compte("boss").admin is True
+    assert compte("lambda").admin is False
+    assert compte("inconnu").admin is False
+
+
+def test_compte_a_tous_les_roles_a_la_fois(sql):
+    """⚠️ LE RÔLE COMBINÉ : les coachs de production sont AUSSI athlètes, et
+    l'admin en est un. Une lecture qui s'arrête au premier rôle trouvé passerait
+    au vert sur des comptes séparés et mentirait sur les vrais."""
+    _user(sql, "w", is_admin_=True)
+    sql.execute(text("INSERT INTO coaches (uid) VALUES ('w')"))
+    sql.execute(text("INSERT INTO kines (uid) VALUES ('w')"))
+    _athlete(sql, "ath-w", coach_uid="w", user_uid="w")
+    qui = compte("w")
+    assert (qui.coach, qui.kine, qui.admin, qui.athlete_id, qui.coach_structure) == (
+        True, True, True, "ath-w", "french-forge")
+    assert qui.membre
+    assert not PERSONNE.membre
 
 
 # --------------------------------------------------------------------------- #

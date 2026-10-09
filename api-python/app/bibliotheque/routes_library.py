@@ -17,8 +17,8 @@ from sqlalchemy import text
 
 from app.socle.erreurs import erreurs
 from app.socle.audit import log_write
-from app.socle.authz import is_admin, require_coach, require_membre
-from app.socle.structures import PREMIERE, slugs_de, structure_ecrite
+from app.socle.authz import compte, require_coach, require_membre
+from app.socle.structures import PREMIERE, structure_ecrite, structures_de
 from app.socle.db import get_session
 from app.bibliotheque.schemas_library import BibliothequeLue, LibraryEntryCreate, LibraryEntryPatch
 from app.socle.schemas_ecriture import EntreeCreee, ObjetCree
@@ -53,8 +53,6 @@ _CLASH_SQL = text(
     "WHERE structure = :structure AND category = :category AND name = :name "
     "AND CAST(id AS text) <> :id"
 )
-_STRUCTURE_DU_COACH_SQL = text("SELECT structure FROM coaches WHERE uid = :uid")
-
 _STRUCTURE_QUERY = Query(default=None, max_length=64,
                          description="La bibliothèque de quelle structure (FRE-13) ; absente = la première du compte")
 
@@ -64,14 +62,15 @@ def _structure_lue(uid: str, demandee: str | None) -> str:
 
     ⚠️ 404 et pas 403 : hors de ses structures, elle n'existe pas — un 403
     mentirait sur la cause. Sans structure demandée : la première du compte,
-    `PREMIERE` d'abord.
+    dans l'ordre de `structures_de` (`PREMIERE` d'abord, puis par nom) — le même
+    « premier » que le menu ; un compte sans structure lit `PREMIERE`.
 
     Raises:
         ErreurMetier: `structure_inconnue` (404).
     """
-    siennes = slugs_de(uid)
+    siennes = [s["slug"] for s in structures_de(uid)]
     if demandee is None:
-        return PREMIERE if PREMIERE in siennes or not siennes else sorted(siennes)[0]
+        return siennes[0] if siennes else PREMIERE
     if demandee not in siennes:
         raise ErreurMetier("structure_inconnue", status.HTTP_404_NOT_FOUND,
                            "pas une structure de ce compte")
@@ -172,8 +171,8 @@ def patch_entry(
         existing = session.execute(_SELECT_BY_ID_SQL, {"id": entry_id}).mappings().first()
         # ⚠️ L'entrée d'une AUTRE structure n'existe pas pour ce coach (404, pas
         # 403) : la renommer propagerait aux lignes d'athlètes qu'il ne suit pas.
-        sienne = session.execute(_STRUCTURE_DU_COACH_SQL, {"uid": claims["uid"]}).scalar()
-        if existing is None or (existing["structure"] != sienne and not is_admin(claims["uid"])):
+        qui = compte(claims["uid"], session)
+        if existing is None or (existing["structure"] != qui.coach_structure and not qui.admin):
             raise ErreurMetier("entree_introuvable", status.HTTP_404_NOT_FOUND, "entrée introuvable")
 
         champs = payload.model_fields_set

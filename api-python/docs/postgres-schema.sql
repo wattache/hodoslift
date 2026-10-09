@@ -298,6 +298,26 @@ CREATE TABLE athletes (
     -- mars ».
     archive_le timestamptz
 );
+
+-- LE COMPTE ET SES RÔLES, EN UNE LIGNE (FRE-220). `users` ne porte que
+-- l'identité et `is_admin` ; être coach, kiné ou athlète, c'est une ligne dans
+-- `coaches`, `kines` ou `athletes`. Le profil, l'annuaire et les gardes
+-- (`app/socle/authz.py`) lisent ICI, en une requête, au lieu de refaire chacun
+-- leurs EXISTS.
+CREATE VIEW comptes AS
+SELECT u.uid, u.email, u.display_name, u.is_admin, u.preferences,
+       c.uid IS NOT NULL AS est_coach,
+       c.structure       AS coach_structure,
+       k.uid IS NOT NULL AS est_kine,
+       k.structure       AS kine_structure,
+       -- `athletes.user_uid` est UNIQUE : au plus une fiche, pas de LIMIT 1.
+       a.legacy_id       AS athlete_id,
+       (SELECT array_agg(DISTINCT x.structure ORDER BY x.structure)
+          FROM athletes x WHERE x.user_uid = u.uid) AS athlete_structures
+FROM users u
+LEFT JOIN coaches  c ON c.uid = u.uid
+LEFT JOIN kines    k ON k.uid = u.uid
+LEFT JOIN athletes a ON a.user_uid = u.uid;
 CREATE INDEX ON athletes (coach_uid);
 CREATE INDEX ON athletes (kine_uid);
 
