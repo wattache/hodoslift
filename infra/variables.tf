@@ -183,3 +183,31 @@ variable "scaleway_postgres_ips_autorisees" {
     error_message = "Au moins un CIDR valide (ex. 203.0.113.7/32) : une base sans adresse autorisée est injoignable."
   }
 }
+
+# ----------------------------------------------------------------------------
+# LE COURRIER DE hodoslift.com — cf. `dns_hodoslift.tf`
+# ----------------------------------------------------------------------------
+variable "domaine_mail" {
+  description = "Le domaine qui reçoit le courrier (Proton) ; sa zone DNS est chez Scaleway."
+  type        = string
+  default     = "hodoslift.com"
+}
+
+variable "proton_verification" {
+  description = "La valeur après `protonmail-verification=` que Proton affiche pour ce domaine."
+  type        = string
+  default     = "0d3a29023d3484dc0f5271ff40af7c056daed22e"
+}
+
+# Les trois sélecteurs DKIM de Proton → la cible `….domains.proton.ch` que
+# Proton génère pour ce domaine. Vide = pas encore connu, l'enregistrement
+# n'est pas posé.
+variable "proton_dkim" {
+  description = "Sélecteur DKIM → cible CNAME donnée par Proton ; vide tant qu'elle n'est pas connue."
+  type        = map(string)
+  default = {
+    protonmail  = "protonmail.domainkey.d3n4dgfrb4gttng5de6trucboxu5f3kk4knbcav4d5whdkgyoubkq.domains.proton.ch."
+    protonmail2 = "protonmail2.domainkey.d3n4dgfrb4gttng5de6trucboxu5f3kk4knbcav4d5whdkgyoubkq.domains.proton.ch."
+    protonmail3 = "protonmail3.domainkey.d3n4dgfrb4gttng5de6trucboxu5f3kk4knbcav4d5whdkgyoubkq.domains.proton.ch."
+  }
+}
