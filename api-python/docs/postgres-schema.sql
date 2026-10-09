@@ -2086,10 +2086,6 @@ CREATE TABLE training_sets (
     felt_rpe       numeric,                -- NULL si non numérique (ex. "FAIL")
     felt_rpe_raw   text,                   -- la saisie brute ("Sub5", "FAIL"…)
     rpe_by_set     numeric[],
-    felt_rpe_by_set_raw text[],            -- la saisie brute par série, FAIL compris
-    -- RÉALISÉ, par LA fonction de l'arbre (FRE-216) : engendrée, elle ne peut
-    -- pas dire autre chose que `records.py` sur la même ligne.
-    tracee         boolean GENERATED ALWAYS AS (ff_tracee(felt_rpe_raw, felt_rpe_by_set_raw)) STORED,
     -- Répétitions et charge par série, projetées. Elles servent la
     -- DISPERSION d'une ligne, que la moyenne écrase.
     reps_by_set    numeric[],
@@ -2112,7 +2108,15 @@ CREATE TABLE training_sets (
     -- filtre courant, il rendrait invariablement zéro.
     mechano        numeric,
     athlete_feedback text,
-    coach_note     text
+    coach_note     text,
+    -- ⚠️ EN FIN DE TABLE, comme la migration les a posées : `series_realisees`
+    -- et `series_de_travail` sont des `SELECT *`, que Postgres déplie dans
+    -- l'ORDRE des colonnes à la création — placées ailleurs ici, les deux vues
+    -- du bac à sable ne seraient plus celles de la base.
+    felt_rpe_by_set_raw text[],            -- la saisie brute par série, FAIL compris
+    -- RÉALISÉ, par LA fonction de l'arbre (FRE-216) : engendrée, elle ne peut
+    -- pas dire autre chose que `records.py` sur la même ligne.
+    tracee         boolean GENERATED ALWAYS AS (ff_tracee(felt_rpe_raw, felt_rpe_by_set_raw)) STORED
 );
 
 CREATE INDEX ON training_sets (athlete_id, session_date);
@@ -2123,23 +2127,6 @@ CREATE INDEX ON training_sets (exercise);
 -- exercice d'une prog balayait les 10 000 lignes.
 CREATE INDEX training_sets_exercise_id ON training_sets (exercise_id);
 CREATE INDEX ON training_sets (program_id, macro_number, block_number, week_number);
-
--- Les lignes RÉALISÉES (FRE-216) : une trace, et pas dans le futur. Sans date,
--- c'est de l'historique dont ni la séance ni la semaine ne sont datées, pas du
--- futur — le sélecteur de mouvements les garde ; les agrégats, qui rangent par
--- semaine, ajoutent `session_date IS NOT NULL`.
-CREATE VIEW series_realisees AS
-SELECT * FROM training_sets
- WHERE tracee AND (session_date IS NULL OR session_date <= current_date);
-
--- Les lignes de TRAVAIL : réalisées, et de l'entraînement — ni échauffement ni
--- rééducation (FRE-10). Un échauffement chargé déplace un poids réel, mais le
--- tonnage, la charge max et les courbes sont ceux du travail. NULL =
--- entraînement (les lignes d'avant le champ), d'où IS DISTINCT FROM.
-CREATE VIEW series_de_travail AS
-SELECT * FROM series_realisees
- WHERE kind IS DISTINCT FROM 'warmup' AND kind IS DISTINCT FROM 'rehab';
-
 -- Objectifs d'un BLOC (basculés 2026-08-03). Premier morceau de l'arbre
 -- d'entraînement à quitter Firestore : là-bas, un objectif était RECOPIÉ sur
 -- chaque semaine du bloc (dénormalisation documentaire — 18 objectifs distincts
@@ -2312,3 +2299,34 @@ CREATE TRIGGER structure_de_l_athlete BEFORE INSERT OR UPDATE OF athlete_id ON o
   FOR EACH ROW EXECUTE FUNCTION ff_pose_la_structure();
 CREATE TRIGGER structure_de_l_athlete BEFORE INSERT OR UPDATE OF athlete_id ON training_sets
   FOR EACH ROW EXECUTE FUNCTION ff_pose_la_structure();
+
+-- ⚠️ APRÈS les `ALTER TABLE training_sets` ci-dessus (`categorie`, `structure`) :
+-- la vue les nomme, elle ne peut naître qu'une fois qu'elles existent.
+-- Les lignes RÉALISÉES (FRE-216) : une trace, et pas dans le futur. Sans date,
+-- c'est de l'historique dont ni la séance ni la semaine ne sont datées, pas du
+-- futur — le sélecteur de mouvements les garde ; les agrégats, qui rangent par
+-- semaine, ajoutent `session_date IS NOT NULL`.
+--
+-- ⚠️ LES COLONNES SONT NOMMÉES, pas `*` : un `SELECT *` se déplie dans l'ordre
+-- PHYSIQUE de la table, qui est celui des migrations en production et celui de
+-- ce fichier dans le bac à sable — deux vues différentes au même nom. Une
+-- colonne ajoutée à `training_sets` s'ajoute ici aussi.
+CREATE VIEW series_realisees AS
+SELECT id, athlete_id, program_id, macro_number, block_number, week_number,
+       session_index, session_name, session_date, date_exact, exercise_index,
+       exercise, exercise_id, variant, assistance, tempo, format, tier,
+       superset_group, kind, sets, reps, reps_high, reps_done, reps_unit,
+       bodyweight, weight_kg, weight_done_kg, aimed_rpe, felt_rpe, felt_rpe_raw,
+       rpe_by_set, reps_by_set, weight_by_set, rest_s, tonnage_kg,
+       tonnage_prevu_kg, sets_prevus, mechano, athlete_feedback, coach_note,
+       categorie, structure, felt_rpe_by_set_raw, tracee
+  FROM training_sets
+ WHERE tracee AND (session_date IS NULL OR session_date <= current_date);
+
+-- Les lignes de TRAVAIL : réalisées, et de l'entraînement — ni échauffement ni
+-- rééducation (FRE-10). Un échauffement chargé déplace un poids réel, mais le
+-- tonnage, la charge max et les courbes sont ceux du travail. NULL =
+-- entraînement (les lignes d'avant le champ), d'où IS DISTINCT FROM.
+CREATE VIEW series_de_travail AS
+SELECT * FROM series_realisees
+ WHERE kind IS DISTINCT FROM 'warmup' AND kind IS DISTINCT FROM 'rehab';
