@@ -123,22 +123,18 @@ _SEANCES_SQL = text(f"""
 # `daily_logs`. Et l'agrégation par (athlète, jour) n'est pas cosmétique : la
 # COCHE porte cette clé-là, donc deux douleurs notées le même jour doivent faire
 # UNE ligne — sinon une seule coche en ferait disparaître deux.
+# L'agrégation par jour vient de la vue `signalements`, la même que le tableau
+# des signalements et la coche ; ici s'ajoutent la coche DE CE LECTEUR et la
+# séance du jour.
 _DOULEURS_SQL = text(f"""
-    SELECT a.legacy_id, a.first_name, a.last_name, l.log_date,
-           (SELECT p.id FROM programs p WHERE p.athlete_id = a.id ORDER BY p.id LIMIT 1) AS program_id,
-           jsonb_agg(jsonb_build_object(
-               'id', d.id::text, 'nom', d.nom, 'zone', d.zone,
-               'intensite', l.intensite, 'commentaire', l.commentaire,
-               'logs', (SELECT count(*) FROM douleur_logs x WHERE x.douleur_id = d.id),
-               'recurrente', (SELECT count(*) FROM douleur_logs x WHERE x.douleur_id = d.id) > 1
-           ) ORDER BY l.intensite DESC, d.nom) AS douleurs,
-           max(l.modifie_le) AS note_le,
+    SELECT a.legacy_id, a.first_name, a.last_name, sg.log_date,
+           (SELECT p.id FROM programs p WHERE p.athlete_id = a.id) AS program_id,
+           sg.douleurs,
            sj.session_id, sj.week_id, sj.program_id AS sj_program_id, sj.session_name
-      FROM douleur_logs l
-      JOIN douleurs d ON d.id = l.douleur_id
-      JOIN athletes a ON a.id = d.athlete_id
+      FROM signalements sg
+      JOIN athletes a ON a.id = sg.athlete_id
       LEFT JOIN signalement_vu v
-             ON v.athlete_id = a.id AND v.log_date = l.log_date AND v.uid = :uid
+             ON v.athlete_id = sg.athlete_id AND v.log_date = sg.log_date AND v.uid = :uid
       LEFT JOIN LATERAL (
           SELECT s.id AS session_id, w.id AS week_id, m.program_id, s.name AS session_name
             FROM training_sessions s
@@ -147,21 +143,19 @@ _DOULEURS_SQL = text(f"""
             JOIN training_macros m ON m.id = b.macro_id
             JOIN programs        p ON p.id = m.program_id
            WHERE p.athlete_id = a.id
-             AND coalesce(s.session_date, w.start_date) = l.log_date
+             AND coalesce(s.session_date, w.start_date) = sg.log_date
            ORDER BY s.position, s.id
            LIMIT 1
       ) sj ON true
      WHERE {_STAFF}
        AND a.archive_le IS NULL
-       AND l.log_date >= :depuis
-     GROUP BY a.legacy_id, a.first_name, a.last_name, l.log_date, a.id, v.vu_le,
-              sj.session_id, sj.week_id, sj.program_id, sj.session_name
-     -- ⚠️ « NOTÉ APRÈS COCHÉ » REVIENT DANS LA FILE, et c'est le cœur du guichet :
-     -- corriger sa note doit rappeler le staff. Le repère est le plus récent
-     -- `modifie_le` des logs du jour, que l'upsert rafraîchit quand on réécrit
-     -- la même journée — et non leur date de CRÉATION, qui ne bouge pas.
-     HAVING v.vu_le IS NULL OR max(l.modifie_le) > v.vu_le
-     ORDER BY l.log_date, a.first_name, a.last_name
+       AND sg.log_date >= :depuis
+       -- ⚠️ « NOTÉ APRÈS COCHÉ » REVIENT DANS LA FILE, et c'est le cœur du guichet :
+       -- corriger sa note doit rappeler le staff. Le repère est `note_le`, le plus
+       -- récent `modifie_le` des logs du jour — et non leur date de CRÉATION, qui
+       -- ne bouge pas.
+       AND (v.vu_le IS NULL OR sg.note_le > v.vu_le)
+     ORDER BY sg.log_date, a.first_name, a.last_name
 """)
 
 # LE DOSSIER SEMAINE — la dernière semaine PROGRAMMÉE du programme est RÉALISÉE,

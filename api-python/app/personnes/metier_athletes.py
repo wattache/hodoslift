@@ -130,25 +130,19 @@ SUIVIS_SQL = text(
 # noter deux douleurs le même jour : les servir séparément ferait deux lignes
 # qu'une seule coche ferait disparaître ensemble. On agrège donc par jour, et
 # la ligne porte LA LISTE de ce qui a été noté.
+#
+# L'agrégation par jour, et `recurrente` avec elle, vient de la vue
+# `signalements` : la file du guichet et la coche lisent la même.
 SIGNALEMENTS_SQL = text(f"""
-    SELECT a.legacy_id, a.first_name, a.last_name, l.log_date,
-           (SELECT p.id FROM programs p WHERE p.athlete_id = a.id LIMIT 1) AS program_id,
-           jsonb_agg(jsonb_build_object(
-               'id', d.id::text, 'nom', d.nom, 'zone', d.zone,
-               'intensite', l.intensite, 'commentaire', l.commentaire,
-               -- ⚠️ `recurrente` SE DÉDUIT ICI AUSSI, du même compte qu'ailleurs :
-               -- la règle vit côté serveur, en un seul endroit.
-               'logs', (SELECT count(*) FROM douleur_logs x WHERE x.douleur_id = d.id),
-               'recurrente', (SELECT count(*) FROM douleur_logs x WHERE x.douleur_id = d.id) > 1
-           ) ORDER BY l.intensite DESC, d.nom) AS douleurs
-    FROM douleur_logs l
-    JOIN douleurs d ON d.id = l.douleur_id
-    JOIN athletes a ON a.id = d.athlete_id
+    SELECT a.legacy_id, a.first_name, a.last_name, s.log_date,
+           (SELECT p.id FROM programs p WHERE p.athlete_id = a.id) AS program_id,
+           s.douleurs
+    FROM signalements s
+    JOIN athletes a ON a.id = s.athlete_id
     WHERE {porte_un_lien('coach', 'kine')}
       AND a.archive_le IS NULL
-      AND l.log_date >= :depuis
-    GROUP BY a.legacy_id, a.first_name, a.last_name, l.log_date, a.id
-    ORDER BY l.log_date DESC, a.first_name, a.last_name
+      AND s.log_date >= :depuis
+    ORDER BY s.log_date DESC, a.first_name, a.last_name
 """)
 
 
@@ -166,11 +160,10 @@ SIGNALEMENTS_SQL = text(f"""
 # Idempotentes : `ON CONFLICT DO NOTHING`, et décocher l'absent rend 200.
 
 SIGNALEMENT_EXISTE_SQL = text("""
-    SELECT DISTINCT a.id
-      FROM douleur_logs l
-      JOIN douleurs d ON d.id = l.douleur_id
-      JOIN athletes a ON a.id = d.athlete_id
-     WHERE a.legacy_id = :legacy AND l.log_date = :jour
+    SELECT s.athlete_id
+      FROM signalements s
+      JOIN athletes a ON a.id = s.athlete_id
+     WHERE a.legacy_id = :legacy AND s.log_date = :jour
 """)
 VU_SQL = text("""
     INSERT INTO signalement_vu (athlete_id, log_date, uid) VALUES (:aid, :jour, :uid)
