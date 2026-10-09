@@ -63,11 +63,14 @@ contrat: ## Le contrat OpenAPI committé est-il celui du code ? (le front en eng
 migrations: ## Ce qui reste à appliquer sur la base (lecture seule ; échoue s'il en reste)
 	uv run python -m scripts.migrer
 
-# ⚠️ TROIS PORTES AVANT DE PARTIR (FRE-154) : contrat, schéma, migrations, en
-# lecture seule, sur la base de `.env` — celle qu'on s'apprête à servir. Puis
-# l'image du SHA, et la preuve par le processus qui tourne (`../cloudrun.mk`).
+# ⚠️ QUATRE PORTES AVANT DE PARTIR (FRE-154) : contrat, schéma, migrations,
+# invariants, en lecture seule, sur la base de `.env` — celle qu'on s'apprête à
+# servir. Puis l'image du SHA, et la preuve par le processus qui tourne
+# (`../cloudrun.mk`). `make livrer` joue les invariants plus tôt encore, avant
+# le harnais ; ici ils gardent un `make deploy` lancé seul.
 deploy: ## ⚠️ PROD : déploie l'image du commit courant sur Cloud Run (ou SHA=abc1234 pour revenir à une version connue)
 	@$(MAKE) --no-print-directory contrat
 	@$(MAKE) --no-print-directory schema-verifier STRICT=1
 	@$(MAKE) --no-print-directory migrations
+	@$(MAKE) --no-print-directory invariants
 	@$(MAKE) --no-print-directory deploy-image SHA=$(SHA)

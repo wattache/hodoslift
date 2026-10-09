@@ -131,6 +131,11 @@ livrer: ## ⚠️ PROD : harnais réel, puis api-python, puis web — jamais l'i
 	@# Le numéro affiché se vérifie AVANT que rien ne parte : découvert à l'étape 3,
 	@# le serveur serait déjà livré sous un numéro qui ne bouge pas.
 	@cd web && node scripts/numero-de-version.mjs verifier
+	@# ⚠️ LES INVARIANTS AVANT LE HARNAIS : ils lisent la vraie base en quelques
+	@# secondes, et c'est la seule porte qui voit un droit manquant — le 09/10,
+	@# sept vues sans GRANT pour `brokkr_app` sont parties en production et
+	@# `/users/me` a rendu 500 à tout le monde ; cette porte les aurait arrêtées.
+	@$(MAKE) --no-print-directory -C api-python invariants
 ifeq ($(SANS_HARNAIS),1)
 	@echo "⚠️  harnais réel SAUTÉ (SANS_HARNAIS=1) — on livre sans le filet front↔brokkr"
 else

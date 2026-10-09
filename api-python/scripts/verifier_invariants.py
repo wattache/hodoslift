@@ -858,11 +858,14 @@ INVARIANTS: list[Invariant] = [
             "   ⚠️ DEUX GESTES DE COACH, ET ON N'ARBITRE PAS : déplacer la case au tier\n"
             "   prescrit, ou changer le tier du principe. Rien ne dit lequel il voulait."
         ),
-        # ⚠️ VINGT, PAS CINQUANTE-TROIS. Le chiffre du ticket datait du critère
-        # « absent de la bibliothèque », et les quatre migrations du 23/09 ont
-        # repris ce qu'il visait. Une tolérance dont la dette est payée sort en
+        # ⚠️ LE CHIFFRE EST CELUI DU RELEVÉ, pas celui du ticket (qui datait du
+        # critère « absent de la bibliothèque », repris par les migrations du
+        # 23/09). Une tolérance dont la dette est payée sort en
         # `tolerance_perimee`, donc en ÉCHEC : on ne peut pas l'oublier ici.
-        connu_viole=20,
+        # 23 = les 20 du relevé FRE-193, plus trois cases posées depuis par un
+        # coach sur un bloc dont la trame ne prescrit pas le mouvement — des
+        # gestes de coach, pas un défaut de code ; on n'arbitre pas.
+        connu_viole=23,
         connu_ticket="FRE-193",
         tags=("donnee", "entrainement"),
     ),
