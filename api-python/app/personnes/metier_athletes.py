@@ -231,7 +231,9 @@ _RIS_CANDIDATS_SQL = text(
            c.name AS competition, c.start_date
     FROM competition_scores cs
     JOIN competitions c ON c.id = cs.competition_id
-    WHERE cs.athlete_id IS NOT NULL
+    -- Bornée aux athlètes qu'on sert (FRE-221) : la vue agrège par
+    -- sous-requêtes corrélées, et le sélecteur s'ouvre souvent.
+    WHERE cs.athlete_id = ANY(CAST(:ids AS uuid[]))
       AND cs.total_bareme_kg > 0
       AND cs.bodyweight_kg IS NOT NULL
       AND cs.gender IS NOT NULL
@@ -239,14 +241,15 @@ _RIS_CANDIDATS_SQL = text(
 )
 
 
-def meilleurs_ris(session) -> dict:
-    """athlete_id → le meilleur RIS et son contexte, ou rien.
+def meilleurs_ris(session, athlete_ids: list) -> dict:
+    """athlete_id → le meilleur RIS et son contexte, ou rien — pour CES athlètes.
 
     ⚠️ LE MEILLEUR, PAS LE DERNIER. Un RIS est une performance : avec le plus
     récent, une compétition ratée effacerait un titre.
     """
     par_athlete: dict = {}
-    for r in session.execute(_RIS_CANDIDATS_SQL).mappings().all():
+    ids = [str(i) for i in athlete_ids]
+    for r in session.execute(_RIS_CANDIDATS_SQL, {"ids": ids}).mappings().all():
         valeur = compute_ris(float(r["total_bareme_kg"]),
                              float(r["bodyweight_kg"]), r["gender"])
         if valeur is None:
