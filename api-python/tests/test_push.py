@@ -18,7 +18,7 @@ from app.main import app
 from app.notifications import metier_push
 from app.socle.auth import verify_token
 from app.socle.config import settings
-from tests.test_generation_semaine import _base, _generer, _poser_la_base, _principe, monde  # noqa: F401
+from tests.test_generation_semaine import _base, _generer, _poser_la_base, _principe
 
 _AUTH = {"Authorization": "Bearer x"}
 _ENDPOINT = "https://push.example.test/abonnement/1"

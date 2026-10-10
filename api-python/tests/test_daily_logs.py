@@ -15,22 +15,9 @@ maintenant de `docs/postgres-schema.sql`, donc sa dérive rougit ici.
 """
 
 
-import pytest
 from sqlalchemy import text
 
-_A1 = "aaaaaaaa-1111-1111-1111-111111111111"
-
-
-@pytest.fixture
-def sql(pg):
-    """athlète a1 : géré par coach-1, lié à uid-1. Semé, pas chargé."""
-    pg.execute(text("INSERT INTO users (uid, email) VALUES "
-                    "('coach-1','c@x.fr'), ('uid-1','a@x.fr')"))
-    pg.execute(text("INSERT INTO coaches (uid) VALUES ('coach-1')"))
-    pg.execute(text(
-        "INSERT INTO athletes (id, legacy_id, coach_uid, first_name, last_name, user_uid) "
-        "VALUES (CAST(:id AS uuid), 'a1', 'coach-1', 'A', 'Un', 'uid-1')"), {"id": _A1})
-    return pg
+from tests.conftest import A1 as _A1
 
 
 def _row(conn, date="2026-01-15"):

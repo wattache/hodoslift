@@ -354,3 +354,44 @@ def semer_un_membre(engine_ou_conn, uid: str, role: str = "coaches") -> None:
     else:                                          # une Connection déjà ouverte
         for o in ordres:
             engine_ou_conn.execute(text(o), {"u": uid})
+
+
+# --------------------------------------------------------------------------- #
+# Deux terrains de jeu PARTAGÉS entre modules. Ici, et pas importés d'un module
+# de test : un nom importé puis repris en paramètre est une « redéfinition »
+# pour ruff (F811), et pytest trouve une fixture de conftest sans import.
+# --------------------------------------------------------------------------- #
+
+#: L'athlète a1 de `sql`.
+A1 = "aaaaaaaa-1111-1111-1111-111111111111"
+
+
+@pytest.fixture
+def sql(pg):
+    """athlète a1 : géré par coach-1, lié à uid-1. Semé, pas chargé."""
+    pg.execute(text("INSERT INTO users (uid, email) VALUES "
+                    "('coach-1','c@x.fr'), ('uid-1','a@x.fr')"))
+    pg.execute(text("INSERT INTO coaches (uid) VALUES ('coach-1')"))
+    pg.execute(text(
+        "INSERT INTO athletes (id, legacy_id, coach_uid, first_name, last_name, user_uid) "
+        "VALUES (CAST(:id AS uuid), 'a1', 'coach-1', 'A', 'Un', 'uid-1')"), {"id": A1})
+    return pg
+
+
+@pytest.fixture
+def monde(pg):
+    pg.execute(text("INSERT INTO users (uid, email) VALUES ('coach-1','a@x.fr')"))
+    pg.execute(text("INSERT INTO coaches (uid) VALUES ('coach-1')"))
+    pg.execute(text(
+        "INSERT INTO athletes (id, coach_uid, first_name) VALUES "
+        "('11111111-1111-1111-1111-111111111111','coach-1','A')"))
+    pg.execute(text(
+        "INSERT INTO programs (id, coach_uid, athlete_id) VALUES "
+        "('p1','coach-1','11111111-1111-1111-1111-111111111111')"))
+    macro = pg.execute(text(
+        "INSERT INTO training_macros (program_id, legacy_id, number, name) "
+        "VALUES ('p1', 'm1', 1, 'M1') RETURNING id")).scalar()
+    bloc = pg.execute(text(
+        "INSERT INTO training_blocks (macro_id, legacy_id, number, name) "
+        "VALUES (:m, 'b1', 1, 'B1') RETURNING id"), {"m": macro}).scalar()
+    return {"pg": pg, "bloc": str(bloc)}

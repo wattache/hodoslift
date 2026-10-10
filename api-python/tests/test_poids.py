@@ -12,11 +12,10 @@ Ce que ces specs gardent :
 """
 from datetime import date, timedelta
 
-import pytest
 from sqlalchemy import text
 
 from app.suivi.metier_poids import semaines, theorique_le
-from tests.test_daily_logs import _A1, sql  # noqa: F401
+from tests.conftest import A1 as _A1
 
 _AUTH = {"Authorization": "Bearer x"}
 AUJOURDHUI = date.today()
