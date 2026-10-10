@@ -345,6 +345,9 @@ CODES: dict[str, str] = {
     "categorie_exige_le_genre": "Une catégorie de poids ne se pose pas sans le genre.",
     "categorie_invalide": "Cette catégorie n'existe pas pour ce genre.",
     "motif_exige_un_echec": "Un motif de non-validation exige un essai manqué.",
+    # Le score prend le meilleur essai RÉUSSI, au poids écrit : un verdict à 0 kg
+    # serait un rep qui ne compte pas, sans que rien ne le dise.
+    "verdict_sans_charge": "Un essai réussi porte la charge qu'il a soulevée.",
     # On ne baisse pas (FRE-204) : une annonce est au moins la charge de l'essai
     # précédent du même mouvement.
     "annonce_en_baisse": "Une annonce ne peut pas être plus légère qu'un essai précédent.",

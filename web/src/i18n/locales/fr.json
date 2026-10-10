@@ -639,7 +639,8 @@
       "pessimistic": "Pessimiste — opener safe",
       "realistic": "Réaliste — cible visée",
       "optimistic": "Optimiste — stretch"
-    }
+    },
+    "annonceHorsPlan": "Annoncé hors plan : {{charge}} kg — toucher pour retirer"
   },
   "cycle": {
     "menstruation": "Menstruation",
@@ -1303,6 +1304,10 @@
       "competition_perimee": {
         "title": "Cette compétition a changé",
         "hint": "Quelqu’un l’a modifiée pendant ta saisie. Elle vient d’être rechargée : vérifie la dernière barre et reprends ta saisie."
+      },
+      "verdict_sans_charge": {
+        "title": "Un essai jugé porte sa charge",
+        "hint": "Annonce la charge de l'essai, puis juge-le."
       }
     }
   },

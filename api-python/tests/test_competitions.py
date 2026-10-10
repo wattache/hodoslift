@@ -669,6 +669,25 @@ def test_norep_reason_sur_rep_422(auth_as, sql):
     assert _count(sql, "competitions") == 0
 
 
+def test_un_verdict_sans_charge_est_refuse_et_une_annonce_hors_plan_garde_le_plan(auth_as, sql):
+    """Un rep à 0 kg ne compte pas au score, et l'écran le montrait au R du
+    plan : il ne s'écrit plus (Euros 2026, sept essais). Une charge annoncée
+    HORS PLAN s'écrit à côté — le plan P/R/O reste celui de la feuille.
+    MUTATION QUI ROUGIT : retirer `validate_verdict_avec_charge`."""
+    client = auth_as(uid="coach-1")
+    plan = {"pessimistic": 40, "realistic": 42.5, "optimistic": 45}
+    sans_charge = [_part("Alice", movements=[{"name": "SQUAT", "attempts": [
+        {"weight": 0, "result": "rep", "weights": plan}]}])]
+    r = client.put("/competitions/c1", json=_comp(sans_charge), headers=_AUTH)
+    assert r.status_code == 422 and r.json()["code"] == "verdict_sans_charge"
+    hors_plan = [_part("Alice", movements=[{"name": "SQUAT", "attempts": [
+        {"weight": 47, "result": "rep", "weights": plan}]}])]
+    assert client.put("/competitions/c1", json=_comp(hors_plan), headers=_AUTH).status_code == 200
+    p = client.get("/competitions", headers=_AUTH).json()[0]["participants"][0]
+    att = p["movements"][0]["attempts"][0]
+    assert (att["weight"], att["weights"], att.get("selectedTier"), p["score"]) == (47, plan, None, 47)
+
+
 def test_norep_reason_sur_norep_persiste(auth_as, sql):
     client = auth_as(uid="coach-1")
     parts = [_part("Alice", movements=[{"name": "SQUAT", "attempts": [

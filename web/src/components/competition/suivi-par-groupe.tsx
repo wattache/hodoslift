@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import type { Flight, WeightCategories } from '@/api/types';
 import { useTranslation } from 'react-i18next';
-import { verdictBascule } from '@/lib/essai-competition';
+import { jugerLEssai } from '@/lib/plateau';
 import { cn } from '@/lib/utils';
 import { CaseDEssai } from './case-d-essai';
 import { DescriptionDuGroupe } from './description-du-groupe';
@@ -159,7 +159,7 @@ export function SuiviParGroupe({ plateau, participants, groupes, flight, onChois
               <Annonce key={`${pi}-${essaiChoisi.m}-${essaiChoisi.ai}`} attempts={attemptsChoisis} ai={essaiChoisi.ai} canWrite
                        onChange={a => setAttempt(pi, miChoisi, essaiChoisi.ai, a)} />
               <Verdict attempt={attemptChoisi} mouvement={essaiChoisi.m} reglement={reglement}
-                       onVerdict={v => { const a = verdictBascule(attemptChoisi, v); setAttempt(pi, miChoisi, essaiChoisi.ai, a); plateau.apresVerdict(pi, a.result); }}
+                       onVerdict={v => { const a = jugerLEssai(attemptsChoisis, essaiChoisi.ai, v); if (!a) return; setAttempt(pi, miChoisi, essaiChoisi.ai, a); plateau.apresVerdict(pi, a.result); }}
                        onMotif={motif => { setAttempt(pi, miChoisi, essaiChoisi.ai, { ...attemptChoisi, norepReason: motif }); plateau.apresMotif(); }}
                        onVar={varUsed => setAttempt(pi, miChoisi, essaiChoisi.ai, { ...attemptChoisi, varUsed })} />
             </div>

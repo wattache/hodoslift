@@ -67,6 +67,7 @@ def put_competition(
         )
         metier.validate_weight_categories(session, internal)
         metier.validate_attempt_norep(internal)
+        metier.validate_verdict_avec_charge(internal)
         metier.validate_annonces_croissantes(internal)
         metier.validate_flights(session, payload.flights)
         # Le payload est décomposé TEL QU'IL EST : un essai sur un mouvement absent
@@ -151,6 +152,7 @@ def patch_competition(
             metier.validate_competes_on([(p["name"], p["competes_on"]) for p in internal], eff_start, eff_end)
             metier.validate_weight_categories(session, internal)
             metier.validate_attempt_norep(internal)
+            metier.validate_verdict_avec_charge(internal)
             metier.validate_annonces_croissantes(internal)
         elif dates_changed:  # participants non touchés mais la plage bouge → garde-fou rétrécissement
             pairs = [

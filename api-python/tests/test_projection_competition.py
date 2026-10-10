@@ -71,6 +71,13 @@ def test_une_charge_annoncee_SANS_plan_vaut_pour_les_trois():
     assert pro(mouvement(essai(charge=60))) == (60.0, 60.0, 60.0)
 
 
+def test_une_charge_annoncee_HORS_PLAN_vaut_pour_les_trois_et_laisse_le_plan():
+    """Le coach annonce 50 à côté d'un plan 40/42.5/45 : c'est 50 qui sera
+    tenté, quelle que soit l'hypothèse. MUTATION QUI ROUGIT : lire le plan
+    tant qu'il existe — la projection resterait à 40/42.5/45."""
+    assert pro(mouvement(essai(40, 42.5, 45, charge=50))) == (50.0, 50.0, 50.0)
+
+
 def test_a_la_fin_les_trois_totaux_egalent_le_score():
     """L'invariant qui dit que la projection atterrit : plus rien à venir, plus
     rien à projeter."""

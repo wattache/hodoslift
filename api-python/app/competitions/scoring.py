@@ -20,7 +20,7 @@ def compute_projection(movements: list[dict]) -> dict[str, float]:
     Par mouvement et par hypothèse : la meilleure réussite jusqu'ici, ou la plus
     haute charge PRÉVUE parmi les essais pas encore tentés, si elle est plus
     lourde. Un essai à venir sans plan reprend le dernier plan de l'hypothèse ;
-    un essai qui n'a qu'une charge annoncée la porte pour les trois. Un
+    une charge annoncée HORS PLAN (sans tier) vaut pour les trois. Un
     mouvement dont tous les essais sont passés ne compte plus que sa réussite.
 
     Avant le premier essai, c'est le plan ; à la fin, les trois totaux égalent
@@ -41,8 +41,11 @@ def compute_projection(movements: list[dict]) -> dict[str, float]:
                 if propre[t] > 0:
                     herite[t] = propre[t]
             if not att.get("result"):
+                # Annoncée hors plan, la charge est CELLE qui sera tentée ; le plan
+                # reste ce qu'il est pour les essais suivants.
+                hors_plan = (att.get("weight") or 0.0) > 0 and not att.get("selectedTier")
                 for t in TIERS:
-                    prevu[t] = max(prevu[t], herite[t])
+                    prevu[t] = max(prevu[t], att["weight"] if hors_plan else herite[t])
         for t in TIERS:
             totaux[t] += max(reussi, prevu[t])
     return totaux

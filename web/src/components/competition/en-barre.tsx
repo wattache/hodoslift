@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import { TIER_DEFS, plancherDAnnonce } from '@/lib/comp-helpers';
 import { getNorepReasons, norepLabel, type Reglement } from '@/lib/norep-reasons';
-import { annonceLibre, annoncer, planDeLEssai } from '@/lib/plateau';
+import { annonceLibre, annoncer, horsPlan, planDeLEssai } from '@/lib/plateau';
 import { cn } from '@/lib/utils';
 import type { Attempt, Tier } from './types';
 
@@ -28,6 +28,9 @@ export function Annonce({ attempts, ai, canWrite, onChange }: {
   const [libreOuverte, setLibreOuverte] = useState(sansPlan);
   const plancher = plancherDAnnonce(attempts, ai);
   const refusees = TIER_DEFS.filter(d => attempt.selectedTier !== d.id && plan[d.id] > 0 && plan[d.id] < plancher);
+  const libre = horsPlan(attempt);
+  const ecart = Math.round((attempt.weight - plan.realistic) * 100) / 100;
+  const ecartAuR = plan.realistic > 0 ? `${ecart >= 0 ? '+' : '−'}${Math.abs(ecart)} R` : '±';
 
   return (
     <div className="mt-3">
@@ -55,14 +58,22 @@ export function Annonce({ attempts, ai, canWrite, onChange }: {
             </div>
           );
         })}
-        {canWrite && (
+        {canWrite && (libre ? (
+          // L'annonce hors plan, À CÔTÉ du plan : sa charge et son écart au R.
+          <button type="button" aria-pressed onClick={() => onChange({ ...attempt, weight: 0 })}
+                  aria-label={t('competition.annonceHorsPlan', { charge: attempt.weight })}
+                  className="flex h-[54px] min-w-12 flex-col items-center justify-center rounded-lg border border-gold bg-gold/15 px-2 font-mono text-gold">
+            <span className="text-lg font-semibold tabular-nums">{attempt.weight}</span>
+            <span className="text-[10px]">{ecartAuR}</span>
+          </button>
+        ) : (
           <button type="button" onClick={() => setLibreOuverte(o => !o)} aria-expanded={libreOuverte}
                   aria-label={t('competition.saisieLibre')} title={t('competition.saisieLibre')}
                   className={cn('flex h-[54px] w-12 items-center justify-center rounded-lg border border-dashed text-lg',
                     libreOuverte ? 'border-gold text-gold' : 'border-border text-muted-foreground')}>
             ±
           </button>
-        )}
+        ))}
       </div>
       {refusees.length > 0 && (
         <p id={idRefus} className="mt-1.5 text-xs text-muted-foreground">{t('competition.annonceEnBaisse', { plancher })}</p>
@@ -100,6 +111,7 @@ function SaisieLibre({ attempts, ai, plancher, focus, onAnnonce }: {
                placeholder={t('competition.chargeHorsPlan')}
                onChange={e => { setValeur(e.target.value); setRefus(false); }}
                onKeyDown={e => { if (e.key === 'Enter') valider(); }}
+               onBlur={() => { if (valeur.trim()) valider(); }}
                className="h-11 flex-1 font-mono text-base lg:text-sm" />
         <button type="button" onClick={valider}
                 className="h-11 rounded-lg bg-gold px-4 text-sm font-semibold text-gold-foreground hover:bg-gold/90">

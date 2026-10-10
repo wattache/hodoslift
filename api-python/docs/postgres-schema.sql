@@ -1136,7 +1136,10 @@ CREATE TABLE competition_attempts (
     norep_reason   text REFERENCES norep_reasons(id) ON DELETE RESTRICT,
     var_used       boolean,       -- les juges ont eu recours à la VAR
     UNIQUE (participant_id, movement_id, attempt_index),
-    CHECK (norep_reason IS NULL OR result = 'norep')
+    CHECK (norep_reason IS NULL OR result = 'norep'),
+    -- Le score retient le meilleur rep PAR SON POIDS : un rep sans charge ne
+    -- compterait pas, sans que rien ne le dise.
+    CONSTRAINT rep_porte_sa_charge CHECK (result IS DISTINCT FROM 'rep' OR weight_kg > 0)
 );
 CREATE INDEX ON competition_attempts (participant_id);
 

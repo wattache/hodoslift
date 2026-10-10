@@ -198,6 +198,27 @@ def validate_attempt_norep(participants) -> None:
                     )
 
 
+def validate_verdict_avec_charge(participants) -> None:
+    """Refuse un essai RÉUSSI sans charge.
+
+    `competition_scores` retient le meilleur essai réussi PAR SON POIDS : un rep
+    à 0 kg ne compte pas, et l'écran, qui montre le R du plan, le laisse croire
+    compté. Un no rep sans charge reste admis : il ne compte pas, et des feuilles
+    anciennes en portent (la contrainte `rep_porte_sa_charge` dit la même chose).
+
+    Raises:
+        ErreurMetier: `verdict_sans_charge` (422).
+    """
+    for p in participants:
+        for m in p["movements"]:
+            for idx, a in enumerate(m["attempts"], start=1):
+                if a["result"] == "rep" and not (a["weight_kg"] or 0) > 0:
+                    raise ErreurMetier("verdict_sans_charge",
+                        status.HTTP_422_UNPROCESSABLE_CONTENT,
+                        f"{p['name']} / {m['name']} essai #{idx} : réussi sans charge",
+                    )
+
+
 def validate_annonces_croissantes(participants) -> None:
     """Refuse une annonce plus légère qu'un essai précédent du même mouvement.
 

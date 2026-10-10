@@ -91,7 +91,8 @@ export function computeScore(movements: CompMovement[]): number {
 export function chargeAnnoncee(attempts: CompAttempt[], attIdx: number): number {
   const a = attempts[attIdx];
   if (!a) return 0;
-  if (a.selectedTier && a.weight > 0) return a.weight;
+  // Annoncée — par un tier ou hors plan — la charge est celle qui sera tentée.
+  if (a.weight > 0) return a.weight;
   const propre = effectiveTiers(a)?.realistic ?? 0;
   if (propre > 0) return propre;
   return chainedInheritedTiers(attempts, attIdx)?.realistic ?? 0;

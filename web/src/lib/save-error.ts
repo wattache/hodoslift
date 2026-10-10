@@ -72,7 +72,7 @@ export const CODES_TRADUITS = [
   // de la compétition : le coach voyait « refusé » suivi du détail brut du
   // serveur, en français, un jour de match. Les sept autres sont les codes
   // qu'un geste ORDINAIRE atteint — pas des cas de laboratoire.
-  'motif_exige_un_echec', 'mouvement_inconnu', 'competition_hors_exercices',
+  'motif_exige_un_echec', 'verdict_sans_charge', 'mouvement_inconnu', 'competition_hors_exercices',
   'intervalle_inverse', 'reordonnancement_incoherent', 'essais_perdus',
   'media_trop_lourd', 'media_format_refuse',
   // ⚠️ DEUX ÉCRIVAINS SUR LA MÊME LISTE (FRE-134). L'athlète et son coach

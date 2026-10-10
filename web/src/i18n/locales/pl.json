@@ -689,7 +689,8 @@
       "pessimistic": "Pesymistyczny — bezpieczny opener",
       "realistic": "Realistyczny — cel",
       "optimistic": "Optymistyczny — ambitny"
-    }
+    },
+    "annonceHorsPlan": "Zgłoszone poza planem: {{charge}} kg — dotknij, aby usunąć"
   },
   "cycle": {
     "menstruation": "Miesiączka",
@@ -1404,6 +1405,10 @@
       "competition_perimee": {
         "title": "Te zawody się zmieniły",
         "hint": "Ktoś je edytował, gdy pisałeś. Zostały właśnie odświeżone: sprawdź ostatnią próbę i wpisz ją ponownie."
+      },
+      "verdict_sans_charge": {
+        "title": "Oceniona próba musi mieć obciążenie",
+        "hint": "Zgłoś obciążenie próby, a potem ją oceń."
       }
     }
   },

@@ -104,7 +104,7 @@ function TierAttemptCell({ attempt, inheritedTiers, plancher, onChange }: {
   plancher: number;
   onChange: (a: Attempt) => void;
 }) {
-  const tiers = attempt.weights || { pessimistic: 0, realistic: attempt.weight > 0 && !attempt.selectedTier ? attempt.weight : 0, optimistic: 0 };
+  const tiers = attempt.weights || { pessimistic: 0, realistic: 0, optimistic: 0 };
   const selected = attempt.selectedTier;
   const locked = !!selected;
 
@@ -114,6 +114,13 @@ function TierAttemptCell({ attempt, inheritedTiers, plancher, onChange }: {
     if (base === 0 && delta > 0 && inheritedTiers) base = inheritedTiers[tier];
     if (base === 0 && delta < 0) return;
     onChange({ ...attempt, weights: { ...cur, [tier]: Math.max(0, base + delta) } });
+  };
+  // Un verdict porte sa charge : sans annonce, il prend le R (cf. `jugerLEssai`).
+  const juger = (v: 'rep' | 'norep') => {
+    const r = tiers.realistic || inheritedTiers?.realistic || 0;
+    const base = attempt.weight > 0 || attempt.result === v ? attempt
+      : { ...attempt, weights: { ...tiers, realistic: r }, selectedTier: 'realistic' as Tier, weight: r };
+    if (base.weight > 0 || attempt.result === v) onChange(verdictBascule(base, v));
   };
   const toggleSelect = (tier: Tier) => {
     if (selected === tier) onChange({ ...attempt, selectedTier: null, weight: 0 });
@@ -150,11 +157,11 @@ function TierAttemptCell({ attempt, inheritedTiers, plancher, onChange }: {
         );
       })}
       <div className="flex gap-1">
-        <button type="button" onClick={() => onChange(verdictBascule(attempt, 'rep'))}
+        <button type="button" onClick={() => juger('rep')}
           className={cn('flex h-6 flex-1 items-center justify-center rounded', attempt.result === 'rep' ? 'bg-success text-white' : 'border border-border text-muted-foreground hover:text-success')}>
           <Check className="h-3.5 w-3.5" />
         </button>
-        <button type="button" onClick={() => onChange(verdictBascule(attempt, 'norep'))}
+        <button type="button" onClick={() => juger('norep')}
           className={cn('flex h-6 flex-1 items-center justify-center rounded', attempt.result === 'norep' ? 'bg-destructive text-white' : 'border border-border text-muted-foreground hover:text-destructive')}>
           <X className="h-3.5 w-3.5" />
         </button>

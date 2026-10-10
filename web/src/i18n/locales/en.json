@@ -639,7 +639,8 @@
       "pessimistic": "Pessimistic — safe opener",
       "realistic": "Realistic — the target",
       "optimistic": "Optimistic — stretch"
-    }
+    },
+    "annonceHorsPlan": "Declared off plan: {{charge}} kg — tap to remove"
   },
   "cycle": {
     "menstruation": "Menstruation",
@@ -1303,6 +1304,10 @@
       "competition_perimee": {
         "title": "This competition has changed",
         "hint": "Someone edited it while you were typing. It has just been reloaded: check the last attempt and enter it again."
+      },
+      "verdict_sans_charge": {
+        "title": "A judged attempt carries its load",
+        "hint": "Declare the attempt’s load, then judge it."
       }
     }
   },

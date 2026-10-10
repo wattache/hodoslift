@@ -1,3 +1,4 @@
+import { verdictBascule, type EssaiJuge } from '@/lib/essai-competition';
 import type { AttemptTier, CompAttempt } from '@/api/types';
 import { chainedInheritedTiers, effectiveTiers, ordreDuTour, plancherDAnnonce, type EffectiveTiers, type Tour } from '@/lib/comp-helpers';
 
@@ -50,13 +51,24 @@ export function annoncer<A extends CompAttempt>(attempts: A[], ai: number, tier:
 
 /** Annoncer une charge hors plan. `null` sous le plancher : une annonce ne baisse pas.
  *
- *  ⚠️ LA CHARGE S'ÉCRIT DANS LE TIER ANNONCÉ (le R à défaut), et le plan bouge.
- *  `chargeAnnoncee` ne lit `weight` que lorsqu'un tier est choisi : une charge
- *  libre posée sans tier ferait calculer l'ordre de barre sur le R du plan, une
- *  charge que personne n'annonce. */
+ *  ⚠️ LA CHARGE S'ÉCRIT À CÔTÉ DU PLAN, jamais dedans : `weight` sans tier. Le
+ *  plan P/R/O reste la feuille de match, et l'écart entre les deux se lit. */
 export function annonceLibre<A extends CompAttempt>(attempts: A[], ai: number, charge: number): A | null {
   if (!(charge > 0) || charge < plancherDAnnonce(attempts, ai)) return null;
+  return { ...attempts[ai], selectedTier: null, weight: charge } as A;
+}
+
+/** Une charge annoncée hors plan : un poids, sans tier. */
+export function horsPlan(essai: CompAttempt): boolean {
+  return !essai.selectedTier && essai.weight > 0;
+}
+
+/** Juger l'essai. ⚠️ UN VERDICT PORTE SA CHARGE : sans annonce, il prend le R
+ *  du plan — celui que la case montrait au coach. Un rep à 0 kg ne compterait
+ *  pas au score, et brokkr le refuse (`verdict_sans_charge`). `null` quand
+ *  aucune charge n'existe à juger. */
+export function jugerLEssai<A extends CompAttempt>(attempts: A[], ai: number, verdict: 'rep' | 'norep'): A | null {
   const essai = attempts[ai];
-  const tier: AttemptTier = essai.selectedTier ?? 'realistic';
-  return { ...essai, weights: { ...planDeLEssai(attempts, ai), [tier]: charge }, selectedTier: tier, weight: charge } as A;
+  const annonce = essai.weight > 0 || essai.result === verdict ? essai : annoncer(attempts, ai, 'realistic');
+  return annonce ? verdictBascule(annonce as A & EssaiJuge, verdict) : null;
 }

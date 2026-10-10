@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { CompAttempt } from '@/api/types';
 import { chargeAnnoncee, sequenceDesTours } from '@/lib/comp-helpers';
-import { annonceLibre, annoncer, planDeLEssai, tourDuPlateau, tourFini } from '@/lib/plateau';
+import { annonceLibre, annoncer, horsPlan, jugerLEssai, planDeLEssai, tourDuPlateau, tourFini } from '@/lib/plateau';
 
 const essai = (o: Partial<CompAttempt> = {}): CompAttempt => ({ weight: 0, result: '', ...o });
 const plan = (p: number, r: number, o: number) => ({ weights: { pessimistic: p, realistic: r, optimistic: o } });
@@ -50,20 +50,35 @@ describe('annoncer', () => {
   });
 });
 
+describe('jugerLEssai', () => {
+  it('un verdict sans annonce prend le R que la case montrait — jamais un rep à 0 kg', () => {
+    /** Euros 2026 : sept essais jugés à 0 kg, absents du score. MUTATION QUI
+     *  ROUGIT : juger l'essai tel quel. */
+    const juge = jugerLEssai([essai(plan(40, 42.5, 45))], 0, 'rep')!;
+    expect(juge).toMatchObject({ result: 'rep', weight: 42.5, selectedTier: 'realistic' });
+  });
+
+  it('une annonce hors plan est jugée à sa charge, et rien à juger sans charge', () => {
+    const juge = jugerLEssai([essai({ ...plan(40, 42.5, 45), weight: 44 })], 0, 'rep')!;
+    expect([juge.result, juge.weight, horsPlan(juge)]).toEqual(['rep', 44, true]);
+    expect(jugerLEssai([essai()], 0, 'rep')).toBeNull();
+  });
+});
+
 describe('annonceLibre', () => {
-  it('la charge s’écrit dans le tier annoncé, et c’est elle que montre la case', () => {
-    /** ⚠️ LE PIÈGE DU BRIEF : `chargeAnnoncee` ne lit `weight` que si un tier est
-     *  choisi. MUTATION QUI ROUGIT : poser `weight` sans `selectedTier` — la case
-     *  et l'ordre de barre montreraient le R du plan, 105, que personne n'annonce. */
+  it('la charge s’écrit À CÔTÉ du plan : le plan reste, et c’est elle que montre la case', () => {
+    /** Le plan P/R/O est la feuille de match ; l'écart avec l'annonce se lit.
+     *  MUTATION QUI ROUGIT : l'écrire dans le R — le plan dirait 107.5. */
     const essais = [essai(plan(100, 105, 110))];
     const libre = annonceLibre(essais, 0, 107.5)!;
     expect(chargeAnnoncee([libre], 0)).toBe(107.5);
-    expect(libre).toMatchObject({ selectedTier: 'realistic', weights: { pessimistic: 100, realistic: 107.5, optimistic: 110 } });
+    expect(libre).toMatchObject({ selectedTier: null, weight: 107.5, weights: { pessimistic: 100, realistic: 105, optimistic: 110 } });
+    expect(horsPlan(libre)).toBe(true);
   });
 
-  it('garde le tier déjà annoncé', () => {
+  it('remplace un tier déjà annoncé', () => {
     const essais = [essai({ ...plan(100, 105, 110), selectedTier: 'optimistic', weight: 110 })];
-    expect(annonceLibre(essais, 0, 112)).toMatchObject({ selectedTier: 'optimistic', weight: 112, weights: { optimistic: 112 } });
+    expect(annonceLibre(essais, 0, 112)).toMatchObject({ selectedTier: null, weight: 112, weights: { optimistic: 110 } });
   });
 
   it('refusée sous le plancher, AVANT tout envoi', () => {

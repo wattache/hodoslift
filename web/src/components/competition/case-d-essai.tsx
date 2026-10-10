@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { TIER_DEFS, chargeAnnoncee } from '@/lib/comp-helpers';
-import { planDeLEssai } from '@/lib/plateau';
+import { horsPlan, planDeLEssai } from '@/lib/plateau';
 import { cn } from '@/lib/utils';
 import type { Attempt } from './types';
 
@@ -42,8 +42,10 @@ export function CaseDEssai({ nom, mouvement, attempts, ai, duTourAffiche, select
   const charge = chargeAnnoncee(attempts, ai);
   const etat = etatDeCase(attempt, duTourAffiche);
   const tier = TIER_DEFS.find(d => d.id === attempt.selectedTier);
-  // La lettre dit QUEL tier est annoncé ; sans annonce, la charge montrée est le R du plan.
-  const lettre = tier?.label ?? (charge > 0 ? 'R' : '');
+  // La lettre dit QUEL tier est annoncé, `±` une annonce hors plan ; sans
+  // annonce, la charge montrée est le R du plan.
+  const libre = horsPlan(attempt);
+  const lettre = tier?.label ?? (libre ? '±' : charge > 0 ? 'R' : '');
   const label = charge > 0
     ? t('competition.caseAria', { nom, mouvement, essai: ai + 1, etat: t(`competition.etat.${etat}`), charge })
     : t('competition.caseAriaSansCharge', { nom, mouvement, essai: ai + 1, etat: t(`competition.etat.${etat}`) });
@@ -51,7 +53,7 @@ export function CaseDEssai({ nom, mouvement, attempts, ai, duTourAffiche, select
   // ⚠️ UN ESSAI À VENIR MONTRE SES TROIS CHARGES, pas la seule réaliste : le
   // choix se fait à la barre, entre les trois (FRE-225). Dès qu'un tier est
   // annoncé ou l'essai jugé, la case ne montre plus que ce qui compte.
-  const plan = grande && !attempt.result && !tier ? planDeLEssai(attempts, ai) : null;
+  const plan = grande && !attempt.result && !tier && !libre ? planDeLEssai(attempts, ai) : null;
   const troisCharges = plan && TIER_DEFS.some(d => plan[d.id] > 0);
   // ⚠️ SUR UN TÉLÉPHONE, trois charges côte à côte ne tiennent pas dans un
   // tiers de l'écran (« 3532.5 » : les cases se chevauchaient). En étroit, le
@@ -79,7 +81,7 @@ export function CaseDEssai({ nom, mouvement, attempts, ai, duTourAffiche, select
     <>
       <span className={cn('font-mono font-semibold tabular-nums leading-none', grande ? 'text-base' : 'text-xs')}>{charge > 0 ? charge : '—'}</span>
       {lettre && (
-        <span className={cn('font-mono text-[9px] leading-none', tier ? 'text-gold' : 'opacity-60')}>{lettre}</span>
+        <span className={cn('font-mono text-[9px] leading-none', tier || libre ? 'text-gold' : 'opacity-60')}>{lettre}</span>
       )}
     </>
   );
