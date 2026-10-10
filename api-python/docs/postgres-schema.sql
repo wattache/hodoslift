@@ -54,6 +54,9 @@ CREATE TYPE gender         AS ENUM ('M', 'F');
 CREATE TYPE cycle_phase    AS ENUM ('menstruation', 'follicular', 'ovulation', 'luteal');
 -- Plus de `cycle` (13/09) : le cycle vit dans `daily_logs.cycle_phase` (FRE-173).
 CREATE TYPE event_type     AS ENUM ('competition', 'vacation', 'travel', 'rest', 'other');
+-- Le règlement sous lequel une compétition se juge : il choisit les motifs de
+-- « no rep » que le front propose (`norep_reasons.reglement`).
+CREATE TYPE reglement      AS ENUM ('fnsl', 'finalrep');
 CREATE TYPE attempt_tier   AS ENUM ('pessimistic', 'realistic', 'optimistic');
 CREATE TYPE attempt_result AS ENUM ('rep', 'norep');
 CREATE TYPE coach_availability AS ENUM ('pending', 'available', 'unavailable');
@@ -1007,7 +1010,9 @@ CREATE TABLE competitions (
     created_at   timestamptz NOT NULL DEFAULT now(),
     -- Celle du coach qui l'a créée (FRE-13) : lue et éditée par sa structure.
     structure    text NOT NULL DEFAULT 'french-forge' REFERENCES structures(slug),
-    CHECK (end_date >= start_date)
+    CHECK (end_date >= start_date),
+    -- Sous quel règlement elle se juge : FNSL par défaut, FinalRep sinon.
+    reglement    reglement NOT NULL DEFAULT 'fnsl'
 );
 CREATE INDEX ON competitions (start_date);
 
@@ -1102,12 +1107,14 @@ CREATE TABLE competition_flight_categories (
 );
 CREATE INDEX ON competition_flight_categories (flight_id);
 
--- Référentiel des motifs d'invalidation (règlement FNSL). `is_auto` = faute
--- qui invalide automatiquement (3 cartons rouges), affichée avec ⚠ dans l'UI.
+-- Référentiel des motifs d'invalidation, par règlement. `is_auto` = faute qui
+-- invalide automatiquement (3 cartons rouges, FNSL), affichée avec ⚠ dans l'UI.
+-- `reglement` NULL = commun aux règlements (« ne sait pas », « autre »).
 CREATE TABLE norep_reasons (
-    id      text PRIMARY KEY,     -- 'unknown', 'too_heavy', 'other', …
-    label   text NOT NULL,
-    is_auto boolean NOT NULL DEFAULT false
+    id        text PRIMARY KEY,     -- 'unknown', 'too_heavy', 'fr_fail', …
+    label     text NOT NULL,
+    is_auto   boolean NOT NULL DEFAULT false,
+    reglement reglement
 );
 
 CREATE TABLE competition_attempts (
@@ -1292,6 +1299,29 @@ INSERT INTO norep_reasons (id, label, is_auto) VALUES
   ('s_low_bar_exaggerated',      'Barre basse exagérée (contact triceps)',          false),
   ('s_descent_pause',            'Temps d''arrêt en phase descendante',             false),
   ('s_final_unstable',           'Position finale : appuis ou charge instables',    false);
+UPDATE norep_reasons SET reglement = 'fnsl' WHERE id NOT IN ('unknown', 'other');
+
+-- FinalRep (rulebook VI 26.2) : un « Fail » par discipline, pas de carton
+-- automatique, le chicken wing, le stretch-shortening après le « Go ! ».
+INSERT INTO norep_reasons (id, label, is_auto, reglement) VALUES
+  ('fr_fail',                'Échec : mouvement non terminé',                          false, 'finalrep'),
+  ('fr_false_grip',          'False grip : poignet ou avant-bras sur la barre',        false, 'finalrep'),
+  ('fr_bent_arms',           'Départ bras fléchis',                                    false, 'finalrep'),
+  ('fr_kipping',             'Kipping / coup de pied',                                 false, 'finalrep'),
+  ('fr_loss_of_control',     'Perte de contrôle de la charge ou des jambes',           false, 'finalrep'),
+  ('fr_downward_motion',     'Redescente avant la fin du mouvement',                   false, 'finalrep'),
+  ('fr_downward_motion_ssc', 'Redescente rapide après « Go ! » (stretch-shortening)',  false, 'finalrep'),
+  ('fr_lockout',             'Pas de verrouillage complet des coudes',                 false, 'finalrep'),
+  ('fr_signal',              'Signal manqué ou ignoré',                                false, 'finalrep'),
+  ('fr_chicken_wing',        'Chicken wing : coudes l''un après l''autre',             false, 'finalrep'),
+  ('fr_depth_shoulder',      'Profondeur épaule insuffisante',                         false, 'finalrep'),
+  ('fr_depth_hip',           'Profondeur hanche insuffisante',                         false, 'finalrep'),
+  ('fr_bent_knees',          'Départ genoux fléchis',                                  false, 'finalrep'),
+  ('fr_depth',               'Profondeur insuffisante',                                false, 'finalrep'),
+  ('fr_foot_movement',       'Déplacement des pieds',                                  false, 'finalrep'),
+  ('fr_spotter_contact',     'Contact d''un pareur',                                   false, 'finalrep'),
+  ('fr_support',             'Appui des coudes sur les cuisses',                       false, 'finalrep'),
+  ('fr_dropping_bar',        'Barre lâchée : disqualification',                        false, 'finalrep');
 
 -- ============================================================================
 -- JAMAIS MIGRÉ, ET ÇA NE VIENDRA PAS

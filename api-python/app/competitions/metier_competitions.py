@@ -43,8 +43,8 @@ SELECT_COMP_SQL = text(
 # AVANT, jamais laissée au `DEFAULT` de la colonne.
 INSERT_COMP_SQL = text(
     """
-    INSERT INTO competitions (legacy_id, name, start_date, end_date, location, max_attempts, created_by, structure)
-    VALUES (:legacy_id, :name, :start_date, :end_date, :location, :max_attempts, :created_by, :structure)
+    INSERT INTO competitions (legacy_id, name, start_date, end_date, location, max_attempts, reglement, created_by, structure)
+    VALUES (:legacy_id, :name, :start_date, :end_date, :location, :max_attempts, CAST(:reglement AS reglement), :created_by, :structure)
     RETURNING id
     """
 )
@@ -545,7 +545,7 @@ def clear_children(session, cid) -> None:
 # ne recompose plus le club entier.
 _UNE_OU_TOUTES = "(CAST(:cid AS uuid) IS NULL OR {col} = CAST(:cid AS uuid))"
 _READ_COMPS = text(
-    "SELECT id, legacy_id, name, start_date, end_date, location, max_attempts, created_by, structure "
+    "SELECT id, legacy_id, name, start_date, end_date, location, max_attempts, reglement, created_by, structure "
     f"FROM competitions WHERE {_UNE_OU_TOUTES.format(col='id')} ORDER BY start_date, legacy_id"
 )
 _READ_MOVEMENTS = text(
@@ -681,6 +681,7 @@ def recompose_all(session, cid=None) -> list[dict]:
             "endDate": iso(c["end_date"]),
             "date": iso(c["start_date"]),  # compat : = startDate (le front l'utilise encore)
             "maxAttempts": c["max_attempts"],
+            "reglement": c["reglement"],
             "movementNames": mv_by_comp.get(c["id"], []),
             "participants": participants_docs,
             "flights": flights_by_comp.get(c["id"], []),
@@ -845,7 +846,7 @@ def remplacer_la_meta(session, cid, comp_params: dict) -> None:
     """Le PUT : `created_by` et `structure` ne bougent pas."""
     session.execute(
         text("UPDATE competitions SET name = :name, start_date = :start_date, end_date = :end_date, "
-             "location = :location, max_attempts = :max_attempts WHERE id = :cid"),
+             "location = :location, max_attempts = :max_attempts, reglement = CAST(:reglement AS reglement) WHERE id = :cid"),
         {**comp_params, "cid": cid},
     )
 

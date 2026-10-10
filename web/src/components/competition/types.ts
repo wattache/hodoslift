@@ -1,4 +1,5 @@
 import type { Flight } from '@/api/types';
+import type { Reglement } from '@/lib/norep-reasons';
 import type { RisGender } from '@/lib/ris-score';
 
 export type Tier = 'pessimistic' | 'realistic' | 'optimistic';
@@ -37,6 +38,8 @@ export interface Comp {
   date: string; startDate?: string; endDate?: string;
   maxAttempts: number; movementNames: string[]; participants: Participant[];
   flights?: Flight[];
+  /** Le règlement qui juge (FNSL par défaut) : il choisit les motifs de « no rep ». */
+  reglement?: Reglement;
 }
 
 /** Un essai repéré par ses index : participant, mouvement CHEZ l'athlète, essai.

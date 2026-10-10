@@ -2,28 +2,30 @@ import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import type { Flight, WeightCategories } from '@/api/types';
 import { useTranslation } from 'react-i18next';
+import { verdictBascule } from '@/lib/essai-competition';
 import { cn } from '@/lib/utils';
 import { CaseDEssai } from './case-d-essai';
 import { DescriptionDuGroupe } from './description-du-groupe';
 import { DonneesDeLAthlete } from './donnees-de-l-athlete';
+import type { Reglement } from '@/lib/norep-reasons';
+import { Annonce, Verdict } from './en-barre';
 import { nomDuGroupe, nomSuivant } from './nom-du-groupe';
 import { ProjectionInline } from './projection';
-import type { Participant } from './types';
+import type { Participant, SetAttempt } from './types';
 import type { EtatDuPlateau } from './use-plateau';
 
-/** Les groupes, leurs athlètes, et le récapitulatif de l'un d'eux.
+/** Les groupes, leurs athlètes, et la carte de l'un d'eux — où TOUT se saisit.
  *
  *  On choisit un groupe, puis un athlète : ses douze essais s'affichent, ce qui
- *  a été passé comme ce qui reste. TOUT ce que porte un athlète se saisit ici,
+ *  a été passé comme ce qui reste. Tout ce que porte un athlète se saisit ici,
  *  sous son nom, et nulle part ailleurs : poids du jour, genre, catégorie, jour
- *  de passage.
+ *  de passage — et chaque essai, en touchant sa case (FRE-225).
  *
- *  ⚠️ CE CHOIX N'EST PAS L'ENCART LIVE : regarder un athlète ne change pas qui
- *  est en barre. Toucher une case, si : elle devient l'essai de l'encart.
- *
- *  Le choix tient tant que l'encart ne bouge pas. Dès qu'un autre athlète passe
- *  en barre, le bloc le suit : c'est lui qu'on veut voir. */
-export function SuiviParGroupe({ plateau, participants, groupes, flight, onChoisirFlight, flights, categories, onSaveFlights, movementNames, maxAttempts, canWrite, onChangeParticipant, onRemoveParticipant, jours }: {
+ *  ⚠️ LA CARTE NE SUIT PAS L'ENCART LIVE, et l'encart ne suit pas la carte. Sur
+ *  un plateau, chaque coach tient SON athlète : si la carte sautait sur
+ *  l'athlète en barre, un coach qui ne saisit pas déplacerait tous les autres.
+ *  L'encart dit où en est la séquence ; la carte est où l'on saisit. */
+export function SuiviParGroupe({ plateau, participants, groupes, flight, onChoisirFlight, flights, categories, onSaveFlights, movementNames, maxAttempts, reglement, canWrite, setAttempt, onChangeParticipant, onRemoveParticipant, jours }: {
   plateau: EtatDuPlateau;
   participants: Participant[];
   groupes: (string | null)[];
@@ -36,23 +38,30 @@ export function SuiviParGroupe({ plateau, participants, groupes, flight, onChois
   onSaveFlights: (flights: Flight[]) => void;
   movementNames: string[];
   maxAttempts: number;
+  reglement: Reglement;
   canWrite: boolean;
+  setAttempt: SetAttempt;
   onChangeParticipant: (pi: number, patch: Partial<Participant>) => void;
   onRemoveParticipant: (pi: number) => void;
   jours: { start: string; end: string } | null;
 }) {
   const { t } = useTranslation();
-  // L'athlète choisi, et qui était en barre à ce moment-là : si ce n'est plus lui, on suit l'encart.
-  const [choix, setChoix] = useState<{ pi: number; enBarre: number | null } | null>(null);
-  const athleteChoisi = choix && choix.enBarre === plateau.selection ? choix.pi : undefined;
-  const setAthleteChoisi = (pi: number | undefined) => setChoix(pi === undefined ? null : { pi, enBarre: plateau.selection });
+  // L'athlète choisi tient tant qu'on ne le change pas ; sans choix, celui en barre.
+  const [athleteChoisi, setAthleteChoisi] = useState<number | undefined>(undefined);
+  // L'essai qu'on saisit, sur la carte : un mouvement et un rang.
+  const [essaiChoisi, setEssaiChoisi] = useState<{ m: string; ai: number } | null>(null);
+  const choisirAthlete = (i: number | undefined) => { setAthleteChoisi(i); setEssaiChoisi(null); };
   const [edition, setEdition] = useState(false);
 
   const inscrits = participants.map((p, i) => ({ p, i })).filter(({ p }) => (p.flight ?? null) === flight);
   const dansLeGroupe = (i: number | null | undefined) => i != null && inscrits.some(x => x.i === i);
-  const pi = dansLeGroupe(athleteChoisi) ? athleteChoisi! : dansLeGroupe(plateau.selection) ? plateau.selection! : inscrits[0]?.i;
+  // Sans choix : le premier du groupe — pas l'athlète en barre, que la séquence déplacerait.
+  const pi = dansLeGroupe(athleteChoisi) ? athleteChoisi! : inscrits[0]?.i;
   const p = pi != null ? participants[pi] : null;
   const avecGroupes = groupes.some(g => g !== null);
+  const miChoisi = p && essaiChoisi ? p.movements.findIndex(mv => mv.name === essaiChoisi.m) : -1;
+  const attemptsChoisis = p && miChoisi >= 0 ? p.movements[miChoisi].attempts : null;
+  const attemptChoisi = attemptsChoisis && essaiChoisi ? attemptsChoisis[essaiChoisi.ai] : undefined;
 
   return (
     <section className="flex min-w-0 flex-col gap-4 rounded-xl border border-border bg-card p-4" aria-label={t('competition.suiviParGroupe')}>
@@ -62,7 +71,7 @@ export function SuiviParGroupe({ plateau, participants, groupes, flight, onChois
           <div role="group" aria-label={t('competition.groupes')} className="flex flex-wrap rounded-lg border border-border p-0.5">
             {groupes.map(g => (
               <button key={g ?? ''} type="button" aria-pressed={g === flight}
-                      onClick={() => { onChoisirFlight(g); setAthleteChoisi(undefined); setEdition(false); }}
+                      onClick={() => { onChoisirFlight(g); choisirAthlete(undefined); setEdition(false); }}
                       className={cn('h-9 rounded-md px-3 text-sm font-semibold',
                         g === flight ? 'bg-gold text-gold-foreground' : 'text-muted-foreground hover:text-foreground')}>
                 {nomDuGroupe(t, g)}
@@ -89,7 +98,7 @@ export function SuiviParGroupe({ plateau, participants, groupes, flight, onChois
       {/* Les athlètes du groupe, en pastilles : le nom, et le total qui suit chaque verdict. */}
       <div role="group" aria-label={t('competition.athletesDuGroupe')} className="flex flex-wrap gap-2">
         {inscrits.map(({ p: a, i }) => (
-          <button key={i} type="button" aria-pressed={i === pi} onClick={() => setAthleteChoisi(i)}
+          <button key={i} type="button" aria-pressed={i === pi} onClick={() => choisirAthlete(i)}
                   className={cn('flex h-11 items-center gap-2 rounded-full border px-4 text-sm',
                     i === pi ? 'border-gold bg-gold/10 text-foreground' : 'border-border text-muted-foreground hover:border-gold/40 hover:text-foreground')}>
             <span className="font-semibold">{a.name}</span>
@@ -130,16 +139,31 @@ export function SuiviParGroupe({ plateau, participants, groupes, flight, onChois
                   <div className="flex gap-1.5">
                     {Array.from({ length: maxAttempts }, (_, ai) => attempts?.[ai] ? (
                       <CaseDEssai key={ai} grande nom={p.name} mouvement={m} attempts={attempts} ai={ai}
-                                  duTourAffiche={enCours && plateau.tour?.essai === ai}
-                                  selectionnee={enCours && plateau.tour?.essai === ai && plateau.selection === pi}
+                                  duTourAffiche={enCours && plateau.tour?.essai === ai && plateau.selection === pi}
+                                  selectionnee={essaiChoisi?.m === m && essaiChoisi.ai === ai}
                                   cliquable={canWrite}
-                                  onSelect={() => plateau.allerAuTour({ flight, mouvement: m, essai: ai }, pi)} />
+                                  onSelect={() => setEssaiChoisi(e => e && e.m === m && e.ai === ai ? null : { m, ai })} />
                     ) : <div key={ai} className="h-14 flex-1" />)}
                   </div>
                 </div>
               );
             })}
           </div>
+          {/* L'essai touché se saisit ICI, sous la carte : annonce, puis verdict. Le
+              même geste que l'encart live, sans déplacer qui est en barre. */}
+          {canWrite && essaiChoisi && attemptsChoisis && attemptChoisi && (
+            <div role="region" className="mt-3 rounded-lg border border-gold/60 bg-card p-3" aria-label={t('competition.essaiChoisi', { mouvement: essaiChoisi.m, essai: essaiChoisi.ai + 1 })}>
+              <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-gold">
+                {t('competition.essaiChoisi', { mouvement: essaiChoisi.m, essai: essaiChoisi.ai + 1 })}
+              </div>
+              <Annonce key={`${pi}-${essaiChoisi.m}-${essaiChoisi.ai}`} attempts={attemptsChoisis} ai={essaiChoisi.ai} canWrite
+                       onChange={a => setAttempt(pi, miChoisi, essaiChoisi.ai, a)} />
+              <Verdict attempt={attemptChoisi} mouvement={essaiChoisi.m} reglement={reglement}
+                       onVerdict={v => { const a = verdictBascule(attemptChoisi, v); setAttempt(pi, miChoisi, essaiChoisi.ai, a); plateau.apresVerdict(pi, a.result); }}
+                       onMotif={motif => { setAttempt(pi, miChoisi, essaiChoisi.ai, { ...attemptChoisi, norepReason: motif }); plateau.apresMotif(); }}
+                       onVar={varUsed => setAttempt(pi, miChoisi, essaiChoisi.ai, { ...attemptChoisi, varUsed })} />
+            </div>
+          )}
         </div>
       )}
     </section>

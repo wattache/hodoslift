@@ -53,17 +53,19 @@ test.beforeEach(async ({ page }) => {
   await seConnecter(page);
   await page.goto('/competitions');
   await page.getByRole('button', { name: /Réseau lent E2E/ }).click();
-  await expect(enBarre(page).getByRole('heading', { name: 'Alpha E2E' })).toBeVisible();
+  // La carte d'Alpha, et son premier squat ouvert à la saisie (FRE-225).
+  await page.getByRole('button', { name: /^Alpha E2E — SQUAT essai 1/ }).click();
+  await expect(saisie(page)).toBeVisible();
 });
 
-const enBarre = (page: Page) => page.getByRole('region', { name: 'En barre' });
-const annoncer = (page: Page) => enBarre(page).getByRole('group', { name: /Charges du plan/ }).getByRole('button', { name: /^100/ }).click();
-const rep = (page: Page) => enBarre(page).getByRole('button', { name: 'REP', exact: true });
-/** Le premier squat jugé, le plateau est au deuxième ; il y reste tant que le verdict tient à l'écran.
+const saisie = (page: Page) => page.getByRole('region', { name: 'SQUAT · essai 1' });
+const annoncer = (page: Page) => saisie(page).getByRole('group', { name: /Charges du plan/ }).getByRole('button', { name: /^100/ }).click();
+const rep = (page: Page) => saisie(page).getByRole('button', { name: 'REP', exact: true });
+/** Le verdict jugé, le bouton REP reste enfoncé tant que le verdict tient à l'écran.
  *  ⚠️ LU SUR L'INSTANT (`isVisible`), JAMAIS ATTENDU : l'écran se répare seul à la relecture
  *  suivante, et une assertion qui patiente attendrait la réparation — puis laisserait le geste
  *  suivant partir d'un état sain. La spec passait alors avec ou sans la garde. */
-const tourSuivant = (page: Page) => page.getByText(/Tour 11 \/ 12/);
+const verdictALEcran = async (page: Page) => (await rep(page).getAttribute('aria-pressed')) === 'true';
 const poids = (page: Page) => page.getByRole('region', { name: 'Groupes et athlètes' }).getByRole('textbox', { name: /Poids du jour/ });
 /** Le verdict et le poids, tels qu'ils sont EN BASE. */
 const enBase = async () => { const p = (await lire()).participants[0]; return [p.movements[0].attempts[0].result, p.bodyweight]; };
@@ -86,7 +88,7 @@ test('une relecture partie AVANT l’écriture ne revient pas effacer le verdict
   await page.waitForTimeout(2600);
   await rep(page).click();           // part à 3,2 s, revient à 4,4 s
   await page.waitForTimeout(2400);   // 5,0 s : la relecture périmée est revenue, la bonne pas encore
-  const aLEcran = await tourSuivant(page).isVisible();
+  const aLEcran = await verdictALEcran(page);
   await poids(page).fill('79');      // le geste suivant renvoie la feuille entière
 
   await expect.poll(enBase, { timeout: 20_000 }).toEqual(['rep', 79]);

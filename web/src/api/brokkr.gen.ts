@@ -3434,6 +3434,12 @@ export interface components {
              * @default 3
              */
             maxAttempts: number;
+            /**
+             * Reglement
+             * @default fnsl
+             * @enum {string}
+             */
+            reglement: "fnsl" | "finalrep";
             /** Movementnames */
             movementNames?: string[];
             /** Participants */
@@ -3478,6 +3484,11 @@ export interface components {
             location?: string | null;
             /** Maxattempts */
             maxAttempts: number;
+            /**
+             * Reglement
+             * @enum {string}
+             */
+            reglement: "fnsl" | "finalrep";
             /** Movementnames */
             movementNames: string[];
             /** Participants */
@@ -3507,6 +3518,8 @@ export interface components {
             location?: string | null;
             /** Maxattempts */
             maxAttempts?: number | null;
+            /** Reglement */
+            reglement?: ("fnsl" | "finalrep") | null;
             /** Movementnames */
             movementNames?: string[] | null;
             /** Participants */

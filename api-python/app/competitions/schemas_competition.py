@@ -114,6 +114,8 @@ class CompetitionCreate(BaseModel):
     endDate: str | None = None
     location: str | None = Field(default=None, max_length=200)
     maxAttempts: int = Field(default=3, ge=1, le=10)
+    # Le règlement choisit les motifs de « no rep » proposés (table `norep_reasons`).
+    reglement: Literal["fnsl", "finalrep"] = "fnsl"
     movementNames: list[str] = Field(default_factory=list, max_length=20)
     participants: list[Participant] = Field(default_factory=list, max_length=200)
     flights: list[Flight] = Field(default_factory=list, max_length=30)
@@ -155,6 +157,7 @@ class CompetitionPatch(BaseModel):
     endDate: str | None = None
     location: str | None = Field(default=None, max_length=200)
     maxAttempts: int | None = Field(default=None, ge=1, le=10)
+    reglement: Literal["fnsl", "finalrep"] | None = None
     movementNames: list[str] | None = Field(default=None, max_length=20)
     participants: list[Participant] | None = Field(default=None, max_length=200)
     flights: list[Flight] | None = Field(default=None, max_length=30)

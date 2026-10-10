@@ -594,6 +594,7 @@
     },
     "personneCeTour": "Personne ne passe ce tour.",
     "enBarre": "En barre",
+    "essaiChoisi": "{{mouvement}} · essai {{essai}}",
     "kgAnnonce": "kg · annoncé {{tier}}",
     "kgNonAnnonce": "kg · non annoncé",
     "pasDEssaiSurCeMouvement": "Pas d’essai sur ce mouvement.",
@@ -625,7 +626,8 @@
     "termine": "Terminé",
     "sansPlan": "Pas de plan pour cet essai : saisis la charge annoncée.",
     "athletesDuGroupe": "Athlètes du groupe",
-    "var": "VAR consultée"
+    "var": "VAR consultée",
+    "reglement": "Règlement"
   },
   "cycle": {
     "menstruation": "Menstruation",
@@ -945,7 +947,25 @@
     "s_low_bar_exaggerated": "Barre basse exagérée (contact triceps)",
     "s_descent_pause": "Temps d'arrêt en phase descendante",
     "s_final_unstable": "Position finale : appuis ou charge instables",
-    "mu_no_full_lock": "Pas d'extension complète des coudes en haut"
+    "mu_no_full_lock": "Pas d'extension complète des coudes en haut",
+    "fr_fail": "Échec : mouvement non terminé",
+    "fr_false_grip": "False grip : poignet ou avant-bras sur la barre",
+    "fr_bent_arms": "Départ bras fléchis",
+    "fr_kipping": "Kipping / coup de pied",
+    "fr_loss_of_control": "Perte de contrôle de la charge ou des jambes",
+    "fr_downward_motion": "Redescente avant la fin du mouvement",
+    "fr_downward_motion_ssc": "Redescente rapide après « Go ! » (stretch-shortening)",
+    "fr_lockout": "Pas de verrouillage complet des coudes",
+    "fr_signal": "Signal manqué ou ignoré",
+    "fr_chicken_wing": "Chicken wing : coudes l'un après l'autre",
+    "fr_depth_shoulder": "Profondeur épaule insuffisante",
+    "fr_depth_hip": "Profondeur hanche insuffisante",
+    "fr_bent_knees": "Départ genoux fléchis",
+    "fr_depth": "Profondeur insuffisante",
+    "fr_foot_movement": "Déplacement des pieds",
+    "fr_spotter_contact": "Contact d'un pareur",
+    "fr_support": "Appui des coudes sur les cuisses",
+    "fr_dropping_bar": "Barre lâchée : disqualification"
   },
   "objectives": {
     "add": "Objectif",
@@ -1703,5 +1723,9 @@
     "resteKg": "reste {{kg}} kg",
     "sousLaBarre": "{{kg}} kg sous la barre",
     "chemin": "{{pct}} % du chemin"
+  },
+  "reglement": {
+    "fnsl": "FNSL",
+    "finalrep": "FinalRep"
   }
 }

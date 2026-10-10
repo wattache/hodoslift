@@ -2,90 +2,20 @@ import { useId, useState } from 'react';
 import { Check, Video, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
-import { TIER_DEFS, chargeAnnoncee, plancherDAnnonce } from '@/lib/comp-helpers';
-import { verdictBascule } from '@/lib/essai-competition';
-import { getNorepReasons, norepLabel } from '@/lib/norep-reasons';
+import { TIER_DEFS, plancherDAnnonce } from '@/lib/comp-helpers';
+import { getNorepReasons, norepLabel, type Reglement } from '@/lib/norep-reasons';
 import { annonceLibre, annoncer, planDeLEssai } from '@/lib/plateau';
 import { cn } from '@/lib/utils';
-import type { Attempt, Participant, SetAttempt, Tier } from './types';
-import type { EtatDuPlateau } from './use-plateau';
-import { nomDuGroupe } from './nom-du-groupe';
+import type { Attempt, Tier } from './types';
 
-/** L'athlète en barre : sa charge annoncée, le plan P / R / O, le verdict.
+/** La saisie d'un essai : l'annonce (le plan P / R / O, ou une charge hors plan
+ *  par le `±`) et le verdict. Portée par la carte de l'athlète (FRE-225).
  *
  *  ⚠️ ANNONCER, C'EST CHOISIR UN TIER, ou poser une charge hors plan par le `±`.
  *  Le plan, lui, se prépare dans les Feuilles. Chaque geste passe par
  *  `lib/plateau`, qui refuse ce que brokkr refuserait : une annonce sous le
  *  plancher n'est jamais envoyée. */
-export function EnBarre({ plateau, participants, canWrite, setAttempt }: {
-  plateau: EtatDuPlateau;
-  participants: Participant[];
-  canWrite: boolean;
-  setAttempt: SetAttempt;
-}) {
-  const { t } = useTranslation();
-  const { tour, selection: pi, enAttente } = plateau;
-  if (!tour || pi == null) {
-    return (
-      <section className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
-        {t('competition.personneCeTour')}
-      </section>
-    );
-  }
-  const p = participants[pi];
-  const mi = p.movements.findIndex(m => m.name === tour.mouvement);
-  const attempts = mi >= 0 ? p.movements[mi].attempts : [];
-  const attempt = attempts[tour.essai];
-  const ecrire = (a: Attempt) => setAttempt(pi, mi, tour.essai, a);
-
-  return (
-    <section className="rounded-xl border border-gold/70 bg-card p-4" aria-label={t('competition.enBarre')}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-gold">
-            {t('competition.enBarre')}{tour.flight && ` · ${nomDuGroupe(t, tour.flight)}`}
-          </div>
-          <h3 className="truncate font-display text-2xl font-bold uppercase leading-tight">{p.name}</h3>
-          <div className="font-mono text-xs text-muted-foreground">
-            {[p.weightCategory, p.bodyweight ? `${p.bodyweight} kg` : null].filter(Boolean).join(' · ') || '—'}
-          </div>
-        </div>
-        {attempt && (
-          <div className="shrink-0 text-right">
-            <div className="font-mono text-5xl font-bold tabular-nums leading-none">{chargeAnnoncee(attempts, tour.essai) || '—'}</div>
-            <div className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-              {attempt.selectedTier
-                ? t('competition.kgAnnonce', { tier: TIER_DEFS.find(d => d.id === attempt.selectedTier)?.label })
-                : t('competition.kgNonAnnonce')}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {!attempt ? (
-        <p className="mt-3 text-sm text-muted-foreground">{t('competition.pasDEssaiSurCeMouvement')}</p>
-      ) : (
-        <>
-          <Annonce key={`${pi}-${tour.mouvement}-${tour.essai}`} attempts={attempts} ai={tour.essai} canWrite={canWrite} onChange={ecrire} />
-          <p className="mt-2 font-mono text-xs text-muted-foreground">
-            {attempt.result
-              ? t(attempt.result === 'rep' ? 'competition.essaiJugeRep' : 'competition.essaiJugeNoRep')
-              : t('competition.passeEn', { count: enAttente.findIndex(e => e.index === pi) + 1, total: enAttente.length })}
-          </p>
-          {canWrite && (
-            <Verdict attempt={attempt} mouvement={tour.mouvement}
-                     onVerdict={v => { const a = verdictBascule(attempt, v); ecrire(a); plateau.apresVerdict(pi, a.result); }}
-                     onMotif={motif => { ecrire({ ...attempt, norepReason: motif }); plateau.apresMotif(); }}
-                     onVar={varUsed => ecrire({ ...attempt, varUsed })} />
-          )}
-        </>
-      )}
-
-    </section>
-  );
-}
-
-function Annonce({ attempts, ai, canWrite, onChange }: {
+export function Annonce({ attempts, ai, canWrite, onChange }: {
   attempts: Attempt[]; ai: number; canWrite: boolean; onChange: (a: Attempt) => void;
 }) {
   const { t } = useTranslation();
@@ -184,8 +114,8 @@ function SaisieLibre({ attempts, ai, plancher, focus, onAnnonce }: {
   );
 }
 
-function Verdict({ attempt, mouvement, onVerdict, onMotif, onVar }: {
-  attempt: Attempt; mouvement: string;
+export function Verdict({ attempt, mouvement, reglement, onVerdict, onMotif, onVar }: {
+  attempt: Attempt; mouvement: string; reglement: Reglement;
   onVerdict: (v: 'rep' | 'norep') => void; onMotif: (motif: string) => void; onVar: (v: boolean) => void;
 }) {
   const { t } = useTranslation();
@@ -208,7 +138,7 @@ function Verdict({ attempt, mouvement, onVerdict, onMotif, onVar }: {
         <select value={attempt.norepReason || 'unknown'} aria-label={t('competition.motifDuNoRep')}
                 onChange={e => onMotif(e.target.value)}
                 className="mt-2 h-11 w-full rounded-lg border border-border bg-background px-3 text-base outline-none focus:border-gold xl:text-sm">
-          {getNorepReasons(mouvement).map(r => (
+          {getNorepReasons(mouvement, reglement).map(r => (
             <option key={r.id} value={r.id}>{r.auto ? '⚠ ' : ''}{norepLabel(r.id)}</option>
           ))}
         </select>

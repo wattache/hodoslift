@@ -133,6 +133,7 @@ def _expected_doc(comp_id, created_by):
     d["flights"] = []
     d["editorEmails"] = []
     d["createdBy"] = created_by
+    d["reglement"] = "fnsl"  # le règlement par défaut : la FNSL, comme avant qu'il existe
     d["participantUids"] = ["user-alice"]  # Bob sans uid exclu
     return d
 
@@ -800,6 +801,25 @@ def test_recompose_all_se_borne_a_UNE_competition_quand_on_la_nomme(auth_as, sql
     assert seule == next(c for c in metier.recompose_all(sql) if c["id"] == "c1")
 
 
+def test_le_reglement_se_choisit_a_la_creation_et_se_change_apres(auth_as, sql):
+    """Une compétition se joue sous UN règlement — FNSL par défaut, FinalRep si
+    on le dit — et le front n'en propose que les motifs de « no rep »."""
+    client = auth_as(uid="coach-1")
+    assert client.put("/competitions/c1", json={**_DOC, "reglement": "finalrep"}, headers=_AUTH).status_code == 200
+    assert client.get("/competitions", headers=_AUTH).json()[0]["reglement"] == "finalrep"
+    r = client.patch("/competitions/c1", json={"version": _v(client), "reglement": "fnsl"}, headers=_AUTH)
+    assert r.status_code == 200 and r.json()["written"] == ["reglement"]
+    assert client.get("/competitions", headers=_AUTH).json()[0]["reglement"] == "fnsl"
+    # Un règlement inconnu n'existe pas : refusé avant d'écrire.
+    assert client.patch("/competitions/c1", json={"version": _v(client), "reglement": "ipf"}, headers=_AUTH).status_code == 422
+    # Un motif FinalRep s'enregistre comme un motif FNSL : la clé étrangère les connaît tous.
+    doc = {**_DOC, "reglement": "finalrep", "participants": [{"name": "P", "movements": [
+        {"name": "SQUAT", "attempts": [{"weight": 100, "result": "norep", "norepReason": "fr_depth"}]}]}]}
+    assert client.put("/competitions/c2", json=doc, headers=_AUTH).status_code == 200
+    att = next(c for c in client.get("/competitions", headers=_AUTH).json() if c["id"] == "c2")["participants"][0]["movements"][0]["attempts"][0]
+    assert att["norepReason"] == "fr_depth"
+
+
 def test_comp_absente_404(auth_as, sql):
     client = auth_as(uid="coach-1")
     assert client.patch("/competitions/nope", json={"name": "X", "version": "x"}, headers=_AUTH).status_code == 404
@@ -823,7 +843,7 @@ def test_une_competition_porte_TOUS_ses_champs(auth_as, sql):
     comp = client.get("/competitions", headers=_AUTH).json()[0]
 
     assert set(comp) == {
-        "id", "name", "startDate", "endDate", "date", "location", "maxAttempts",
+        "id", "name", "startDate", "endDate", "date", "location", "maxAttempts", "reglement",
         "movementNames", "participants", "flights", "editorEmails", "createdBy", "participantUids", "version"}
     # `editorEmails` n'est lu par personne et vaut toujours `[]` — il reste au
     # contrat parce que le retirer CHANGERAIT le format sur le fil, ce qu'une

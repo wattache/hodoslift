@@ -594,6 +594,7 @@
     },
     "personneCeTour": "Nobody lifts this round.",
     "enBarre": "On the bar",
+    "essaiChoisi": "{{mouvement}} · attempt {{essai}}",
     "kgAnnonce": "kg · declared {{tier}}",
     "kgNonAnnonce": "kg · not declared",
     "pasDEssaiSurCeMouvement": "No attempt on this lift.",
@@ -625,7 +626,8 @@
     "termine": "Done",
     "sansPlan": "No plan for this attempt: enter the declared load.",
     "athletesDuGroupe": "Lifters in the flight",
-    "var": "VAR checked"
+    "var": "VAR checked",
+    "reglement": "Rulebook"
   },
   "cycle": {
     "menstruation": "Menstruation",
@@ -945,7 +947,25 @@
     "s_low_bar_exaggerated": "Exaggerated low bar (triceps contact)",
     "s_descent_pause": "Pause during the descent",
     "s_final_unstable": "Lockout: feet or load unstable",
-    "mu_no_full_lock": "No full elbow lockout at the top"
+    "mu_no_full_lock": "No full elbow lockout at the top",
+    "fr_fail": "Fail: attempt not completed",
+    "fr_false_grip": "False grip: wrist or forearm on the bar",
+    "fr_bent_arms": "Bent arms at the start",
+    "fr_kipping": "Kipping / kicking",
+    "fr_loss_of_control": "Loss of control of the weight or the legs",
+    "fr_downward_motion": "Downward motion before completion",
+    "fr_downward_motion_ssc": "Rapid downward motion after \"Go!\" (stretch-shortening)",
+    "fr_lockout": "No full elbow lockout",
+    "fr_signal": "Signal missed or ignored",
+    "fr_chicken_wing": "Chicken wing: elbows one after the other",
+    "fr_depth_shoulder": "Shoulder depth not reached",
+    "fr_depth_hip": "Hip depth not reached",
+    "fr_bent_knees": "Bent knees at the start",
+    "fr_depth": "Depth not reached",
+    "fr_foot_movement": "Foot movement",
+    "fr_spotter_contact": "Contact by spotter",
+    "fr_support": "Elbows resting on the thighs",
+    "fr_dropping_bar": "Dropping the barbell: disqualification"
   },
   "objectives": {
     "add": "Objective",
@@ -1703,5 +1723,9 @@
     "resteKg": "{{kg}} kg to go",
     "sousLaBarre": "{{kg}} kg under",
     "chemin": "{{pct}} % of the way"
+  },
+  "reglement": {
+    "fnsl": "FNSL",
+    "finalrep": "FinalRep"
   }
 }

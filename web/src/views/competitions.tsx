@@ -8,6 +8,7 @@ import { newCompetitionId, useCompetitions, useDeleteCompetition, usePutCompetit
 import { useMe } from '@/api/hooks/use-me';
 import { isUpcoming } from '@/lib/athlete';
 import { daysBetween, formatRange, todayISO } from '@/lib/dates-ui';
+import { REGLEMENTS, reglementLabel, type Reglement } from '@/lib/norep-reasons';
 import { formatRis } from '@/lib/ris-score';
 import { DEFAULT_COMP_MOVEMENTS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
@@ -32,7 +33,7 @@ export function CompetitionsView() {
   const putCompetition = usePutCompetition();
   const deleteCompetition = useDeleteCompetition();
 
-  const [draft, setDraft] = useState<{ name: string; startDate: string; endDate: string; location: string } | null>(null);
+  const [draft, setDraft] = useState<{ name: string; startDate: string; endDate: string; location: string; reglement: Reglement } | null>(null);
   const today = todayISO();
   const upcoming = competitions.filter(c => isUpcoming(c, today)).sort((a, b) => a.startDate.localeCompare(b.startDate));
   const done = competitions.filter(c => !isUpcoming(c, today)).sort((a, b) => b.startDate.localeCompare(a.startDate));
@@ -55,6 +56,7 @@ export function CompetitionsView() {
           endDate: draft.endDate || draft.startDate,
           location: draft.location || undefined,
           maxAttempts: 3,
+          reglement: draft.reglement,
           movementNames: [...DEFAULT_COMP_MOVEMENTS],
           participants: [],
         },
@@ -77,7 +79,7 @@ export function CompetitionsView() {
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
       <div className="flex items-center justify-end">
         {canWrite && !draft && (
-          <Button size="sm" className="h-8 bg-gold text-gold-foreground hover:bg-gold/90" onClick={() => setDraft({ name: '', startDate: todayISO(), endDate: todayISO(), location: '' })}>
+          <Button size="sm" className="h-8 bg-gold text-gold-foreground hover:bg-gold/90" onClick={() => setDraft({ name: '', startDate: todayISO(), endDate: todayISO(), location: '', reglement: 'fnsl' })}>
             <Plus className="h-3.5 w-3.5" /> {t('competition.nouvelleCompetition')}
           </Button>
         )}
@@ -94,6 +96,11 @@ export function CompetitionsView() {
                         onChange={v => setDraft(d => d && { ...d, endDate: v })} />
           </div>
           <Input value={draft.location} onChange={e => setDraft(d => d && { ...d, location: e.target.value })} placeholder={t('competition.lieu')} className="h-8 w-40 text-sm" />
+          <select value={draft.reglement} aria-label={t('competition.reglement')} title={t('competition.reglement')}
+                      onChange={e => setDraft(d => d && { ...d, reglement: e.target.value as Reglement })}
+                      className="h-8 rounded-md border border-border bg-background px-2 text-sm outline-none focus:border-gold">
+                {REGLEMENTS.map(r => <option key={r} value={r}>{reglementLabel(r)}</option>)}
+              </select>
           <Button size="sm" className="h-8 bg-gold text-gold-foreground hover:bg-gold/90" onClick={save}>{t('competition.creer')}</Button>
           <Button size="sm" variant="ghost" className="h-8" onClick={() => setDraft(null)}>{t('common.annuler')}</Button>
         </div>

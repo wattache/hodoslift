@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { TIER_DEFS, chargeAnnoncee } from '@/lib/comp-helpers';
+import { planDeLEssai } from '@/lib/plateau';
 import { cn } from '@/lib/utils';
 import type { Attempt } from './types';
 
@@ -47,7 +48,23 @@ export function CaseDEssai({ nom, mouvement, attempts, ai, duTourAffiche, select
     ? t('competition.caseAria', { nom, mouvement, essai: ai + 1, etat: t(`competition.etat.${etat}`), charge })
     : t('competition.caseAriaSansCharge', { nom, mouvement, essai: ai + 1, etat: t(`competition.etat.${etat}`) });
 
-  const contenu = (
+  // ⚠️ UN ESSAI À VENIR MONTRE SES TROIS CHARGES, pas la seule réaliste : le
+  // choix se fait à la barre, entre les trois (FRE-225). Dès qu'un tier est
+  // annoncé ou l'essai jugé, la case ne montre plus que ce qui compte.
+  const plan = grande && !attempt.result && !tier ? planDeLEssai(attempts, ai) : null;
+  const troisCharges = plan && TIER_DEFS.some(d => plan[d.id] > 0);
+  const contenu = troisCharges ? (
+    <div className="flex items-end gap-2">
+      {TIER_DEFS.map(d => (
+        <span key={d.id} className={cn('flex flex-col items-center gap-0.5', d.id !== 'realistic' && 'opacity-60')}>
+          <span className={cn('font-mono tabular-nums leading-none', d.id === 'realistic' ? 'text-base font-semibold' : 'text-xs')}>
+            {plan[d.id] > 0 ? plan[d.id] : '—'}
+          </span>
+          <span className="font-mono text-[9px] leading-none">{d.label}</span>
+        </span>
+      ))}
+    </div>
+  ) : (
     <>
       <span className={cn('font-mono font-semibold tabular-nums leading-none', grande ? 'text-base' : 'text-xs')}>{charge > 0 ? charge : '—'}</span>
       {lettre && (

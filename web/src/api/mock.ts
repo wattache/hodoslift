@@ -652,6 +652,7 @@ function inscritDuPlateau(
 export const mockCompetitions: Competition[] = [
   {
     id: 'comp-1',
+    reglement: 'fnsl',
     editorEmails: [],
     flights: [],
     // Le dev-mock n'a pas de serveur pour refuser une version périmée (FRE-162).
@@ -693,6 +694,7 @@ export const mockCompetitions: Competition[] = [
   },
   {
     id: 'comp-0',
+    reglement: 'fnsl',
     editorEmails: [],
     flights: [],
     // Le dev-mock n'a pas de serveur pour refuser une version périmée (FRE-162).
@@ -730,6 +732,7 @@ export const mockCompetitions: Competition[] = [
   // coach déclaré présent », donc le seul qui prouve la fonctionnalité.
   {
     id: 'comp-2',
+    reglement: 'finalrep',
     editorEmails: [],
     flights: [
       { name: 'A', categories: [{ gender: 'F', weightCategory: '-57' }, { gender: 'M', weightCategory: '-66' }] },
@@ -766,6 +769,7 @@ export const mockCompetitions: Competition[] = [
   // le bandeau ne doit pas l'annoncer à la place de la prochaine.
   {
     id: 'comp-3',
+    reglement: 'fnsl',
     editorEmails: [],
     flights: [],
     // Le dev-mock n'a pas de serveur pour refuser une version périmée (FRE-162).

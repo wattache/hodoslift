@@ -77,6 +77,7 @@ def put_competition(
         comp_params = {
             "legacy_id": comp_id, "name": payload.name, "start_date": payload.startDate,
             "end_date": payload.endDate, "location": payload.location, "max_attempts": payload.maxAttempts,
+            "reglement": payload.reglement,
         }
         if existing is None:  # create
             cid = metier.inserer_la_competition(session, comp_params, created_by=uid, structure=sienne)
@@ -183,6 +184,9 @@ def patch_competition(
         if "maxAttempts" in provided:
             set_clauses.append("max_attempts = :max_attempts")
             params["max_attempts"] = payload.maxAttempts
+        if "reglement" in provided:
+            set_clauses.append("reglement = CAST(:reglement AS reglement)")
+            params["reglement"] = payload.reglement
         if dates_changed:
             set_clauses += ["start_date = :start_date", "end_date = :end_date"]
             params["start_date"], params["end_date"] = new_start, new_end

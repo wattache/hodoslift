@@ -115,6 +115,7 @@ class CompetitionLue(BaseModel):
     date: str
     location: str | None = Field(default=None)
     maxAttempts: int
+    reglement: Literal["fnsl", "finalrep"]
     movementNames: list[str]
     participants: list[ParticipantLu]
     # TOUJOURS présent, `[]` quand aucun flight n'est défini.

@@ -13055,6 +13055,15 @@
             "title": "Maxattempts",
             "default": 3
           },
+          "reglement": {
+            "type": "string",
+            "enum": [
+              "fnsl",
+              "finalrep"
+            ],
+            "title": "Reglement",
+            "default": "fnsl"
+          },
           "movementNames": {
             "items": {
               "type": "string"
@@ -13168,6 +13177,14 @@
             "type": "integer",
             "title": "Maxattempts"
           },
+          "reglement": {
+            "type": "string",
+            "enum": [
+              "fnsl",
+              "finalrep"
+            ],
+            "title": "Reglement"
+          },
           "movementNames": {
             "items": {
               "type": "string"
@@ -13221,6 +13238,7 @@
           "endDate",
           "date",
           "maxAttempts",
+          "reglement",
           "movementNames",
           "participants",
           "flights",
@@ -13303,6 +13321,21 @@
               }
             ],
             "title": "Maxattempts"
+          },
+          "reglement": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "fnsl",
+                  "finalrep"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reglement"
           },
           "movementNames": {
             "anyOf": [

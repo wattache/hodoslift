@@ -598,6 +598,8 @@ export interface CompetitionInput {
   endDate: string;
   location?: string;
   maxAttempts: number;
+  /** Le règlement qui juge : l'écran le demande toujours, le serveur le défaut à FNSL. */
+  reglement: 'fnsl' | 'finalrep';
   movementNames: string[];
   // ⚠️ LES CHAMPS DÉRIVÉS SONT OMIS : le serveur les recalcule à chaque
   // écriture, les envoyer n'aurait aucun effet — et laisserait croire qu'on

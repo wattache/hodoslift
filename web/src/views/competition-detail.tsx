@@ -7,6 +7,7 @@ import { useAthletesInscriptibles, useCompetitions, usePatchCompetition, useWeig
 import { useMe } from '@/api/hooks/use-me';
 import { athleteFullName } from '@/lib/athlete';
 import { createEmptyParticipant, computeScore } from '@/lib/comp-helpers';
+import { REGLEMENTS, reglementLabel, type Reglement } from '@/lib/norep-reasons';
 import type { RisGender } from '@/lib/ris-score';
 import { formatRange } from '@/lib/dates-ui';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -51,7 +52,7 @@ export function CompetitionDetail({ comp, onUpdate, onBack, athletes = [], canWr
   const [adding, setAdding] = useState<{ name: string; uid?: string; bodyweight: string; gender: '' | RisGender; category: string; competesOn: string } | null>(null);
   // Édition des méta de la compétition (nom / date / lieu) — l'endpoint le
   // permettait déjà, l'UI ne l'exposait pas.
-  const [editMeta, setEditMeta] = useState<{ name: string; startDate: string; endDate: string; location: string } | null>(null);
+  const [editMeta, setEditMeta] = useState<{ name: string; startDate: string; endDate: string; location: string; reglement: Reglement } | null>(null);
   // Référentiel des catégories (FK composite en base : une valeur libre ferait
   // échouer l'écriture) — d'où un menu déroulant et AUCUNE saisie manuelle.
   const { data: catsByGender = { M: [], F: [] } } = useWeightCategories();
@@ -146,6 +147,7 @@ export function CompetitionDetail({ comp, onUpdate, onBack, athletes = [], canWr
       startDate: editMeta.startDate,
       endDate: editMeta.endDate || editMeta.startDate,
       location: editMeta.location.trim() || undefined,
+      reglement: editMeta.reglement,
     } as Partial<Comp>);
     setEditMeta(null);
   };
@@ -184,6 +186,11 @@ export function CompetitionDetail({ comp, onUpdate, onBack, athletes = [], canWr
               <Input value={editMeta.location} onChange={e => setEditMeta(v => v && { ...v, location: e.target.value })}
                      placeholder={t('competition.lieu')} className="h-8 w-44 text-sm"
                      onKeyDown={e => { if (e.key === 'Enter') saveMeta(); }} />
+              <select value={editMeta.reglement} aria-label={t('competition.reglement')} title={t('competition.reglement')}
+                      onChange={e => setEditMeta(v => v && { ...v, reglement: e.target.value as Reglement })}
+                      className="h-8 rounded-md border border-border bg-background px-2 text-sm outline-none focus:border-gold">
+                {REGLEMENTS.map(r => <option key={r} value={r}>{reglementLabel(r)}</option>)}
+              </select>
               <Button size="sm" className="h-8 bg-gold text-gold-foreground hover:bg-gold/90" onClick={saveMeta}>
                 <Check className="h-3.5 w-3.5" /> {t('common.save')}
               </Button>
@@ -194,14 +201,14 @@ export function CompetitionDetail({ comp, onUpdate, onBack, athletes = [], canWr
               <div>
                 <h2 className="text-lg font-semibold tracking-tight">{comp.name}</h2>
                 <p className="text-xs text-muted-foreground">
-                  {formatRange(start, end)}{comp.location ? ` · ${comp.location}` : ''}
+                  {formatRange(start, end)}{comp.location ? ` · ${comp.location}` : ''} · {reglementLabel(comp.reglement ?? 'fnsl')}
                 </p>
               </div>
               {/* Affordance explicite : un titre cliquable sans repère visuel
                   n'est pas découvrable (retour de William). */}
               {canWrite && <button
                 type="button"
-                onClick={() => setEditMeta({ name: comp.name, startDate: start, endDate: end, location: comp.location ?? '' })}
+                onClick={() => setEditMeta({ name: comp.name, startDate: start, endDate: end, location: comp.location ?? '', reglement: comp.reglement ?? 'fnsl' })}
                 title={t("competition.modifierLeNomLes")}
                 className="mt-1 flex shrink-0 items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground hover:border-gold/40 hover:text-foreground"
               >
@@ -307,7 +314,7 @@ export function CompetitionDetail({ comp, onUpdate, onBack, athletes = [], canWr
                                setAttempt={setAttempt} />
         </>
       ) : (
-        <Plateau participants={participants} movementNames={movementNames} maxAttempts={maxAttempts}
+        <Plateau participants={participants} movementNames={movementNames} maxAttempts={maxAttempts} reglement={comp.reglement ?? 'fnsl'}
                  canWrite={canWrite} setAttempt={setAttempt} onChangeParticipant={changeParticipant}
                  onRemoveParticipant={removeParticipant} categories={catsByGender}
                  jours={multiDay ? { start, end } : null}
