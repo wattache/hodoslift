@@ -53,17 +53,28 @@ export function CaseDEssai({ nom, mouvement, attempts, ai, duTourAffiche, select
   // annoncé ou l'essai jugé, la case ne montre plus que ce qui compte.
   const plan = grande && !attempt.result && !tier ? planDeLEssai(attempts, ai) : null;
   const troisCharges = plan && TIER_DEFS.some(d => plan[d.id] > 0);
+  // ⚠️ SUR UN TÉLÉPHONE, trois charges côte à côte ne tiennent pas dans un
+  // tiers de l'écran (« 3532.5 » : les cases se chevauchaient). En étroit, le
+  // R porte la case et P/O se lisent en dessous, sur une ligne.
   const contenu = troisCharges ? (
-    <div className="flex items-end gap-2">
-      {TIER_DEFS.map(d => (
-        <span key={d.id} className={cn('flex flex-col items-center gap-0.5', d.id !== 'realistic' && 'opacity-60')}>
-          <span className={cn('font-mono tabular-nums leading-none', d.id === 'realistic' ? 'text-base font-semibold' : 'text-xs')}>
-            {plan[d.id] > 0 ? plan[d.id] : '—'}
+    <>
+      <div className="hidden items-end gap-2 sm:flex">
+        {TIER_DEFS.map(d => (
+          <span key={d.id} className={cn('flex flex-col items-center gap-0.5', d.id !== 'realistic' && 'opacity-60')}>
+            <span className={cn('font-mono tabular-nums leading-none', d.id === 'realistic' ? 'text-base font-semibold' : 'text-xs')}>
+              {plan[d.id] > 0 ? plan[d.id] : '—'}
+            </span>
+            <span className="font-mono text-[9px] leading-none">{d.label}</span>
           </span>
-          <span className="font-mono text-[9px] leading-none">{d.label}</span>
+        ))}
+      </div>
+      <div className="flex flex-col items-center gap-0.5 sm:hidden">
+        <span className="font-mono text-base font-semibold tabular-nums leading-none">{plan.realistic > 0 ? plan.realistic : '—'}</span>
+        <span className="whitespace-nowrap font-mono text-[9px] leading-none opacity-60">
+          {plan.pessimistic > 0 ? plan.pessimistic : '—'} P · {plan.optimistic > 0 ? plan.optimistic : '—'} O
         </span>
-      ))}
-    </div>
+      </div>
+    </>
   ) : (
     <>
       <span className={cn('font-mono font-semibold tabular-nums leading-none', grande ? 'text-base' : 'text-xs')}>{charge > 0 ? charge : '—'}</span>
@@ -74,7 +85,7 @@ export function CaseDEssai({ nom, mouvement, attempts, ai, duTourAffiche, select
   );
   const classes = cn(
     'flex flex-col items-center justify-center gap-0.5 rounded-md border',
-    grande ? 'h-14 min-w-0 flex-1' : 'h-11 w-10 shrink-0',
+    grande ? 'h-14 min-w-0 flex-1 overflow-hidden px-0.5' : 'h-11 w-10 shrink-0',
     STYLE[etat],
     selectionnee && 'border-2 border-gold',
   );

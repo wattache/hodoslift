@@ -134,8 +134,8 @@ export function SuiviParGroupe({ plateau, participants, groupes, flight, onChois
               const attempts = p.movements.find(mv => mv.name === m)?.attempts;
               const enCours = plateau.tour?.mouvement === m && plateau.tour.flight === flight;
               return (
-                <div key={m} className="grid grid-cols-[6rem_1fr] items-center gap-2">
-                  <span className={cn('font-mono text-[11px] uppercase tracking-wider', enCours ? 'text-gold' : 'text-muted-foreground')}>{m}</span>
+                <div key={m} className="grid grid-cols-[4rem_1fr] items-center gap-2 sm:grid-cols-[6rem_1fr]">
+                  <span className={cn('font-mono text-[11px] uppercase leading-tight tracking-wider', enCours ? 'text-gold' : 'text-muted-foreground')}>{m}</span>
                   <div className="flex gap-1.5">
                     {Array.from({ length: maxAttempts }, (_, ai) => attempts?.[ai] ? (
                       <CaseDEssai key={ai} grande nom={p.name} mouvement={m} attempts={attempts} ai={ai}

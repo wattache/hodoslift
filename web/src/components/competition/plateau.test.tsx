@@ -95,7 +95,9 @@ describe('le Plateau', () => {
   it('un essai à venir montre ses trois charges, P R O', () => {
     /** MUTATION QUI ROUGIT : ne montrer que la réaliste — la case dirait « 105 R ». */
     render(<Banc />);
-    expect(caseDe('Alice', 'SQUAT', 2).textContent).toBe('100P105R110O');
+    const texte = caseDe('Alice', 'SQUAT', 2).textContent;
+    expect(texte).toContain('100P105R110O');   // large : trois colonnes
+    expect(texte).toContain('100 P · 110 O');  // téléphone : le R porte la case, P et O dessous
     // Un essai jugé ne montre que ce qui compte.
     expect(caseDe('Alice', 'SQUAT', 1).textContent).toBe('100R');
   });
