@@ -13,9 +13,11 @@ test('ouvre une compétition et affiche ses données', async ({ page }) => {
   await page.getByText('FNSL Inter-Région').first().click();
   await expect(page).toHaveURL(/\/competitions\/comp-1$/);
 
-  // Le Plateau : les groupes et leurs athlètes, et l'athlète en barre.
+  // Le Plateau : les groupes et leurs athlètes ; toucher un athlète ouvre sa carte (FRE-225).
+  const bloc = page.getByRole('region', { name: 'Groupes et athlètes' });
   await expect(page.getByRole('heading', { name: 'Groupes et athlètes' })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'En barre' }).getByRole('heading', { name: 'Léa Martin' })).toBeVisible();
+  await bloc.getByRole('group', { name: 'Athlètes du groupe' }).getByRole('button', { name: /^Léa Martin/ }).click();
+  await expect(bloc.getByRole('heading', { level: 3, name: 'Léa Martin' })).toBeVisible();
   await expect(page.getByText('MUSCLE UP').first()).toBeVisible();
 });
 

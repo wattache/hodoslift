@@ -20,14 +20,16 @@ const ouvrirLEndurance = async (page: Page) => {
   await page.getByTitle('Séance 2 — Endurance').click();
 };
 
-test("l'EMOM en rotation donne à chaque mouvement sa minute", async ({ page }) => {
+test("l'EMOM en rotation se lit au minuteur : à chaque mouvement le temps qui reste", async ({ page }) => {
   await ouvrirLEndurance(page);
 
+  // Trois mouvements, trois tours d'une minute : 9' en tout, et chaque repère
+  // dit ce que la pendule affiche quand le mouvement démarre (1.0.12).
   await expect(page.getByText('EMOM EN ROTATION', { exact: true })).toBeVisible();
-  for (const minute of ['MIN 1', 'MIN 2', 'MIN 3']) {
-    await expect(page.getByText(minute, { exact: true })).toBeVisible();
+  for (const reste of ["9'00", "8'00", "7'00"]) {
+    await expect(page.getByText(reste, { exact: true })).toBeVisible();
   }
-  await expect(page.getByText(/on repart à MIN 1/i)).toBeVisible();
+  await expect(page.getByText(/tour suivant à 6'00/)).toBeVisible();
 });
 
 test('SANS LÂCHER s’écrit UNE fois, sur les trois mouvements qu’il enchaîne', async ({ page }) => {
