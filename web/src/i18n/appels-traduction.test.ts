@@ -7,6 +7,7 @@ import { CODES_TRADUITS } from '@/lib/save-error';
 
 import fr from './locales/fr.json';
 import en from './locales/en.json';
+import pl from './locales/pl.json';
 
 /** LES DEUX FAÇONS DONT UNE TRADUCTION ÉCHOUE SANS QUE RIEN NE LE DISE.
  *
@@ -31,6 +32,11 @@ function sources(dossier: string, vus: string[] = []): string[] {
   }
   return vus;
 }
+
+const PLURIEL = /_(one|few|many|other)$/;
+const aplatir = (o: object, prefixe = ''): string[] =>
+  Object.entries(o).flatMap(([k, v]) =>
+    typeof v === 'object' && v !== null ? aplatir(v, `${prefixe}${k}.`) : [`${prefixe}${k}`]);
 
 const FICHIERS = sources(RACINE).map(chemin => ({
   chemin: chemin.slice(RACINE.length + 1),
@@ -58,7 +64,7 @@ describe('les appels de traduction', () => {
    *  Seules les clés LITTÉRALES sont vérifiables : `t(\`session.kind.${'${kind}'}\`)`
    *  se résout à l'exécution, et les vérifier demanderait de connaître les
    *  valeurs possibles. Elles sont rares et regroupées. */
-  it('visent une clé qui EXISTE, dans les deux langues', () => {
+  it('visent une clé qui EXISTE, dans les trois langues', () => {
     const resout = (dico: object, cle: string) =>
       cle.split('.').reduce<unknown>((n, p) =>
         (n && typeof n === 'object' && p in n) ? (n as Record<string, unknown>)[p] : undefined, dico);
@@ -69,7 +75,7 @@ describe('les appels de traduction', () => {
         // Un pluriel s'écrit `cle` et se stocke `cle_one` / `cle_other`.
         const existe = (d: object) =>
           typeof resout(d, cle) === 'string' || typeof resout(d, `${cle}_other`) === 'string';
-        return existe(fr) && existe(en) ? [] : [`${chemin} — ${cle}`];
+        return existe(fr) && existe(en) && existe(pl) ? [] : [`${chemin} — ${cle}`];
       }));
     expect(manquantes).toEqual([]);
   });
@@ -77,11 +83,20 @@ describe('les appels de traduction', () => {
   /** Le pendant : une clé que PLUS RIEN n'appelle. Moins grave — elle ne se voit
    *  pas — mais elle se traduit, se relit et se maintient pour rien. Sans
    *  assertion ici : les clés dynamiques rendraient la liste fausse. */
-  it('laissent les deux fichiers de langue AVEC LES MÊMES CLÉS', () => {
-    const aplatir = (o: object, prefixe = ''): string[] =>
-      Object.entries(o).flatMap(([k, v]) =>
-        typeof v === 'object' && v !== null ? aplatir(v, `${prefixe}${k}.`) : [`${prefixe}${k}`]);
+  it('laissent les trois fichiers de langue AVEC LES MÊMES CLÉS', () => {
     expect(aplatir(en).sort()).toEqual(aplatir(fr).sort());
+    // ⚠️ Le polonais se compare au LIBELLÉ, pas à la forme : son pluriel en a quatre.
+    const libelles = (d: object) => [...new Set(aplatir(d).map(k => k.replace(PLURIEL, '')))].sort();
+    expect(libelles(pl)).toEqual(libelles(fr));
+  });
+  /** ⚠️ UN PLURIEL POLONAIS À DEUX FORMES EST UN TROU : i18next retombe sur
+   *  `_other` pour 2, 3, 4 (« 2 tygodni » au lieu de « 2 tygodnie »), et rien ne
+   *  le dit. Toute clé qui porte une forme les porte toutes. */
+  it('donnent au polonais ses QUATRE formes de pluriel', () => {
+    const cles = new Set(aplatir(pl));
+    const incomplets = [...new Set([...cles].filter(k => PLURIEL.test(k)).map(k => k.replace(PLURIEL, '')))]
+      .filter(base => !['one', 'few', 'many', 'other'].every(f => cles.has(`${base}_${f}`)));
+    expect(incomplets).toEqual([]);
   });
 });
 
@@ -104,7 +119,7 @@ describe('les appels de traduction', () => {
  *  scan de faire.
  */
 describe('les codes d’erreur traduits', () => {
-  it('ont TOUS leur titre, dans les deux langues', () => {
+  it('ont TOUS leur titre, dans les trois langues', () => {
     const titre = (dico: object, code: string) =>
       (dico as Record<string, Record<string, Record<string, { title?: string }>>>)
         .saveError?.code?.[code]?.title;
@@ -113,6 +128,7 @@ describe('les codes d’erreur traduits', () => {
       const absentes = [
         ...(typeof titre(fr, code) === 'string' ? [] : ['fr']),
         ...(typeof titre(en, code) === 'string' ? [] : ['en']),
+        ...(typeof titre(pl, code) === 'string' ? [] : ['pl']),
       ];
       return absentes.length ? [`${code} — absent de ${absentes.join(' et ')}`] : [];
     });

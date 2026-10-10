@@ -4,6 +4,7 @@ import { initReactI18next } from 'react-i18next';
 
 import fr from './locales/fr.json';
 import en from './locales/en.json';
+import pl from './locales/pl.json';
 
 /**
  * Internationalisation de l'INTERFACE. Le français reste la langue de référence :
@@ -15,11 +16,10 @@ import en from './locales/en.json';
  * au moment de les retirer. Offrir l'anglais évite le déclenchement de cette
  * traduction pour qui ne lit pas le français.
  *
- * ⚠️ LE POLONAIS A ÉTÉ RETIRÉ le 03/09/2026 — « c'était trop ambitieux »
- * (William). Il avait été ajouté pour cet incident, mais c'est L'ANGLAIS qui
- * porte la parade : il suffit d'offrir UNE langue que l'utilisateur lit pour que
- * Chrome ne propose plus de traduire. Deux dictionnaires au lieu de trois, et
- * plus de troisième colonne à remplir à chaque libellé.
+ * Le polonais s'offre pour les athlètes polonais (FRE-227) ; sa relecture est
+ * la leur. ⚠️ Un pluriel polonais porte QUATRE formes : `_one`, `_few`,
+ * `_many`, `_other` — un libellé pluriel ajouté en français et en anglais est
+ * incomplet tant que `pl.json` n'a pas les siennes (la spec de parité le voit).
  *
  * ⚠️ À NE PAS CONFONDRE avec les langues PARLÉES par un coach, sur sa page
  * publique : elles ont leur propre liste (`landing/langues.js`) et le polonais y
@@ -38,6 +38,7 @@ import en from './locales/en.json';
 export const LANGUAGES = [
   { code: 'fr', label: 'Français' },
   { code: 'en', label: 'English' },
+  { code: 'pl', label: 'Polski' },
 ] as const;
 
 export const LANGUAGE_STORAGE_KEY = 'ff-language';
@@ -49,6 +50,7 @@ void i18next
     resources: {
       fr: { translation: fr },
       en: { translation: en },
+      pl: { translation: pl },
     },
     fallbackLng: 'fr',
     supportedLngs: LANGUAGES.map(l => l.code),
