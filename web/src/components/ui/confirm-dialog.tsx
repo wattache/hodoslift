@@ -118,7 +118,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                   Entrée doit rester inoffensive. Radix met le focus initial sur
                   le premier élément focusable, donc « Annuler ». */}
               <Button size="sm" variant="destructive" onClick={() => settle(true)}>
-                {pending?.options.confirmLabel ?? "Supprimer"}
+                {pending?.options.confirmLabel ?? t("common.delete")}
               </Button>
             </div>
           </DialogPrimitive.Content>

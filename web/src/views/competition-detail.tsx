@@ -170,7 +170,7 @@ export function CompetitionDetail({ comp, onUpdate, onBack, athletes = [], canWr
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <button onClick={onBack} className="mb-1 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-3.5 w-3.5" /> Compétitions
+            <ArrowLeft className="h-3.5 w-3.5" /> {t('nav.competitions')}
           </button>
           {editMeta ? (
             <div className="flex flex-wrap items-center gap-2">

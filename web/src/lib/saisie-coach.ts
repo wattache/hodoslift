@@ -1,4 +1,5 @@
 import type { ExerciseEditing } from '@/api/types';
+import i18n from '@/i18n';
 import { parseWeight } from '@/lib/weight';
 import { seriesDeLaLigne } from '@/lib/par-serie';
 
@@ -118,18 +119,18 @@ export function resumeDuReel(ex: Partial<Pick<ExerciseEditing,
     const delta = Math.round((chargeVue - chargeVoulue) * 100) / 100;
     const series = seriesDeLaLigne(ex.weightDoneBySet, ex.weightDone).filter(Boolean);
     const ou = series.length > 1 && series.some(s => parseWeight(s) === chargeVoulue)
-      ? ` sur ${series.filter(s => parseWeight(s) !== chargeVoulue).length} série(s)` : '';
+      ? ` ${i18n.t('session.surNSeries', { count: series.filter(s => parseWeight(s) !== chargeVoulue).length })}` : '';
     details.push(`${delta > 0 ? '+' : '−'}${Math.abs(delta)} kg${ou}`);
   }
   if (repsFaites && (ex.reps ?? '').trim() && repsFaites !== (ex.reps ?? '').trim()) {
     ecart = true;
-    details.push(`${repsFaites}${unite} au lieu de ${(ex.reps ?? '').trim()}${unite}`);
+    details.push(i18n.t('session.auLieuDe', { fait: `${repsFaites}${unite}`, prevu: `${(ex.reps ?? '').trim()}${unite}` }));
   }
   if (rpe) {
     const vise = nombreDuChamp(ex.aimedRPE);
     const senti = nombreDuChamp(rpe);
     if (vise !== null && senti !== null && senti > vise) ecart = true;
-    details.push(`RPE ressenti ${rpe}${!ecart && vise !== null ? ' · conforme' : ''}`);
+    details.push(`${i18n.t('session.rpeRessenti', { rpe })}${!ecart && vise !== null ? ` · ${i18n.t('session.conforme')}` : ''}`);
   }
   return { texte: morceaux.join(' · '), detail: details.join(' · '), ecart };
 }

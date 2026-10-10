@@ -13,7 +13,7 @@ export function ProjectionInline({ projection, score }: { projection?: Participa
     <div className="mt-0.5 flex justify-end gap-1 whitespace-nowrap font-mono text-[10px] tabular-nums text-muted-foreground"
          aria-label={i18n.t('competition.projection')}>
       {TIER_DEFS.map(d => (
-        <span key={d.id} title={d.full}>
+        <span key={d.id} title={i18n.t(d.full)}>
           <span className="font-semibold text-foreground/70">{d.label}</span> {projection[d.id]}
         </span>
       ))}

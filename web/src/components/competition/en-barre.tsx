@@ -1,4 +1,5 @@
 import { useId, useState } from 'react';
+import i18n from '@/i18n';
 import { Check, Video, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
@@ -42,7 +43,7 @@ export function Annonce({ attempts, ai, canWrite, onChange }: {
           const possible = canWrite && (choisi || annoncer(attempts, ai, d.id) !== null);
           return (
             <div key={d.id}>
-              <button type="button" disabled={!possible} aria-pressed={choisi} title={d.full}
+              <button type="button" disabled={!possible} aria-pressed={choisi} title={i18n.t(d.full)}
                       aria-describedby={refuse ? idRefus : undefined}
                       onClick={() => { const a = annoncer(attempts, ai, d.id); if (a) onChange(a); }}
                       className={cn('flex h-[54px] w-full flex-col items-center justify-center rounded-lg border font-mono',

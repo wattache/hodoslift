@@ -246,8 +246,7 @@ export function BilanView() {
             sans motif pour la moitié des gens qui le rencontrent. */}
         {!complet && (
           <p className="w-full text-[11px] text-muted-foreground">
-            Encore <span className="font-medium text-primary">{reste}</span>
-            {' '}test{reste > 1 ? 's' : ''} à renseigner avant de pouvoir finaliser.
+            {t('bilan.resteATest', { count: reste })}
           </p>
         )}
 
@@ -268,7 +267,7 @@ export function BilanView() {
 
       <section className="rounded-xl border border-border bg-card p-4">
         <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">
-          Antécédents
+          {t('bilan.antecedents')}
         </h2>
         <Antecedents
           valeur={bilan.antecedents}

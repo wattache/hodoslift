@@ -132,7 +132,7 @@ function TierAttemptCell({ attempt, inheritedTiers, plancher, onChange }: {
         return (
           <div key={t.id} className={cn('flex items-center gap-1', locked && !isSel && 'opacity-40')}>
             <button type="button" onClick={() => toggleSelect(t.id as Tier)} disabled={enBaisse}
-              title={enBaisse ? i18n.t('competition.annonceEnBaisse', { plancher }) : t.full}
+              title={enBaisse ? i18n.t('competition.annonceEnBaisse', { plancher }) : i18n.t(t.full)}
               className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold', isSel ? 'bg-gold text-gold-foreground' : 'border border-border text-muted-foreground', enBaisse && 'cursor-not-allowed opacity-40')}>
               {t.label}
             </button>

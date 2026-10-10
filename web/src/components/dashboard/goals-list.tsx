@@ -188,7 +188,7 @@ export function GoalsList({ goals: initialGoals, onReplace, mouvements,
               onClick={add}
               className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
             >
-              <Plus className="h-3 w-3" /> Ajouter
+              <Plus className="h-3 w-3" /> {t('common.add')}
             </button>
           )}
           {canWrite && (

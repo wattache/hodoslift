@@ -198,7 +198,7 @@ function EventsManager({ athleteId, events, canEdit, draft, setDraft }: {
         <h2 className="text-sm font-semibold">{t('calendar.evenements')}</h2>
         {canEdit && !draft && (
           <Button size="sm" className="h-8 bg-gold text-gold-foreground hover:bg-gold/90" onClick={() => setDraft(emptyDraft())}>
-            <Plus className="h-3.5 w-3.5" /> Ajouter
+            <Plus className="h-3.5 w-3.5" /> {t('common.add')}
           </Button>
         )}
       </header>
@@ -250,7 +250,7 @@ function EventsManager({ athleteId, events, canEdit, draft, setDraft }: {
             {draft.canTrain ? t('misc.trainOk') : t('misc.noTrainingShort')}
           </button>
           <Button size="sm" className="h-8 bg-gold text-gold-foreground hover:bg-gold/90" onClick={save}>
-            <Check className="h-3.5 w-3.5" /> {draft.id ? 'Enregistrer' : t('misc.create')}
+            <Check className="h-3.5 w-3.5" /> {draft.id ? t('common.save') : t('misc.create')}
           </Button>
           <Button size="sm" variant="ghost" className="h-8" onClick={() => setDraft(null)}>
             <X className="h-3.5 w-3.5" />

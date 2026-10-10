@@ -271,7 +271,7 @@ export function LigneTest({ resultat, precedent, lecture, vise = false, onEcrire
 
       {precedent && (
         <p className="mt-2 text-xs text-muted-foreground">
-          Bilan précédent :{' '}
+          {traduire('bilan.precedent')}{' '}
           <span className="font-mono tabular-nums">
             {versTexte(precedent.mesureGauche) || '—'}
             {resultat.bilateral && <> / {versTexte(precedent.mesureDroite) || '—'}</>}
@@ -281,7 +281,7 @@ export function LigneTest({ resultat, precedent, lecture, vise = false, onEcrire
               15 kg serait une progression inventée. */}
           {chargesDifferentes && (
             <span className="ml-2 rounded bg-primary/15 px-1.5 py-0.5 text-[11px] text-foreground">
-              charge différente ({precedent.chargeKg} kg) — non comparable
+              {traduire('bilan.chargeDifferente', { kg: precedent.chargeKg })}
             </span>
           )}
         </p>

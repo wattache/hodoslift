@@ -135,3 +135,30 @@ describe('les codes d’erreur traduits', () => {
     expect(manquants).toEqual([]);
   });
 });
+
+/** LE LIBELLÉ ÉCRIT EN DUR, hors `t()` — la faute que les trois specs ci-dessus
+ *  ne voient PAS : la parité des fichiers est intacte, la clé n'existe pas parce
+ *  que personne ne l'appelle. Seize libellés vivaient ainsi quand le polonais
+ *  est arrivé (FRE-228), « Compétitions » en tête d'écran.
+ *
+ *  Le critère est celui du CODE, pas une liste : un accent dans du source hors
+ *  commentaire, hors `t()`, hors `className`. Un message console et un mot-clé
+ *  de donnée (`'décharg'`) sont les seules exceptions, nommées. */
+describe('les libellés', () => {
+  it('passent TOUS par t() — aucun texte accentué en dur', () => {
+    // Le dev-mock est de la DONNÉE, et le nom d'une langue s'écrit dans sa langue.
+    const TOLERES = ['firebase.ts', 'lib/athlete.ts', 'api/mock.ts', 'i18n/index.ts'];
+    const fautes = FICHIERS.filter(({ chemin }) => !TOLERES.includes(chemin)).flatMap(({ chemin, texte }) => {
+      // Un bloc de commentaire garde ses sauts de ligne : les numéros restent justes.
+      const sansBlocs = texte.replace(/\/\*[\s\S]*?\*\//g, b => '\n'.repeat(b.split('\n').length - 1));
+      return sansBlocs.split('\n').flatMap((ligne, i) => {
+        const l = ligne.replace(/\/\/.*$/, '').trim();
+        if (!l || l.startsWith('import ') || l.includes('throw new') || l.includes('console.')) return [];
+        const hors = l.replace(/\b(?:t|traduire|i18n\.t)\(\s*(['"])[^'"]*\1/g, '')
+                      .replace(/(?:className|class)=(?:"[^"]*"|\{[^}]*\})/g, '');
+        return /[éèàùçêôîûÉÀ]/.test(hors) ? [`${chemin}:${i + 1} — ${l.slice(0, 80)}`] : [];
+      });
+    });
+    expect(fautes).toEqual([]);
+  });
+});

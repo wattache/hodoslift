@@ -345,7 +345,14 @@
     "supprimerLeModele": "Usunąć szablon „{{nom}}”?",
     "supprimerRubrique": "Usuń tę sekcję (odmowa, jeśli zawiera testy)",
     "supprimerTest": "Usunąć „{{libelle}}”?",
-    "testsCount": "{{count}} testów"
+    "testsCount": "{{count}} testów",
+    "antecedents": "Historia",
+    "precedent": "Poprzednie badanie:",
+    "chargeDifferente": "inne obciążenie ({{kg}} kg) — nieporównywalne",
+    "retire": "(wycofany)",
+    "archive": "(zarchiwizowany)",
+    "nouveauTest": "Nowy test",
+    "nouvelleRubrique": "Nowa sekcja"
   },
   "blocTableau": {
     "absent": "nie zaplanowano w tym tygodniu",
@@ -677,7 +684,12 @@
     "sansPlan": "Brak planu dla tej próby: wpisz zgłoszone obciążenie.",
     "athletesDuGroupe": "Zawodnicy w grupie",
     "var": "VAR sprawdzone",
-    "reglement": "Regulamin"
+    "reglement": "Regulamin",
+    "tier": {
+      "pessimistic": "Pesymistyczny — bezpieczny opener",
+      "realistic": "Realistyczny — cel",
+      "optimistic": "Optymistyczny — ambitny"
+    }
   },
   "cycle": {
     "menstruation": "Miesiączka",
@@ -1567,7 +1579,14 @@
     "chargeKg": "Obciążenie kg",
     "rpeCibleCourt": "Docelowe RPE",
     "rpeSur10": "/10",
-    "replier": "Zwiń"
+    "replier": "Zwiń",
+    "surNSeries_one": "na {{count}} serii",
+    "surNSeries_few": "na {{count}} seriach",
+    "surNSeries_many": "na {{count}} seriach",
+    "surNSeries_other": "na {{count}} seriach",
+    "auLieuDe": "{{fait}} zamiast {{prevu}}",
+    "rpeRessenti": "odczuwane RPE {{rpe}}",
+    "conforme": "zgodnie z planem"
   },
   "share": {
     "bloc": "BLOK",
@@ -1677,7 +1696,8 @@
       "bloc": "Tabela bloku",
       "series": "Serie w tygodniu",
       "poids": "Waga tygodniowo"
-    }
+    },
+    "revenirAAujourdhui": "wróć do dziś"
   },
   "training": {
     "allerALaBase": "Przejdź do szablonu",
@@ -1860,5 +1880,8 @@
   "reglement": {
     "fnsl": "FNSL",
     "finalrep": "FinalRep"
+  },
+  "signalements": {
+    "aucun": "Brak zgłoszeń w tym okresie — nikt nie zgłasza bólu."
   }
 }

@@ -310,7 +310,14 @@
     "supprimerLeModele": "Delete template “{{nom}}”?",
     "supprimerRubrique": "Delete this section (refused if it holds tests)",
     "supprimerTest": "Delete “{{libelle}}”?",
-    "testsCount": "{{count}} tests"
+    "testsCount": "{{count}} tests",
+    "antecedents": "History",
+    "precedent": "Previous assessment:",
+    "chargeDifferente": "different load ({{kg}} kg) — not comparable",
+    "retire": "(retired)",
+    "archive": "(archived)",
+    "nouveauTest": "New test",
+    "nouvelleRubrique": "New section"
   },
   "blocTableau": {
     "absent": "not prescribed this week",
@@ -627,7 +634,12 @@
     "sansPlan": "No plan for this attempt: enter the declared load.",
     "athletesDuGroupe": "Lifters in the flight",
     "var": "VAR checked",
-    "reglement": "Rulebook"
+    "reglement": "Rulebook",
+    "tier": {
+      "pessimistic": "Pessimistic — safe opener",
+      "realistic": "Realistic — the target",
+      "optimistic": "Optimistic — stretch"
+    }
   },
   "cycle": {
     "menstruation": "Menstruation",
@@ -1462,7 +1474,12 @@
     "chargeKg": "Load kg",
     "rpeCibleCourt": "Target RPE",
     "rpeSur10": "/10",
-    "replier": "Collapse"
+    "replier": "Collapse",
+    "surNSeries_one": "on {{count}} set",
+    "surNSeries_other": "on {{count}} sets",
+    "auLieuDe": "{{fait}} instead of {{prevu}}",
+    "rpeRessenti": "felt RPE {{rpe}}",
+    "conforme": "as prescribed"
   },
   "share": {
     "bloc": "BLOCK",
@@ -1566,7 +1583,8 @@
       "bloc": "Block table",
       "series": "Sets per week",
       "poids": "Weight by week"
-    }
+    },
+    "revenirAAujourdhui": "back to today"
   },
   "training": {
     "allerALaBase": "Go to the template",
@@ -1727,5 +1745,8 @@
   "reglement": {
     "fnsl": "FNSL",
     "finalrep": "FinalRep"
+  },
+  "signalements": {
+    "aucun": "No report over this period — nobody is reporting pain."
   }
 }

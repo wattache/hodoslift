@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
+import i18n from '@/i18n';
 
 import {
   appliquerLePas, appliquerLeRaccourci, champSuivant, ecrituresDePrescription, pasDuChamp, resumeDuReel,
@@ -6,6 +7,9 @@ import {
 
 /** LES RÈGLES DE SAISIE DU COACH, hors de toute vue — le tableau et les cartes
  *  du téléphone les partagent (brief coach, 27/09). */
+
+// Les écarts se disent en français : la spec les lit tels quels.
+beforeAll(async () => { await i18n.changeLanguage('fr'); });
 
 describe('le stepper du téléphone', () => {
   it('« Champ suivant » parcourt séries → reps → charge → RPE, puis reboucle', () => {

@@ -310,7 +310,14 @@
     "supprimerLeModele": "Supprimer le modèle « {{nom}} » ?",
     "supprimerRubrique": "Supprimer cette rubrique (refusé si elle porte des tests)",
     "supprimerTest": "Supprimer « {{libelle}} » ?",
-    "testsCount": "{{count}} tests"
+    "testsCount": "{{count}} tests",
+    "antecedents": "Antécédents",
+    "precedent": "Bilan précédent :",
+    "chargeDifferente": "charge différente ({{kg}} kg) — non comparable",
+    "retire": "(retiré)",
+    "archive": "(archivé)",
+    "nouveauTest": "Nouveau test",
+    "nouvelleRubrique": "Nouvelle rubrique"
   },
   "blocTableau": {
     "absent": "non prescrit cette semaine",
@@ -627,7 +634,12 @@
     "sansPlan": "Pas de plan pour cet essai : saisis la charge annoncée.",
     "athletesDuGroupe": "Athlètes du groupe",
     "var": "VAR consultée",
-    "reglement": "Règlement"
+    "reglement": "Règlement",
+    "tier": {
+      "pessimistic": "Pessimiste — opener safe",
+      "realistic": "Réaliste — cible visée",
+      "optimistic": "Optimiste — stretch"
+    }
   },
   "cycle": {
     "menstruation": "Menstruation",
@@ -1462,7 +1474,12 @@
     "chargeKg": "Charge kg",
     "rpeCibleCourt": "RPE cible",
     "rpeSur10": "/10",
-    "replier": "Replier"
+    "replier": "Replier",
+    "surNSeries_one": "sur {{count}} série",
+    "surNSeries_other": "sur {{count}} séries",
+    "auLieuDe": "{{fait}} au lieu de {{prevu}}",
+    "rpeRessenti": "RPE ressenti {{rpe}}",
+    "conforme": "conforme"
   },
   "share": {
     "bloc": "BLOC",
@@ -1566,7 +1583,8 @@
       "bloc": "Bloc en tableau",
       "series": "Séries par semaine",
       "poids": "Poids par semaine"
-    }
+    },
+    "revenirAAujourdhui": "revenir à aujourd'hui"
   },
   "training": {
     "allerALaBase": "Aller à la BASE",
@@ -1727,5 +1745,8 @@
   "reglement": {
     "fnsl": "FNSL",
     "finalrep": "FinalRep"
+  },
+  "signalements": {
+    "aucun": "Aucun signalement sur cette période — personne ne remonte de douleur."
   }
 }

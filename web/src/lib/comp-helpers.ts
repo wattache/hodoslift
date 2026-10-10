@@ -2,10 +2,12 @@ import type { CompAttempt, AttemptTier } from '@/api/types';
 
 // Stratégie de feuille de match : 3 charges candidates par essai. Ordre
 // d'affichage = du plus safe au plus ambitieux (P → R → O).
+// `full` est une CLÉ de traduction, à passer par `t()` : un libellé figé ici
+// resterait dans la langue de l'import.
 export const TIER_DEFS: { id: AttemptTier; label: string; full: string }[] = [
-  { id: 'pessimistic', label: 'P', full: 'Pessimiste — opener safe' },
-  { id: 'realistic',   label: 'R', full: 'Réaliste — cible visée' },
-  { id: 'optimistic',  label: 'O', full: 'Optimiste — stretch' },
+  { id: 'pessimistic', label: 'P', full: 'competition.tier.pessimistic' },
+  { id: 'realistic',   label: 'R', full: 'competition.tier.realistic' },
+  { id: 'optimistic',  label: 'O', full: 'competition.tier.optimistic' },
 ];
 
 // Incrément standard pour la barre ± d'ajustement par tier. Le coach cumule

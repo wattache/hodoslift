@@ -87,7 +87,7 @@ function LigneTestEditable({ test, modeleId }: { test: BilanTest; modeleId: stri
           className="min-w-0 flex-1 text-left text-sm font-medium text-foreground hover:underline"
         >
           {test.libelle}
-          {test.retire && <span className="ml-2 text-xs font-normal text-muted-foreground">(retiré)</span>}
+          {test.retire && <span className="ml-2 text-xs font-normal text-muted-foreground">{t('bilan.retire')}</span>}
         </button>
         <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
           {test.mesure === 'aucune' ? t("bilan.ressenti") : test.mesure}
@@ -254,7 +254,7 @@ function Composeur({ modeleId, onFermer }: { modeleId: string; onFermer: () => v
               // déclare requis pour que le front ne puisse pas les oublier.
               onClick={() => creerTest.mutate(
                 { rubriqueId: r.id,
-                  corps: { libelle: 'Nouveau test', mesure: 'aucune', bilateral: false } },
+                  corps: { libelle: t('bilan.nouveauTest'), mesure: 'aucune', bilateral: false } },
                 { onError: toastSaveError })}
               className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border px-2 text-xs hover:bg-accent"
             >
@@ -283,7 +283,7 @@ function Composeur({ modeleId, onFermer }: { modeleId: string; onFermer: () => v
 
       <button
         type="button"
-        onClick={() => creerRubrique.mutate({ libelle: 'Nouvelle rubrique' },
+        onClick={() => creerRubrique.mutate({ libelle: t('bilan.nouvelleRubrique') },
                                             { onError: toastSaveError })}
         className="inline-flex h-10 items-center gap-1.5 self-start rounded-lg border border-border bg-background px-3 text-xs font-medium hover:bg-accent"
       >
@@ -360,7 +360,7 @@ export function BilanModelesView() {
               <span className="min-w-0">
                 <span className="block truncate font-medium">
                   {m.nom}
-                  {m.archive && <span className="ml-2 text-xs font-normal text-muted-foreground">(archivé)</span>}
+                  {m.archive && <span className="ml-2 text-xs font-normal text-muted-foreground">{t('bilan.archive')}</span>}
                 </span>
                 {m.description && (
                   <span className="block truncate text-xs text-muted-foreground">{m.description}</span>

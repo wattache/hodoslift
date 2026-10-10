@@ -129,7 +129,7 @@ export function SignalementsView() {
       ) : parJour.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border bg-card/50 p-8 text-center text-sm text-muted-foreground">
           {/* Un vide qui se LIT comme une bonne nouvelle, pas comme une panne. */}
-          Aucun signalement sur cette période — personne ne remonte de douleur.
+          {t('signalements.aucun')}
         </div>
       ) : (
         parJour.map(([date, lignes]) => (

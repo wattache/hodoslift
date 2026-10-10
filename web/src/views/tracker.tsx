@@ -183,7 +183,7 @@ export function TrackerView() {
                   onClick={() => setEntryDate(todayISO())}
                   className="text-[11px] text-muted-foreground underline hover:text-foreground"
                 >
-                  revenir à aujourd'hui
+                  {t('tracker.revenirAAujourdhui')}
                 </button>
               )}
             </div>
