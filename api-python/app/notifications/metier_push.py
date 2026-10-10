@@ -37,6 +37,15 @@ _EST_ABONNE_SQL = text("SELECT 1 FROM push_subscriptions WHERE endpoint = :endpo
 _DESTINATAIRE_SQL = text(
     "SELECT a.user_uid FROM programs p JOIN athletes a ON a.id = p.athlete_id WHERE p.id = :program_id"
 )
+_LANGUE_SQL = text("SELECT preferences->>'langue' FROM users WHERE uid = :uid")
+
+#: Ce que l'athlète lit, dans SA langue (`users.preferences.langue`, posée par le
+#: front à chaque changement). Le français quand il n'a rien dit.
+_NOUVELLE_SEMAINE = {
+    "fr": ("Nouvelle semaine", "Ton coach vient de préparer la semaine {n}."),
+    "en": ("New week", "Your coach has just prepared week {n}."),
+    "pl": ("Nowy tydzień", "Twój trener właśnie przygotował tydzień {n}."),
+}
 
 
 def poser_abonnement(conn, *, uid: str, endpoint: str, p256dh: str, auth: str) -> None:
@@ -58,6 +67,12 @@ def abonnements_de(conn, uid: str) -> list[dict]:
 def destinataire_du_programme(conn, program_id: str) -> str | None:
     """Le compte de l'athlète du programme — `None` s'il n'a pas de compte."""
     return conn.execute(_DESTINATAIRE_SQL, {"program_id": program_id}).scalar()
+
+
+def langue_de(conn, uid: str) -> str:
+    """La langue de l'interface de ce compte ; `fr` s'il n'en a pas choisi."""
+    langue = conn.execute(_LANGUE_SQL, {"uid": uid}).scalar()
+    return langue if langue in _NOUVELLE_SEMAINE else "fr"
 
 
 def configure() -> bool:
@@ -105,9 +120,10 @@ def notifier_nouvelle_semaine(*, program_id: str, numero: int, auteur_uid: str) 
     try:
         with get_session() as conn:
             destinataire = destinataire_du_programme(conn, program_id)
+            langue = langue_de(conn, destinataire) if destinataire else "fr"
         if not destinataire or destinataire == auteur_uid:
             return
-        envoyer(destinataire, titre="Nouvelle semaine",
-                corps=f"Ton coach vient de préparer la semaine {numero}.", url="/training")
+        titre, corps = _NOUVELLE_SEMAINE[langue]
+        envoyer(destinataire, titre=titre, corps=corps.format(n=numero), url="/training")
     except Exception:  # noqa: BLE001 — un effet, pas l'acte
         logger.exception("push : la notification de nouvelle semaine n'est pas partie")

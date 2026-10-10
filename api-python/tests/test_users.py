@@ -108,7 +108,7 @@ def test_me_cree_la_ligne_au_premier_appel(auth_as, sql):
         "uid": "newbie", "email": "neo@x.com", "displayName": "neo",  # préfixe email
         "isCoach": False, "isKine": False, "isAdmin": False, "athleteId": None,
         # Aucun réglage encore : les défauts de l'app.
-        "preferences": {"progression": None},
+        "preferences": {"progression": None, "langue": None},
         # Aucune structure : ni rôle, ni fiche, ni admin (FRE-13).
         "structures": [],
     }
@@ -535,8 +535,8 @@ def test_une_preference_se_pose_et_se_relit_sur_me(auth_as, sql):
     c = auth_as(uid="laura", email="laura@x.com")
     r = c.patch("/users/me/preferences", json={"progression": "chiffres"}, headers=_AUTH)
     assert r.status_code == 200
-    assert r.json() == {"progression": "chiffres"}
-    assert c.get("/users/me", headers=_AUTH).json()["preferences"] == {"progression": "chiffres"}
+    assert r.json() == {"progression": "chiffres", "langue": None}
+    assert c.get("/users/me", headers=_AUTH).json()["preferences"] == {"progression": "chiffres", "langue": None}
 
 
 def test_une_ancienne_forme_en_base_ne_casse_pas_la_lecture(auth_as, sql):
@@ -546,11 +546,20 @@ def test_une_ancienne_forme_en_base_ne_casse_pas_la_lecture(auth_as, sql):
     sql.execute(text("INSERT INTO users (uid, email, preferences) VALUES ('nico', 'n@x.com', "
                      "CAST(:p AS jsonb))"), {"p": '{"progression": {"athlete": "chiffres", "coach": "courbe"}}'})
     c = auth_as(uid="nico", email="n@x.com")
-    assert c.get("/users/me", headers=_AUTH).json()["preferences"] == {"progression": None}
-    assert c.patch("/users/me/preferences", json={"progression": "courbe"}, headers=_AUTH).json() == {"progression": "courbe"}
+    assert c.get("/users/me", headers=_AUTH).json()["preferences"] == {"progression": None, "langue": None}
+    assert c.patch("/users/me/preferences", json={"progression": "courbe"}, headers=_AUTH).json() == {"progression": "courbe", "langue": None}
 
 
 def test_un_rendu_inconnu_est_refuse(auth_as, sql):
     r = auth_as(uid="laura", email="laura@x.com").patch(
         "/users/me/preferences", json={"progression": "camembert"}, headers=_AUTH)
     assert r.status_code == 422
+
+
+def test_la_langue_se_pose_sans_toucher_le_reste_et_une_langue_inconnue_est_refusee(auth_as, sql):
+    """FRE-228 : la langue de l'interface suit la personne, pour que brokkr lui
+    parle dans la sienne (le push). Le vocabulaire est celui du front, clos ici."""
+    c = auth_as(uid="laura", email="laura@x.com")
+    c.patch("/users/me/preferences", json={"progression": "chiffres"}, headers=_AUTH)
+    assert c.patch("/users/me/preferences", json={"langue": "pl"}, headers=_AUTH).json() == {"progression": "chiffres", "langue": "pl"}
+    assert c.patch("/users/me/preferences", json={"langue": "de"}, headers=_AUTH).status_code == 422

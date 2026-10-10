@@ -23,6 +23,7 @@ import { SelecteurAthlete } from '@/components/layout/selecteur-athlete';
 import { BandeauChrono, BoutonChrono, ChronoProvider, EspaceDuChrono } from '@/components/chrono';
 import { cn } from '@/lib/utils';
 import { useLocalStorageState } from '@/lib/storage';
+import { useLangueServie } from '@/lib/langue-servie';
 import { useAthleteSelection } from '@/lib/athlete-selection';
 import { useAuth } from '@/auth/auth-context';
 
@@ -167,6 +168,7 @@ function NavSection({ label, entries, className }: {
 function AppSidebar({ theme, onToggleTheme }: { theme: ThemeKey; onToggleTheme: () => void }) {
   const { t } = useTranslation();
   const { me } = useAthleteSelection();
+  useLangueServie();
 
   // La section « Kiné » se compose des entrées que CE staff-là peut atteindre :
   // les signalements pour le coach comme pour la kiné, les modèles pour elle

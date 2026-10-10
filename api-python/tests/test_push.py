@@ -8,6 +8,7 @@ Ce que ces specs gardent :
      génération, et un endpoint parti (410) est retiré.
   4. Sans clés VAPID, rien ne part et rien ne casse.
 """
+import json
 import pytest
 from fastapi.testclient import TestClient
 from pywebpush import WebPushException
@@ -99,6 +100,18 @@ def test_generer_une_semaine_previent_l_athlete_du_programme(monde, vapid):
     assert vapid[0]["subscription_info"]["endpoint"] == _ENDPOINT
     assert vapid[0]["vapid_private_key"] == "privee"
     assert "semaine 1" in vapid[0]["data"]
+
+
+def test_l_athlete_est_prevenu_dans_sa_langue(monde, vapid):
+    """FRE-228 : la langue choisie dans l'app (`preferences.langue`) est celle du
+    push. MUTATION QUI ROUGIT : envoyer le français à tout le monde."""
+    _lier_un_compte(monde["pg"], "laura")
+    monde["pg"].execute(text("UPDATE users SET preferences = '{\"langue\": \"pl\"}' WHERE uid = 'laura'"))
+    _client("laura").post("/users/me/push", json=_ABONNEMENT, headers=_AUTH)
+    _poser_la_base(monde, _base(principles=[_principe("SQUAT", 1)]))
+
+    assert _generer(monde).status_code == 201
+    assert json.loads(vapid[0]["data"]) == {"titre": "Nowy tydzień", "corps": "Twój trener właśnie przygotował tydzień 1.", "url": "/training"}
 
 
 def test_la_semaine_suivante_previent_aussi_avec_son_numero(monde, vapid):

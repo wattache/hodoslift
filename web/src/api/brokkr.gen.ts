@@ -5293,6 +5293,8 @@ export interface components {
         Preferences: {
             /** Progression */
             progression?: ("courbe" | "chiffres") | null;
+            /** Langue */
+            langue?: ("fr" | "en" | "pl") | null;
         };
         /**
          * PreferencesPatch
@@ -5301,6 +5303,8 @@ export interface components {
         PreferencesPatch: {
             /** Progression */
             progression?: ("courbe" | "chiffres") | null;
+            /** Langue */
+            langue?: ("fr" | "en" | "pl") | null;
         };
         /**
          * PrincipeDeBase

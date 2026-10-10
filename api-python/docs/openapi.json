@@ -18627,6 +18627,22 @@
               }
             ],
             "title": "Progression"
+          },
+          "langue": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "fr",
+                  "en",
+                  "pl"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Langue"
           }
         },
         "additionalProperties": false,
@@ -18650,6 +18666,22 @@
               }
             ],
             "title": "Progression"
+          },
+          "langue": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "fr",
+                  "en",
+                  "pl"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Langue"
           }
         },
         "additionalProperties": false,

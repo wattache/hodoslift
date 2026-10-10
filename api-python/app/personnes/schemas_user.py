@@ -65,6 +65,9 @@ class StructureDeMoi(BaseModel):
 #: vocabulaire est CLOS ici : le front en engendre le sien, et un rendu retiré
 #: fait rougir la compilation au lieu de laisser une préférence orpheline.
 RenduProgression = Literal["courbe", "chiffres"]
+#: Les langues de l'interface (`web/src/i18n`). La seule chose que brokkr en
+#: fait : parler à l'athlète dans la sienne quand c'est lui qui écrit (le push).
+Langue = Literal["fr", "en", "pl"]
 
 
 class Preferences(BaseModel):
@@ -75,6 +78,7 @@ class Preferences(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     progression: RenduProgression | None = None
+    langue: Langue | None = None
 
 
 class PreferencesPatch(BaseModel):
@@ -83,6 +87,7 @@ class PreferencesPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     progression: RenduProgression | None = None
+    langue: Langue | None = None
 
 
 class MoiLu(BaseModel):
