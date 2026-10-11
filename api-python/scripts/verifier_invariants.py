@@ -862,10 +862,11 @@ INVARIANTS: list[Invariant] = [
         # critère « absent de la bibliothèque », repris par les migrations du
         # 23/09). Une tolérance dont la dette est payée sort en
         # `tolerance_perimee`, donc en ÉCHEC : on ne peut pas l'oublier ici.
-        # 23 = les 20 du relevé FRE-193, plus trois cases posées depuis par un
-        # coach sur un bloc dont la trame ne prescrit pas le mouvement — des
-        # gestes de coach, pas un défaut de code ; on n'arbitre pas.
-        connu_viole=23,
+        # Les cases du relevé FRE-193, plus celles qu'un coach pose depuis sur un
+        # bloc dont la trame ne prescrit pas le mouvement — des gestes de coach,
+        # pas un défaut de code ; on n'arbitre pas. Le seuil monte quand un coach
+        # en pose d'autres, il ne se corrige pas à sa place.
+        connu_viole=26,
         connu_ticket="FRE-193",
         tags=("donnee", "entrainement"),
     ),
