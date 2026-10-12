@@ -1461,6 +1461,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/athletes/{athlete_id}/palmares": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Palmares
+         * @description Le palmarès : meilleurs singles, compétitions, et le 1RM de la table qui en découle.
+         *
+         *     Raises:
+         *         ErreurMetier: `athlete_introuvable` (404).
+         */
+        get: operations["get_palmares_athletes__athlete_id__palmares_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/athletes/{athlete_id}/forme-du-jour": {
         parameters: {
             query?: never;
@@ -3450,6 +3473,26 @@ export interface components {
             editorEmails?: string[] | null;
         };
         /**
+         * CompetitionDuPalmares
+         * @description Une compétition de l'athlète. `place` parmi les `classes` qui ont un RIS.
+         */
+        CompetitionDuPalmares: {
+            /** Id */
+            id: string;
+            /** Nom */
+            nom: string;
+            /** Date */
+            date: string;
+            /** Total */
+            total: number;
+            /** Ris */
+            ris: number | null;
+            /** Place */
+            place: number | null;
+            /** Classes */
+            classes: number;
+        };
+        /**
          * CompetitionEcrite
          * @description Le PATCH d'une compétition rend sa NOUVELLE version (FRE-162).
          *
@@ -5138,6 +5181,23 @@ export interface components {
             /** Ids */
             ids: string[];
         };
+        /**
+         * PalmaresLu
+         * @description `GET /athletes/{id}/palmares` — le haut du tableau de bord.
+         *
+         *     `unRm` est le 1RM de la table : par clé de `current_one_rm`, le plus lourd
+         *     de la saisie et du meilleur single (`app/suivi/metier_palmares.py`).
+         */
+        PalmaresLu: {
+            /** Records */
+            records: components["schemas"]["SingleLu"][];
+            /** Competitions */
+            competitions: components["schemas"]["CompetitionDuPalmares"][];
+            /** Unrm */
+            unRm: {
+                [key: string]: number;
+            };
+        };
         /** Participant */
         Participant: {
             /** Name */
@@ -5828,6 +5888,25 @@ export interface components {
              * @description Ce qui a été noté ce jour-là, la plus forte en tête
              */
             douleurs: components["schemas"]["DouleurSignalee"][];
+        };
+        /**
+         * SingleLu
+         * @description Le meilleur single d'un mouvement, et d'où il vient.
+         */
+        SingleLu: {
+            /** Mouvement */
+            mouvement: string;
+            /** Charge */
+            charge: number;
+            /** Date */
+            date: string | null;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "competition" | "entrainement" | "manuel";
+            /** Contexte */
+            contexte: string | null;
         };
         /**
          * StructureDeMoi
@@ -9771,6 +9850,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RecordLu"][];
+                };
+            };
+            /** @description Jeton absent, expiré ou invalide. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erreur"];
+                };
+            };
+            /** @description Authentifié, mais hors de son périmètre. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erreur"];
+                };
+            };
+            /** @description La ressource n'existe pas. Un OBJET (ligne, séance, bilan, note) qui existe mais appartient à un autre programme ou à un autre athlète répond 404 lui aussi, pour ne pas révéler son existence. Un PROGRAMME ou une FICHE qui existe hors du périmètre de l'appelant répond 403. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erreur"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_palmares_athletes__athlete_id__palmares_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                athlete_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PalmaresLu"];
                 };
             };
             /** @description Jeton absent, expiré ou invalide. */

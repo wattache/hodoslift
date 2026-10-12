@@ -1888,5 +1888,15 @@
   },
   "signalements": {
     "aucun": "Brak zgłoszeń w tym okresie — nikt nie zgłasza bólu."
+  },
+  "palmares": {
+    "titre": "Osiągnięcia",
+    "vide": "Brak singli i zawodów: osiągnięcia wypełnią się po pierwszej zaliczonej próbie.",
+    "place": "{{place}}. z {{sur}}",
+    "source": {
+      "entrainement": "Trening",
+      "manuel": "Wpisane przez trenera",
+      "competition": "Zawody"
+    }
   }
 }

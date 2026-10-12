@@ -9,7 +9,10 @@ import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 
 interface Props {
+  /** Le 1RM affiché : le plus lourd de la saisie et du meilleur single (brokkr). */
   oneRM: OneRepMax;
+  /** La saisie du coach, celle que le mode Modifier édite. */
+  saisi?: OneRepMax;
   /** Coach : édite le 1RM d'un mouvement (clé OneRepMax) → persistance. */
   onUpdateOneRM?: (key: keyof OneRepMax, value: number) => void;
   /** L'athlète regardé — la sélection du TOTAL est mémorisée par athlète
@@ -53,7 +56,7 @@ function round05(n: number) {
   return Math.round(n * 2) / 2;
 }
 
-export function RmPercentageTable({ oneRM, onUpdateOneRM, athleteId }: Props) {
+export function RmPercentageTable({ oneRM, saisi = oneRM, onUpdateOneRM, athleteId }: Props) {
   const { t } = useTranslation();
   const [editMode, setEditMode] = useState(false);
   const canEdit = !!onUpdateOneRM;
@@ -219,7 +222,7 @@ export function RmPercentageTable({ oneRM, onUpdateOneRM, athleteId }: Props) {
                           className={cn("px-3 py-1.5 text-center", isMax && "text-[13px] font-bold text-gold")}
                         >
                           {isMax && canEdit && editMode ? (
-                            <OneRMCell value={orm} onCommit={(n) => onUpdateOneRM?.(MOVEMENT_TO_ORM[m], n)} />
+                            <OneRMCell value={saisi[MOVEMENT_TO_ORM[m]] ?? 0} onCommit={(n) => onUpdateOneRM?.(MOVEMENT_TO_ORM[m], n)} />
                           ) : orm > 0 ? (
                             round05((orm * p) / 100)
                           ) : (

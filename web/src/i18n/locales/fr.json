@@ -1753,5 +1753,15 @@
   },
   "signalements": {
     "aucun": "Aucun signalement sur cette période — personne ne remonte de douleur."
+  },
+  "palmares": {
+    "titre": "Palmarès",
+    "vide": "Pas encore de single ni de compétition : le palmarès se remplit au premier rep validé.",
+    "place": "{{place}}e sur {{sur}}",
+    "source": {
+      "entrainement": "Entraînement",
+      "manuel": "Saisi par le coach",
+      "competition": "Compétition"
+    }
   }
 }

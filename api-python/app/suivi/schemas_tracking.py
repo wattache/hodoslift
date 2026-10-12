@@ -9,6 +9,8 @@ OPTIONNEL dans le contrat, donc `X | undefined` côté front. « Toujours prése
 parfois nul » et « parfois absent » sont deux promesses ; ici c'est la première.
 """
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -204,3 +206,44 @@ class RecordLu(BaseModel):
     # `''` quand la séance n'a jamais été datée, comme une part de l'historique.
     date: str
     location: str
+
+
+class SingleLu(BaseModel):
+    """Le meilleur single d'un mouvement, et d'où il vient."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    mouvement: str
+    charge: float
+    date: str | None
+    source: Literal["competition", "entrainement", "manuel"]
+    # La compétition, ou « macro · bloc · semaine » pour une séance ; rien pour un record saisi.
+    contexte: str | None
+
+
+class CompetitionDuPalmares(BaseModel):
+    """Une compétition de l'athlète. `place` parmi les `classes` qui ont un RIS."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    nom: str
+    date: str
+    total: float
+    ris: float | None
+    place: int | None
+    classes: int
+
+
+class PalmaresLu(BaseModel):
+    """`GET /athletes/{id}/palmares` — le haut du tableau de bord.
+
+    `unRm` est le 1RM de la table : par clé de `current_one_rm`, le plus lourd
+    de la saisie et du meilleur single (`app/suivi/metier_palmares.py`).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    records: list[SingleLu]
+    competitions: list[CompetitionDuPalmares]
+    unRm: dict[str, float]

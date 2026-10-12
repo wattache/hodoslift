@@ -4,7 +4,7 @@
  *  build, pas le runtime. Les écritures sont des no-op (le mode mock sert à
  *  vérifier l'UI, pas la persistance).
  */
-import type { PoidsSemaines, Guichet } from '@/api/types';
+import type { PoidsSemaines, Guichet, Palmares } from '@/api/types';
 import type {
   CoachAvailability,
   CoachProfile,
@@ -1003,6 +1003,20 @@ export const mockMediasDemo: MediaDemo[] = [
  *  ⚠️ TROIS CASES SEULEMENT, ET C'EST VOULU : la grille en compte cinquante, et
  *  les cases VIDES sont la norme — personne n'a un record à chaque nombre de
  *  répétitions. Les remplir toutes montrerait un écran qui n'existe pas. */
+export const mockPalmares: Palmares = {
+  records: [
+    { mouvement: 'MUSCLE UP', charge: 12, date: '2026-05-16', source: 'competition', contexte: 'Open de Paris' },
+    { mouvement: 'PULL UP', charge: 45, date: '2026-09-25', source: 'entrainement', contexte: 'Prépa FNSL · Intensification · S1' },
+    { mouvement: 'DIPS', charge: 60, date: '2026-05-16', source: 'competition', contexte: 'Open de Paris' },
+    { mouvement: 'SQUAT', charge: 120, date: null, source: 'manuel', contexte: null },
+  ],
+  competitions: [
+    { id: 'comp-0', nom: 'Open de Paris', date: '2026-05-16', total: 119, ris: 47.49, place: 2, classes: 9 },
+    { id: 'comp-3', nom: 'Coupe de France', date: '2025-11-08', total: 104, ris: 41.2, place: null, classes: 0 },
+  ],
+  unRm: { muscleUp: 12, pullUp: 45, chinUp: 47.5, dip: 60, squat: 120, benchPress: 55, deadlift: 130 },
+};
+
 export const mockRecords: RecordDeForce[] = [
   { movement: 'MUSCLE UP', reps: 1, weight: 12, sets: '5', variant: 'Strict',
     format: '', clusterMode: '', rpe: '9', date: iso(-14),

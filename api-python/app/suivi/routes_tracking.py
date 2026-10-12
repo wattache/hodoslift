@@ -11,14 +11,14 @@ donnée. Les records et la forme du jour lisent les tables VIVANTES.
 AUTZ — l'athlète ou son staff (`owner_or_staff`), la règle commune.
 """
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
 
-from app.socle.erreurs import erreurs
+from app.socle.erreurs import ErreurMetier, erreurs
 from app.socle.authz import AthleteAccess, require_athlete_access
 from app.socle.db import get_session
 from app.entrainement.records import lire_records
-from app.suivi.schemas_tracking import PointDeForme, RecordLu, SuiviLu
-from app.suivi import metier_tracking as metier
+from app.suivi.schemas_tracking import PalmaresLu, PointDeForme, RecordLu, SuiviLu
+from app.suivi import metier_palmares, metier_tracking as metier
 
 router = APIRouter(prefix="/athletes/{athlete_id}/tracking", tags=["tracking"])
 
@@ -159,6 +159,20 @@ def get_records(access: AthleteAccess = Depends(_acces)) -> list:
             # Un athlète sans programme n'a pas de records — pas une erreur.
             return []
         return lire_records(session, programme)
+
+
+@records_router.get("/palmares", response_model=PalmaresLu, responses=erreurs(401, 403, 404))
+def get_palmares(access: AthleteAccess = Depends(_acces)) -> dict:
+    """Le palmarès : meilleurs singles, compétitions, et le 1RM de la table qui en découle.
+
+    Raises:
+        ErreurMetier: `athlete_introuvable` (404).
+    """
+    with get_session() as session:
+        doc = metier_palmares.palmares(session, access.athlete_id)
+    if doc is None:
+        raise ErreurMetier("athlete_introuvable", status.HTTP_404_NOT_FOUND, "athlète introuvable")
+    return doc
 
 
 @records_router.get("/forme-du-jour", response_model=list[PointDeForme],

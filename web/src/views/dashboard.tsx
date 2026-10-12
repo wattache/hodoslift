@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -6,6 +7,7 @@ import { ArrowRight, ChevronRight, Dumbbell } from 'lucide-react';
 import type { BlockObjective, Goal, OneRepMax } from '@/api/types';
 import { useCompetitions } from '@/api/hooks/use-competitions';
 import { useRecords } from '@/api/hooks/use-records';
+import { usePalmares } from '@/api/hooks/use-palmares';
 import { useGoals, useReplaceGoals } from '@/api/hooks/use-goals';
 import { useDeletePr, useManualPrs, useUpsertPr } from '@/api/hooks/use-prs';
 import { usePatchAthleteProfile } from '@/api/hooks/use-athletes';
@@ -26,6 +28,7 @@ import { Link } from 'react-router-dom';
 import { UserRound } from 'lucide-react';
 import { FormSparkline } from '@/components/dashboard/form-sparkline';
 import { RmPercentageTable } from '@/components/dashboard/rm-percentage-table';
+import { Palmares } from '@/components/dashboard/palmares';
 import { AllTimePrTable } from '@/components/dashboard/all-time-pr-table';
 import { GoalsList } from '@/components/dashboard/goals-list';
 /* ⚠️ LA CARTE D'OBJECTIF VIENT DE LA VUE ENTRAÎNEMENT, elle n'est pas recopiée :
@@ -52,6 +55,7 @@ export function DashboardView() {
   const { data: macros = [] } = useProgramStructure(sel.canView ? athlete?.programId : null);
   const { data: formePoints = [] } = useFormeParJour(athleteId, 30);
   const { data: records = [] } = useRecords(athleteId);
+  const { data: palmares } = usePalmares(athleteId);
   const { data: goals = [] } = useGoals(athleteId);
   // ⚠️ LA BIBLIOTHÈQUE FAIT FOI POUR LES MOUVEMENTS D'OBJECTIF (FRE-140) :
   // `athlete_goals.exercise` porte une clé étrangère vers elle, donc un nom
@@ -67,6 +71,7 @@ export function DashboardView() {
   const upsertPr = useUpsertPr(athleteId);
   const deletePr = useDeletePr(athleteId);
   const patchProfile = usePatchAthleteProfile();
+  const qc = useQueryClient();
   const confirm = useConfirm();
   const program = useProgramSelection(athlete?.programId, macros);
   // ⚠️ PLUS ÉTROIT QUE `sel.canManage`, qui inclut le kiné : archiver est un
@@ -141,7 +146,9 @@ export function DashboardView() {
   };
 
   const updateOneRM = (key: keyof OneRepMax, value: number) => {
-    patchProfile.mutate({ athleteId: athlete.id, patch: { currentOneRM: { [key]: value } } }, { onError });
+    // Le 1RM affiché est servi avec le palmarès : il se relit après la saisie.
+    patchProfile.mutate({ athleteId: athlete.id, patch: { currentOneRM: { [key]: value } } },
+                        { onError, onSettled: () => void qc.invalidateQueries({ queryKey: ['palmares', athlete.id] }) });
   };
 
   const persistGoals = (next: Goal[]) => replaceGoals.mutate(next, { onError });
@@ -279,8 +286,11 @@ export function DashboardView() {
       )}
 
 
+      {sel.canView && palmares && <Palmares palmares={palmares} />}
+
       <RmPercentageTable
-        oneRM={athlete.currentOneRM}
+        oneRM={palmares?.unRm ?? athlete.currentOneRM}
+        saisi={athlete.currentOneRM}
         onUpdateOneRM={sel.canManage ? updateOneRM : undefined}
         athleteId={athlete.id}
       />

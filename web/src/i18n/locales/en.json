@@ -1753,5 +1753,15 @@
   },
   "signalements": {
     "aucun": "No report over this period — nobody is reporting pain."
+  },
+  "palmares": {
+    "titre": "Track record",
+    "vide": "No single or competition yet: the record fills in at the first successful rep.",
+    "place": "#{{place}} of {{sur}}",
+    "source": {
+      "entrainement": "Training",
+      "manuel": "Entered by the coach",
+      "competition": "Competition"
+    }
   }
 }

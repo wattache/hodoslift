@@ -5185,6 +5185,84 @@
         }
       }
     },
+    "/athletes/{athlete_id}/palmares": {
+      "get": {
+        "tags": [
+          "tracking"
+        ],
+        "summary": "Get Palmares",
+        "description": "Le palmarès : meilleurs singles, compétitions, et le 1RM de la table qui en découle.\n\nRaises:\n    ErreurMetier: `athlete_introuvable` (404).",
+        "operationId": "get_palmares_athletes__athlete_id__palmares_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "athlete_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Athlete Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PalmaresLu"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Jeton absent, expiré ou invalide.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authentifié, mais hors de son périmètre.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La ressource n'existe pas. Un OBJET (ligne, séance, bilan, note) qui existe mais appartient à un autre programme ou à un autre athlète répond 404 lui aussi, pour ne pas révéler son existence. Un PROGRAMME ou une FICHE qui existe hors du périmètre de l'appelant répond 403.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/athletes/{athlete_id}/forme-du-jour": {
       "get": {
         "tags": [
@@ -13111,6 +13189,65 @@
         ],
         "title": "CompetitionCreate"
       },
+      "CompetitionDuPalmares": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "nom": {
+            "type": "string",
+            "title": "Nom"
+          },
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "total": {
+            "type": "number",
+            "title": "Total"
+          },
+          "ris": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ris"
+          },
+          "place": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place"
+          },
+          "classes": {
+            "type": "integer",
+            "title": "Classes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "nom",
+          "date",
+          "total",
+          "ris",
+          "place",
+          "classes"
+        ],
+        "title": "CompetitionDuPalmares",
+        "description": "Une compétition de l'athlète. `place` parmi les `classes` qui ont un RIS."
+      },
       "CompetitionEcrite": {
         "properties": {
           "ok": {
@@ -18120,6 +18257,40 @@
         "title": "Order",
         "description": "Réordonnancement : la liste COMPLÈTE, dans le nouvel ordre.\n\nComplète et non un déplacement unitaire, pour la même raison que sur les\nlignes : le serveur peut alors vérifier qu'il ne manque ni n'entre personne."
       },
+      "PalmaresLu": {
+        "properties": {
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/SingleLu"
+            },
+            "type": "array",
+            "title": "Records"
+          },
+          "competitions": {
+            "items": {
+              "$ref": "#/components/schemas/CompetitionDuPalmares"
+            },
+            "type": "array",
+            "title": "Competitions"
+          },
+          "unRm": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Unrm"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "records",
+          "competitions",
+          "unRm"
+        ],
+        "title": "PalmaresLu",
+        "description": "`GET /athletes/{id}/palmares` — le haut du tableau de bord.\n\n`unRm` est le 1RM de la table : par clé de `current_one_rm`, le plus lourd\nde la saisie et du meilleur single (`app/suivi/metier_palmares.py`)."
+      },
       "Participant": {
         "properties": {
           "name": {
@@ -20343,6 +20514,60 @@
         ],
         "title": "Signalement",
         "description": "Une ligne du tableau : QUI, QUAND, et ce qui a été rapporté.\n\n⚠️ UN ATHLÈTE ET UN JOUR, PAS UNE DOULEUR. La coche du lecteur porte cette\nclé-là (`signalement_vu`), et un athlète peut noter deux douleurs le même\njour : les servir séparément ferait deux lignes qu'une seule coche ferait\ndisparaître ensemble."
+      },
+      "SingleLu": {
+        "properties": {
+          "mouvement": {
+            "type": "string",
+            "title": "Mouvement"
+          },
+          "charge": {
+            "type": "number",
+            "title": "Charge"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "competition",
+              "entrainement",
+              "manuel"
+            ],
+            "title": "Source"
+          },
+          "contexte": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contexte"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "mouvement",
+          "charge",
+          "date",
+          "source",
+          "contexte"
+        ],
+        "title": "SingleLu",
+        "description": "Le meilleur single d'un mouvement, et d'où il vient."
       },
       "StructureDeMoi": {
         "properties": {

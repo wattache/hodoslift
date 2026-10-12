@@ -201,6 +201,7 @@ export type Week = components['schemas']['SemaineLue'];
  *  compilateur l'a signalé tout de suite — mais un nom qui compile n'est pas
  *  forcément un nom libre. */
 export type RecordDeForce = components['schemas']['RecordLu'];
+export type Palmares = components['schemas']['PalmaresLu'];
 
 export type BlockObjective = components['schemas']['ObjectifDeBloc'];
 
