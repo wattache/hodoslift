@@ -1892,11 +1892,28 @@
   "palmares": {
     "titre": "Osiągnięcia",
     "vide": "Brak singli i zawodów: osiągnięcia wypełnią się po pierwszej zaliczonej próbie.",
-    "place": "{{place}}. z {{sur}}",
+    "place": "{{place}}. / {{sur}}",
     "source": {
       "entrainement": "Trening",
       "manuel": "Wpisane przez trenera",
       "competition": "Zawody"
-    }
+    },
+    "records": "Rekordy",
+    "meilleursSingles": "Najlepsze single",
+    "indice": "Total 4 bojów",
+    "total": "Total",
+    "historique": "Historia zawodów",
+    "nCompetitions_one": "{{count}} zawody",
+    "nCompetitions_few": "{{count}} zawody",
+    "nCompetitions_many": "{{count}} zawodów",
+    "nCompetitions_other": "{{count}} zawodów",
+    "competition": "Zawody",
+    "date": "Data",
+    "resultat": "Wynik",
+    "genre": {
+      "M": "M",
+      "F": "K"
+    },
+    "placePremier": "1. / {{sur}}"
   }
 }

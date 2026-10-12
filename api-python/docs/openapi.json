@@ -18259,6 +18259,54 @@
       },
       "PalmaresLu": {
         "properties": {
+          "genre": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "M",
+                  "F"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genre"
+          },
+          "categorie": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Categorie"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "ris": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ris"
+          },
           "records": {
             "items": {
               "$ref": "#/components/schemas/SingleLu"
@@ -18284,6 +18332,10 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
+          "genre",
+          "categorie",
+          "total",
+          "ris",
           "records",
           "competitions",
           "unRm"

@@ -1757,11 +1757,26 @@
   "palmares": {
     "titre": "Palmarès",
     "vide": "Pas encore de single ni de compétition : le palmarès se remplit au premier rep validé.",
-    "place": "{{place}}e sur {{sur}}",
+    "place": "{{place}}e / {{sur}}",
     "source": {
       "entrainement": "Entraînement",
       "manuel": "Saisi par le coach",
       "competition": "Compétition"
-    }
+    },
+    "records": "Records",
+    "meilleursSingles": "Meilleurs singles",
+    "indice": "Total 4 mouvements",
+    "total": "Total",
+    "historique": "Historique des compétitions",
+    "nCompetitions_one": "{{count}} compétition",
+    "nCompetitions_other": "{{count}} compétitions",
+    "competition": "Compétition",
+    "date": "Date",
+    "resultat": "Résultat",
+    "genre": {
+      "M": "H",
+      "F": "F"
+    },
+    "placePremier": "1er / {{sur}}"
   }
 }

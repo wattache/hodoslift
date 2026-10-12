@@ -244,6 +244,13 @@ class PalmaresLu(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    genre: Literal["M", "F"] | None
+    # La catégorie où son poids actuel le range ; `None` sans poids ou sans genre.
+    categorie: str | None
+    # Les quatre places du barème (MU, PU ou CU, DIPS, SQUAT) au meilleur single ;
+    # `None` s'il en manque une.
+    total: float | None
+    ris: float | None
     records: list[SingleLu]
     competitions: list[CompetitionDuPalmares]
     unRm: dict[str, float]

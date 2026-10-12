@@ -15,6 +15,7 @@ from typing import Any
 from sqlalchemy import text
 
 from app.competitions import metier_competitions
+from app.competitions.scoring import compute_ris
 from app.entrainement.records import lire_records
 
 #: Le nom d'un mouvement ↔ sa clé dans `athletes.current_one_rm`.
@@ -23,7 +24,13 @@ CLE_DU_MOUVEMENT = {
     "SQUAT": "squat", "BENCH PRESS": "benchPress", "DEADLIFT": "deadlift",
 }
 
-_ATHLETE_SQL = text("SELECT id, current_one_rm FROM athletes WHERE legacy_id = :legacy")
+_ATHLETE_SQL = text("""
+    SELECT a.id, a.current_one_rm, a.gender::text AS genre, a.weight_kg,
+           (SELECT w.code FROM weight_categories w
+             WHERE w.gender = a.gender AND (w.max_kg IS NULL OR w.max_kg >= a.weight_kg)
+             ORDER BY w.position LIMIT 1) AS categorie
+    FROM athletes a WHERE a.legacy_id = :legacy
+""")
 _PROGRAMME_SQL = text("SELECT id FROM programs WHERE athlete_id = CAST(:aid AS uuid)")
 _PRS_SQL = text(
     "SELECT upper(movement) AS mouvement, weight_kg, performed_on FROM athlete_prs "
@@ -115,7 +122,16 @@ def palmares(session, legacy: str) -> dict[str, Any] | None:
             candidats.append(singles[mouvement]["charge"])
         if candidats:
             un_rm[cle] = max(candidats)
+    # Le total des QUATRE PLACES du barème, le pull up et le chin up s'en disputant
+    # une ; `None` s'il en manque une — un total amputé n'en est pas un.
+    tire = max((singles[m]["charge"] for m in ("PULL UP", "CHIN UP") if m in singles), default=None)
+    places = [singles.get("MUSCLE UP", {}).get("charge"), tire,
+              singles.get("DIPS", {}).get("charge"), singles.get("SQUAT", {}).get("charge")]
+    total = sum(places) if all(p is not None for p in places) else None
+    poids = float(athlete["weight_kg"]) if athlete["weight_kg"] is not None else None
     return {
+        "genre": athlete["genre"], "categorie": athlete["categorie"] if poids else None,
+        "total": total, "ris": compute_ris(total, poids, athlete["genre"]) if total else None,
         "records": [{"mouvement": m, **s} for m, s in singles.items() if m in CLE_DU_MOUVEMENT],
         "competitions": competitions_de(session, aid),
         "unRm": un_rm,

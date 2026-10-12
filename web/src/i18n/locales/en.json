@@ -1757,11 +1757,26 @@
   "palmares": {
     "titre": "Track record",
     "vide": "No single or competition yet: the record fills in at the first successful rep.",
-    "place": "#{{place}} of {{sur}}",
+    "place": "#{{place}} / {{sur}}",
     "source": {
       "entrainement": "Training",
       "manuel": "Entered by the coach",
       "competition": "Competition"
-    }
+    },
+    "records": "Records",
+    "meilleursSingles": "Best singles",
+    "indice": "4-lift total",
+    "total": "Total",
+    "historique": "Competition history",
+    "nCompetitions_one": "{{count}} competition",
+    "nCompetitions_other": "{{count}} competitions",
+    "competition": "Competition",
+    "date": "Date",
+    "resultat": "Result",
+    "genre": {
+      "M": "M",
+      "F": "F"
+    },
+    "placePremier": "#1 / {{sur}}"
   }
 }

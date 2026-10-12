@@ -60,10 +60,26 @@ def test_ses_competitions_avec_total_ris_et_place(auth_as, sql):
 
 def test_un_athlete_sans_rien_a_un_palmares_vide_pas_une_erreur(auth_as, sql):
     r = auth_as(uid="coach-1").get("/athletes/a1/palmares", headers=_AUTH)
-    assert r.status_code == 200 and r.json() == {"records": [], "competitions": [], "unRm": {}}
+    assert r.status_code == 200 and r.json() == {"genre": None, "categorie": None, "total": None, "ris": None,
+                                                 "records": [], "competitions": [], "unRm": {}}
 
 
 def test_un_athlete_d_un_autre_coach_n_ouvre_pas_son_palmares(auth_as, sql):
     sql.execute(text("INSERT INTO users (uid, email) VALUES ('coach-2', 'b@x.fr')"))
     sql.execute(text("INSERT INTO coaches (uid) VALUES ('coach-2')"))
     assert auth_as(uid="coach-2").get("/athletes/a1/palmares", headers=_AUTH).status_code in (403, 404)
+
+
+def test_le_total_des_quatre_places_et_son_ris_au_poids_actuel(auth_as, sql):
+    """Le pull up et le chin up se disputent une place ; sans dips, pas de total.
+    MUTATION QUI ROUGIT : additionner le pull up ET le chin up."""
+    sql.execute(text("UPDATE athletes SET gender = 'M', weight_kg = 72 WHERE id = CAST(:a AS uuid)"), {"a": A1})
+    sql.execute(text("INSERT INTO athlete_prs (athlete_id, movement, reps, weight_kg) VALUES "
+                     "(CAST(:a AS uuid), 'MUSCLE UP', 1, 20), (CAST(:a AS uuid), 'PULL UP', 1, 60), "
+                     "(CAST(:a AS uuid), 'CHIN UP', 1, 65), (CAST(:a AS uuid), 'SQUAT', 1, 180)"), {"a": A1})
+    coach = auth_as(uid="coach-1")
+    sans_dips = coach.get("/athletes/a1/palmares", headers=_AUTH).json()
+    assert (sans_dips["genre"], sans_dips["categorie"], sans_dips["total"], sans_dips["ris"]) == ("M", "-73", None, None)
+    sql.execute(text("INSERT INTO athlete_prs (athlete_id, movement, reps, weight_kg) VALUES (CAST(:a AS uuid), 'DIPS', 1, 90)"), {"a": A1})
+    doc = coach.get("/athletes/a1/palmares", headers=_AUTH).json()
+    assert doc["total"] == 20 + 65 + 90 + 180 and doc["ris"] > 0

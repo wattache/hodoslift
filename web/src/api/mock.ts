@@ -1004,6 +1004,7 @@ export const mockMediasDemo: MediaDemo[] = [
  *  les cases VIDES sont la norme — personne n'a un record à chaque nombre de
  *  répétitions. Les remplir toutes montrerait un écran qui n'existe pas. */
 export const mockPalmares: Palmares = {
+  genre: 'F', categorie: '-63', total: 237, ris: 47.49,
   records: [
     { mouvement: 'MUSCLE UP', charge: 12, date: '2026-05-16', source: 'competition', contexte: 'Open de Paris' },
     { mouvement: 'PULL UP', charge: 45, date: '2026-09-25', source: 'entrainement', contexte: 'Prépa FNSL · Intensification · S1' },
@@ -1012,7 +1013,8 @@ export const mockPalmares: Palmares = {
   ],
   competitions: [
     { id: 'comp-0', nom: 'Open de Paris', date: '2026-05-16', total: 119, ris: 47.49, place: 2, classes: 9 },
-    { id: 'comp-3', nom: 'Coupe de France', date: '2025-11-08', total: 104, ris: 41.2, place: null, classes: 0 },
+    { id: 'comp-1', nom: 'FNSL Inter-Région', date: '2025-11-08', total: 104, ris: 41.2, place: 1, classes: 6 },
+    { id: 'comp-2', nom: 'FNSL', date: '2025-03-12', total: 96, ris: null, place: null, classes: 0 },
   ],
   unRm: { muscleUp: 12, pullUp: 45, chinUp: 47.5, dip: 60, squat: 120, benchPress: 55, deadlift: 130 },
 };

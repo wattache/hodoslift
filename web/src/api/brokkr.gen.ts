@@ -5189,6 +5189,14 @@ export interface components {
          *     de la saisie et du meilleur single (`app/suivi/metier_palmares.py`).
          */
         PalmaresLu: {
+            /** Genre */
+            genre: ("M" | "F") | null;
+            /** Categorie */
+            categorie: string | null;
+            /** Total */
+            total: number | null;
+            /** Ris */
+            ris: number | null;
             /** Records */
             records: components["schemas"]["SingleLu"][];
             /** Competitions */
