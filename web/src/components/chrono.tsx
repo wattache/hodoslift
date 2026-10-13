@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Pause, Play, RotateCcw, Timer, X } from 'lucide-react';
 
 import { demarrerLeChrono, ecouleMs, formatChrono, mettreEnPause, reprendre, type Chrono } from '@/lib/chrono';
+import { useEcranAllume } from '@/lib/ecran-allume';
 import { cn } from '@/lib/utils';
 
 /** LE CHRONO INTÉGRÉ, À DÉCLENCHER (William, 14/09).
@@ -54,6 +55,9 @@ export function ChronoProvider({ children }: { children: ReactNode }) {
       // simplement pas à un rechargement.
     }
   }, [chrono]);
+
+  // L'écran reste allumé tant que le chrono TOURNE ; en pause, il retrouve sa veille.
+  useEcranAllume(!!chrono && chrono.enMarcheDepuis !== null);
 
   const lancer = useCallback(() => setChrono(c => c ?? demarrerLeChrono(Date.now())), []);
   const basculerPause = useCallback(() => setChrono(c => {
