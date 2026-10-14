@@ -287,7 +287,8 @@
     "nouvelAccessoire": "Nowe akcesorium",
     "nouvelAccessoireAide": "Wybierz dzień i ruch: trafi na koniec {{jour}}.",
     "ajouterAuJour": "Dodaj do {{jour}}",
-    "annulerLAccessoire": "Anuluj"
+    "annulerLAccessoire": "Anuluj",
+    "tierHorsRepartition": "Tier {{tier}} nie występuje w podziale: ta zasada nie tworzy żadnej linii."
   },
   "bilan": {
     "ajouterUneRubrique": "Dodaj sekcję",

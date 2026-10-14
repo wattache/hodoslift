@@ -1338,7 +1338,7 @@ function SectionShell({
 }
 
 /* ---- Ligne de principe ---- */
-function PrincipleRow({ p, lib, usedTiers, onUpdate, onSetKind, onRemove }: {
+export function PrincipleRow({ p, lib, usedTiers, onUpdate, onSetKind, onRemove }: {
   p: Principle; lib: CoachLib; usedTiers: Set<1 | 2 | 3>;
   /** `string[]` pour le seul champ qui en porte : les variantes (FRE-33). */
   onUpdate: (field: keyof Principle, value: string | null | string[] | boolean) => void;
@@ -1346,7 +1346,12 @@ function PrincipleRow({ p, lib, usedTiers, onUpdate, onSetKind, onRemove }: {
   onRemove: () => void;
 }) {
   const { t } = useTranslation();
-  const tierOpts = ([1, 2, 3] as const).filter(t => usedTiers.has(t));
+  // ⚠️ LE TIER DU PRINCIPE EST TOUJOURS PROPOSÉ, même absent de la répartition :
+  // sans lui, le navigateur affiche la première option — un « 1 » qui ment sur un
+  // principe en 2 — et choisir 1 ne déclenche rien, le champ disant déjà 1.
+  const tierOpts = ([1, 2, 3] as const).filter(t => usedTiers.has(t) || t === p.tier);
+  // Un tier que la répartition ne pose nulle part n'engendre aucune ligne.
+  const orphelin = usedTiers.size > 0 && !usedTiers.has(p.tier as 1 | 2 | 3);
   const tier = tierTone(p.tier);
   const locked = p.weightLocked;
   return (
@@ -1356,6 +1361,11 @@ function PrincipleRow({ p, lib, usedTiers, onUpdate, onSetKind, onRemove }: {
           {(tierOpts.length ? tierOpts : [1, 2, 3]).map(t => <option key={t} value={t}>{t}</option>)}
         </select>
       </Field>
+      {orphelin && (
+        <p role="note" className="w-full text-[11px] text-destructive">
+          {t("base.tierHorsRepartition", { tier: p.tier })}
+        </p>
+      )}
       <KindField kind={p.kind} label={p.name || t("base.cePrincipe")} onChange={onSetKind} />
       <Field label={t("session.variantes")}>
         <ComboboxMultiple values={p.variant} options={lib.variantes} max={MAX_VARIANTES}

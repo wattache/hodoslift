@@ -254,7 +254,8 @@
     "nouvelAccessoire": "Nouvel accessoire",
     "nouvelAccessoireAide": "Choisis le jour et le mouvement : il rejoindra la fin de {{jour}}.",
     "ajouterAuJour": "Ajouter à {{jour}}",
-    "annulerLAccessoire": "Annuler"
+    "annulerLAccessoire": "Annuler",
+    "tierHorsRepartition": "Tier {{tier}} absent de la répartition : ce principe n'engendre aucune ligne."
   },
   "bilan": {
     "ajouterUneRubrique": "Ajouter une rubrique",

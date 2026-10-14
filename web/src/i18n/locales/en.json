@@ -254,7 +254,8 @@
     "nouvelAccessoire": "New accessory",
     "nouvelAccessoireAide": "Pick the day and the movement: it will join the end of {{jour}}.",
     "ajouterAuJour": "Add to {{jour}}",
-    "annulerLAccessoire": "Cancel"
+    "annulerLAccessoire": "Cancel",
+    "tierHorsRepartition": "Tier {{tier}} is not in the split: this principle generates no line."
   },
   "bilan": {
     "ajouterUneRubrique": "Add a section",
