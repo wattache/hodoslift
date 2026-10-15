@@ -28,8 +28,8 @@ from app.socle.schemas_common import NatureDeGroupe
 class _LigneCommune(BaseModel):
     """Ce que TOUTE ligne de prescription porte — en séance comme dans la BASE.
 
-    Les deux mappages (`_EXERCICE_SORTIE`, `_BASE_SORTIE`) partagent ce socle ;
-    l'écrire une fois évite qu'ils divergent sur un champ commun.
+    Les deux mappages de lecture (`_EXERCICE_SORTIE`, `_BASE_SORTIE`) dérivent
+    de `prescription.COLONNES_LIGNE` ; ce socle les décrit une fois.
     """
 
     model_config = ConfigDict(extra="forbid")

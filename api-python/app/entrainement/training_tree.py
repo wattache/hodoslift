@@ -17,7 +17,7 @@ from uuid import UUID
 from sqlalchemy import text
 
 from app.socle.empreinte import empreinte
-from app.entrainement.prescription import NATURE_PAR_DEFAUT
+from app.entrainement.prescription import COLONNES_LIGNE, COLONNES_PAR_TABLE, NATURE_PAR_DEFAUT
 from app.entrainement.records import travail_note_sans_ressenti
 
 
@@ -227,36 +227,25 @@ _ATHLETE = text("""
     JOIN athletes a ON a.id = p.athlete_id WHERE p.id = :pid
 """)
 
-# Colonne → clé du contrat. Explicite, et non dérivée du nom : une conversion
-# automatique ferait apparaître demain un champ que personne n'a décidé d'exposer.
+# Colonne → clé du contrat, DÉRIVÉ de `COLONNES_LIGNE` (contrat → colonne) : la
+# liste explicite est une, l'écriture et la lecture la partagent (FRE-233). Un
+# champ n'apparaît donc que si quelqu'un l'a écrit là-bas — pas par conversion
+# automatique d'un nom de colonne.
 _EXERCICE_SORTIE = {
-    "id": "id", "name": "name", "variant": "variant", "kind": "kind", "tier": "tier",
-    "format": "format", "cluster_mode": "clusterMode", "cluster_rest": "clusterRest",
-    "tempo": "tempo", "sets": "sets", "reps": "reps", "reps_unit": "repsUnit",
-    "weight": "weight", "weight_locked": "weightLocked", "assistance": "assistance",
-    "aimed_rpe": "aimedRPE", "rest": "rest", "reps_done": "repsDone",
-    "weight_done": "weightDone", "rest_actual": "restActual", "felt_rpe": "feltRPE",
-    "felt_rpe_by_set": "feltRPEBySet", "reps_done_by_set": "repsDoneBySet",
-    "weight_done_by_set": "weightDoneBySet", "tours_realises": "toursRealises",
-    "athlete_feedback": "athleteFeedback",
-    "coach_note": "coachNote", "link": "link", "group_id": "groupId",
-    "group_kind": "groupKind", "unbroken": "unbroken",
-    "increment": "increment", "increment_unit": "incrementUnit",
-    # ⚠️ Absent de `_BASE_SORTIE`, volontairement : la BASE est une trame, pas une
-    # série réalisée. L'y ajouter par symétrie promettrait un champ que rien ne
-    # remplit.
+    "id": "id",
+    **{colonne: cle for cle, colonne in COLONNES_LIGNE.items()},
+    # Lu seulement, jamais écrit : dérivé du tempo (`ff_mechano`). Absent de la
+    # BASE, volontairement — une trame n'est pas une série réalisée.
     "mechano": "mechano",
 }
 
+# La BASE ne sort que les champs que ses deux tables acceptent (`day` compris,
+# qui se traduit à l'identique).
 _BASE_SORTIE = {
-    "id": "id", "name": "name", "variant": "variant", "kind": "kind",
-    "tier": "tier", "day": "day",
-    "format": "format", "cluster_mode": "clusterMode", "cluster_rest": "clusterRest",
-    "tempo": "tempo", "sets": "sets", "reps": "reps", "reps_unit": "repsUnit",
-    "weight": "weight", "weight_locked": "weightLocked", "assistance": "assistance",
-    "aimed_rpe": "aimedRPE", "rest": "rest", "coach_note": "coachNote",
-    "increment": "increment", "increment_unit": "incrementUnit", "group_id": "groupId",
-    "group_kind": "groupKind", "unbroken": "unbroken",
+    "id": "id",
+    **{COLONNES_LIGNE.get(cle, cle): cle
+       for cle in sorted(COLONNES_PAR_TABLE["training_base_principles"]
+                         | COLONNES_PAR_TABLE["training_base_accessories"])},
 }
 
 
