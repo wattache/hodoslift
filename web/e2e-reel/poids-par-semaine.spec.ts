@@ -53,6 +53,10 @@ test('des pesées, un départ posé à l’écran, et le tableau qui en découle
   // mois courant. Écrite le 29/09, la spec a rougi le 05/10 — le 25/09 n'était
   // plus à l'écran. On recule d'un mois tant que le jour n'y est pas.
   const jour = page.locator(`[role="gridcell"][data-day="${jourIl_y_a(10)}"] button`);
+  // ⚠️ LE CALENDRIER D'ABORD : `isVisible` répond sur l'instant, et avant que la
+  // grille soit ouverte il dit « non » — la boucle reculait alors de deux mois
+  // pour rien (le 15/10, elle s'est arrêtée en août).
+  await expect(page.getByRole('grid').first()).toBeVisible();
   for (let mois = 0; mois < 2 && !(await jour.isVisible()); mois++) {
     await page.getByRole('button', { name: 'Aller au mois précédent' }).click();
   }
