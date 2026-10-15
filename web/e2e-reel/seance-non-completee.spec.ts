@@ -91,7 +91,15 @@ test('le coach étire une semaine, et la BASE ne bouge pas', async ({ page }) =>
   const nomDuJour = (d: Date) =>
     new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(d);
   await page.getByRole('button', { name: /Fin de la semaine/ }).click();
-  await page.getByRole('button', { name: new RegExp(`^(Aujourd'hui, )?${nomDuJour(plus(debut, 12))}$`) }).click();
+  // ⚠️ LE CALENDRIER S'OUVRE SUR LE MOIS DE LA FIN ACTUELLE, et douze jours plus
+  // loin peut être le mois suivant (le 15/10 : fin au 31, cible au 3 novembre).
+  // La grille d'abord — `isVisible` répond sur l'instant —, puis on avance.
+  const cible = page.getByRole('button', { name: new RegExp(`^(Aujourd'hui, )?${nomDuJour(plus(debut, 12))}$`) });
+  await expect(page.getByRole('grid').first()).toBeVisible();
+  for (let mois = 0; mois < 2 && !(await cible.isVisible()); mois++) {
+    await page.getByRole('button', { name: 'Aller au mois suivant' }).click();
+  }
+  await cible.click();
 
   await expect.poll(semainesEnBase, { timeout: 10_000 }).toEqual([
     `${iso(debut)}→${iso(plus(debut, 4))}`,
