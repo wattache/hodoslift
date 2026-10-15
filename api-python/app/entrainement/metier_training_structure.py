@@ -20,7 +20,7 @@ from app.entrainement.arbre_creation import (
     retrouver,
     date_ou_none, inserer_avec_numero, inserer_ligne, json_ou_none,
 )
-from app.entrainement.prescription import normaliser_groupes
+from app.entrainement.prescription import normaliser_groupes, realise_vide
 from app.entrainement.records import TRACE_ARBRE
 from app.socle.erreurs import ErreurMetier
 from app.entrainement.training_tree import read_block
@@ -235,13 +235,8 @@ def en_semaine_lue(semaine: dict[str, Any], identifiant: str) -> dict[str, Any]:
                 # Rien de réalisé, donc rien de noté sans ressenti (FRE-160).
                 "lignesSansRessenti": 0,
                 "exercises": [
-                    {**ligne, "id": f"{identifiant}-{i}-{j}",
-                     # Le RÉALISÉ, vide : le contrat de lecture exige ces clés.
-                     # ⚠️ Les SCALAIRES disent l'absence par `None` (FRE-137) ;
-                     # les TABLEAUX restent des listes vides (FRE-62, FRE-111).
-                     "repsDone": None, "weightDone": None, "restActual": None,
-                     "feltRPE": None, "feltRPEBySet": [], "repsDoneBySet": [],
-                     "weightDoneBySet": [], "toursRealises": None, "athleteFeedback": None,
+                    # Le RÉALISÉ, vide : le contrat de lecture exige ces clés.
+                    {**ligne, "id": f"{identifiant}-{i}-{j}", **realise_vide(),
                      "link": None, "mechano": None}
                     for j, ligne in enumerate(seance["exercises"])
                 ],

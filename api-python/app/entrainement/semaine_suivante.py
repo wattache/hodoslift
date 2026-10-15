@@ -16,6 +16,8 @@ import copy
 from datetime import date, timedelta
 from typing import Any
 
+from app.entrainement.prescription import realise_vide
+
 # Le plus petit pas de charge, en kg. 1,25 partout, 2,5 au squat.
 GRANULARITE_DEFAUT = 1.25
 GRANULARITE_PAR_MOUVEMENT = {"SQUAT": 2.5}
@@ -147,15 +149,6 @@ def _rpe_herite(semaines: list[dict], index_seance: int, nom_seance: str,
     return _rpe_de_la_base(ligne, base)
 
 
-# Ce qui appartient à la semaine DÉJÀ ENTRAÎNÉE et ne se copie jamais.
-#
-# ⚠️ `None`, pas `''` (FRE-137) : comme l'aperçu de la génération, la structure
-# dit EXACTEMENT ce qui sera écrit, et l'écriture pose `NULL` (`valeur_ligne`).
-_REALISE = {
-    "repsDone": None, "weightDone": None, "restActual": None,
-    "feltRPE": None, "athleteFeedback": None, "toursRealises": None,
-}
-
 
 def _series_tenues(ligne: dict[str, Any]) -> int | None:
     """Rend le nombre de séries réellement tenues, ou `None` si on l'ignore.
@@ -247,10 +240,9 @@ def semaine_suivante(bloc: dict[str, Any]) -> dict[str, Any]:
             reps_reelles = _entier(ligne.get("repsDone"))
             series_reelles = _series_tenues(ligne)
 
-            ligne.update(_REALISE)
-            ligne["feltRPEBySet"] = []
-            ligne["repsDoneBySet"] = []
-            ligne["weightDoneBySet"] = []
+            # La structure dit EXACTEMENT ce qui sera écrit : `None`, que
+            # l'écriture pose en NULL (`valeur_ligne`).
+            ligne.update(realise_vide())
 
             if increment:
                 if unite == "sets":

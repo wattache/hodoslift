@@ -15,9 +15,11 @@ Ces specs ne gardent donc pas une liste, elles gardent une RELATION.
 """
 
 from app.entrainement.generation_semaine import _PRESCRIPTION as COPIES_A_LA_GENERATION
+from app.entrainement.schemas_training_lecture import LigneDeSeance
 from app.entrainement.prescription import (
     CHAMPS_COPIES,
     CHAMPS_PRESCRIPTION,
+    CHAMPS_REALISES,
     COLONNES_PAR_TABLE,
     champs_de_groupe,
     normaliser_groupes,
@@ -49,12 +51,25 @@ def test_aucun_champ_de_REALISE_ne_se_copie():
     37 lignes de production portaient une perf que personne n'avait faite, et le
     front l'effaçait pourtant déjà : tant qu'une règle ne tient qu'au client,
     elle ne vaut que pour le client qui l'applique."""
-    realise = {"repsDone", "weightDone", "feltRPE", "feltRPEBySet",
-               "athleteFeedback", "restActual", "dateExact"}
+    realise = CHAMPS_REALISES
     assert CHAMPS_PRESCRIPTION.isdisjoint(realise)
     assert set(CHAMPS_COPIES).isdisjoint(realise)
     for table, permises in COLONNES_PAR_TABLE.items():
         assert permises.isdisjoint(realise), f"{table} accepte du réalisé"
+
+
+def test_le_realise_est_celui_du_contrat_de_lecture():
+    """FRE-235 : la liste de ce test portait `dateExact`, qui n'existe nulle part,
+    et oubliait `repsDoneBySet`, `weightDoneBySet` et `toursRealises` — un réalisé
+    par série pouvait se recopier sans qu'il rougisse. La liste est désormais
+    UNE, et elle se confronte au contrat : chaque champ existe dans la ligne lue,
+    et toute colonne du contrat qui dit « fait » en est.
+    MUTATION QUI ROUGIT : retirer `repsDoneBySet` de `realise_vide`."""
+    lue = set(LigneDeSeance.model_fields)
+    assert CHAMPS_REALISES <= lue
+    attendus = {"repsDone", "weightDone", "restActual", "feltRPE", "feltRPEBySet",
+                "repsDoneBySet", "weightDoneBySet", "toursRealises", "athleteFeedback"}
+    assert CHAMPS_REALISES == attendus
 
 
 def test_incrementRef_n_est_copie_nulle_part():

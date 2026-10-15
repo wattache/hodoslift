@@ -24,6 +24,23 @@ CHAMPS_PRESCRIPTION: frozenset[str] = frozenset({
     "rest", "coachNote", "increment", "incrementUnit",
 })
 
+def realise_vide() -> dict[str, Any]:
+    """Le RÉALISÉ d'une ligne, vide : ce qui appartient à la semaine entraînée et
+    ne se copie jamais (FRE-75).
+
+    ⚠️ Les SCALAIRES disent l'absence par `None` (FRE-137) ; les TABLEAUX restent
+    des listes vides (FRE-62, FRE-111). Une fonction et non une constante : les
+    listes seraient partagées entre toutes les lignes qui la reçoivent."""
+    return {
+        "repsDone": None, "weightDone": None, "restActual": None, "feltRPE": None,
+        "athleteFeedback": None, "toursRealises": None,
+        "feltRPEBySet": [], "repsDoneBySet": [], "weightDoneBySet": [],
+    }
+
+
+#: Les champs du réalisé — la seule liste ; la copie et la lecture la consomment.
+CHAMPS_REALISES: frozenset[str] = frozenset(realise_vide())
+
 #: Ce qu'une génération recopie d'une ligne de BASE vers la ligne produite.
 #: DÉRIVÉ de `CHAMPS_PRESCRIPTION` : un champ ajouté là-haut suit ici.
 #:
