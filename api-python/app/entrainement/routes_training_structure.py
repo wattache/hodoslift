@@ -391,7 +391,7 @@ def generate_week(program_id: str, block_id: str,
         existante = metier.premiere_semaine_du_bloc(conn, str(bloc["id"]))
 
         if existante is None:
-            week_id = metier.inserer_la_semaine(conn, str(bloc["id"]), 1, semaine)
+            week_id = metier.inserer_la_semaine(conn, str(bloc["id"]), semaine)
         else:
             deja = existante["session_count"]
             if deja:
@@ -428,8 +428,7 @@ def create_next_week(program_id: str, block_id: str,
         metier.exiger_les_dates_de_s1(bloc.get("base") or {})
         semaine = semaine_suivante(bloc)
 
-        week_id = metier.inserer_la_semaine(
-            conn, str(bloc_sql["id"]), semaine["weekNumber"], semaine)
+        week_id = metier.inserer_la_semaine(conn, str(bloc_sql["id"]), semaine)
         creees = creer_seances(conn, week_id, semaine["sessions"])
 
         # ⚠️ UN BLOC SANS SEMAINE DONNE UNE SÉANCE AVEC UNE LIGNE VIDE, insérée À
@@ -443,7 +442,7 @@ def create_next_week(program_id: str, block_id: str,
     log_write(uid=access.claims["uid"], resource="training_week",
               doc_path=f"programs/{program_id}/weeks/{week_id}", fields=["next-week"],
               count=len(semaine["sessions"]))
-    notifier_nouvelle_semaine(program_id=program_id, numero=semaine["weekNumber"], auteur_uid=access.claims["uid"])
+    notifier_nouvelle_semaine(program_id=program_id, numero=lue["weekNumber"], auteur_uid=access.claims["uid"])
     return lue
 
 

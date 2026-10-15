@@ -326,7 +326,7 @@ def monde(pg):
         "VALUES (:m,'b1',1,'B1','2026-03-02','2026-03-08') RETURNING id"), {"m": macro}).scalar()
     w = pg.execute(text(
         "INSERT INTO training_weeks (block_id, legacy_id, number, name, hidden, end_date) "
-        "VALUES (:b,'w1',1,'',false,'2026-03-08') RETURNING id"), {"b": b}).scalar()
+        "VALUES (:b,'w1',1,NULL,false,'2026-03-08') RETURNING id"), {"b": b}).scalar()
     s = pg.execute(text(
         "INSERT INTO training_sessions (week_id, legacy_id, position, name, form_of_the_day) "
         "VALUES (:w,'s1',0,'Lundi',4) RETURNING id"), {"w": w}).scalar()
@@ -343,6 +343,22 @@ def monde(pg):
 def _client(uid: str = "coach-1") -> TestClient:
     app.dependency_overrides[verify_token] = lambda: {"uid": uid}
     return TestClient(app)
+
+
+def test_la_semaine_ecrite_n_a_pas_de_nom_et_prend_le_numero_libre(monde):
+    """FRE-230 : la route écrivait `''` et le numéro calculé avant d'écrire
+    (`len + 1`). Une semaine 3 posée sans 2 — un double clic, une suppression
+    — et `len + 1` vaut 3 : collision, 500. Le chemin de la création à la main
+    relit le maximum. MUTATION QUI ROUGIT : revenir au numéro de l'appelant."""
+    monde["pg"].execute(text(
+        "INSERT INTO training_weeks (block_id, legacy_id, number, hidden) "
+        "VALUES (CAST(:b AS uuid), 'w3', 3, false)"), {"b": monde["bloc"]})
+    r = _client().post(f"/programs/p1/blocks/{monde['bloc']}/next-week", headers=_AUTH)
+    assert r.status_code == 201, r.text[:300]
+    assert r.json()["weekNumber"] == 4
+    nom = monde["pg"].execute(text(
+        "SELECT name FROM training_weeks WHERE block_id = CAST(:b AS uuid) AND number = 4"), {"b": monde["bloc"]}).scalar()
+    assert nom is None
 
 
 def test_la_route_écrit_la_semaine_et_la_rend(monde):

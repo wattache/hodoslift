@@ -422,14 +422,19 @@ def premiere_semaine_du_bloc(conn, block_id: str):
         "ORDER BY number LIMIT 1"), {"b": block_id}).mappings().first()
 
 
-def inserer_la_semaine(conn, block_id: str, numero: int, semaine: dict):
-    return conn.execute(text(
+def inserer_la_semaine(conn, block_id: str, semaine: dict):
+    """Insère une semaine calculée par le serveur (génération, semaine suivante).
+
+    Le numéro est celui de `inserer_avec_numero` — le même chemin que la création
+    à la main, qui survit au double clic (FRE-134). Sans nom : `NULL`, jamais
+    `''` (FRE-230) ; l'écran affiche alors le numéro."""
+    return inserer_avec_numero(conn, "training_weeks", "block_id", block_id, lambda numero: conn.execute(text(
         "INSERT INTO training_weeks (block_id, legacy_id, number, name, hidden, "
-        "start_date, end_date) VALUES (:b, gen_random_uuid()::text, :n, '', false, "
+        "start_date, end_date) VALUES (:b, gen_random_uuid()::text, :n, NULL, false, "
         ":d, :f) RETURNING id"),
         {"b": block_id, "n": numero,
          "d": date_ou_none(semaine["startDate"]),
-         "f": date_ou_none(semaine["endDate"])}).scalar()
+         "f": date_ou_none(semaine["endDate"])}).scalar())
 
 
 def dater_la_semaine(conn, week_id, semaine: dict) -> None:

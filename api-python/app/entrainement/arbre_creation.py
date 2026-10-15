@@ -166,7 +166,7 @@ def creer_semaine(conn, block_id, payload: WeekCreate) -> dict:
         "INSERT INTO training_weeks (block_id, legacy_id, number, name, hidden, "
         "start_date, end_date, athlete_weight_kg, athlete_height_cm) "
         "VALUES (:b, gen_random_uuid()::text, :n, :name, :hid, :d1, :d2, :w, :h) RETURNING id"),
-        {"b": block_id, "n": numero, "name": payload.name, "hid": payload.hidden,
+        {"b": block_id, "n": numero, "name": (payload.name or "").strip() or None, "hid": payload.hidden,
          "d1": date_ou_none(payload.startDate), "d2": date_ou_none(payload.endDate),
          # Le poids et la taille viennent de l'instantané `athlete`, une seule
          # façon de les dire — deux auraient demandé de trancher les conflits.

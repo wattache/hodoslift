@@ -1443,6 +1443,9 @@ CREATE TABLE training_weeks (
     end_date   date,
     CONSTRAINT training_weeks_dates
         CHECK (end_date IS NULL OR start_date IS NULL OR end_date >= start_date),
+    -- Sans nom, c'est NULL : l'écran affiche le numéro. `''` voudrait dire la
+    -- même chose autrement, et deux façons de dire « rien » finissent par diverger.
+    CONSTRAINT training_weeks_nom_non_vide CHECK (name IS NULL OR btrim(name) <> ''),
     -- Instantané de l'athlète À CETTE SEMAINE : la seule partie qui porte de
     -- l'information (le poids fonde la force relative). Les noms sont jetés.
     athlete_weight_kg numeric,

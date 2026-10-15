@@ -46,7 +46,7 @@ def monde(pg):
     return {"pg": pg, "bloc": str(bloc)}
 
 
-def _semaine(monde, numero=3, debut="2026-01-05", nom=""):
+def _semaine(monde, numero=3, debut="2026-01-05", nom=None):
     return monde["pg"].execute(text(
         "INSERT INTO training_weeks (block_id, legacy_id, number, name, hidden, start_date) "
         "VALUES (CAST(:b AS uuid), :l, :n, :nom, false, CAST(:d AS date)) RETURNING id"),
@@ -279,10 +279,9 @@ def test_le_record_garde_TOUTES_les_variantes(monde):
 
 
 def test_l_emplacement_se_REPLIE_sur_les_numéros(monde):
-    """⚠️ `''` ET NON NULL : brokkr rend la chaîne vide pour un niveau sans nom.
-    Le front utilisait `??`, dont le repli ne se déclenche jamais sur `''` — et
-    l'emplacement s'affichait « ROAD TO 100 ·  ·  »."""
-    s = _semaine(monde, numero=3, nom="")
+    """Un niveau sans nom (NULL — `''` est refusé par la base, FRE-230) se replie
+    sur son numéro : l'emplacement ne s'affiche jamais « ROAD TO 100 ·  ·  »."""
+    s = _semaine(monde, numero=3, nom=None)
     _ligne(monde, s, weight="120")
     assert _records(monde)[("SQUAT", 3)]["location"] == "ROAD TO 100 · Bloc 2 · S3"
 
