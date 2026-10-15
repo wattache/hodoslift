@@ -157,21 +157,12 @@ _BASE_LIGNES = """
 """
 
 # Les mêmes lectures, bornées au BLOC (FRE-119). Elles ne remontent pas jusqu'au
-# programme : `_BLOC` vérifie déjà l'appartenance du bloc.
+# programme : `_BLOC_LU` vérifie déjà l'appartenance du bloc.
 #
 # ⚠️ Seule `_SEMAINES_DU_BLOC` borne la RÉPONSE ; les deux autres bornent le
 # TRAVAIL. Élargir `_SEANCES_DU_BLOC` au programme entier ne rougit AUCUN test —
 # la sortie n'itère que les semaines de ce bloc — mais remonte tout l'historique
 # à chaque clic.
-_BLOC = text("""
-    SELECT b.id, b.number, b.name,
-           b.day_split, b.selected_principals, b.granularity,
-           b.s1_start_date, b.s1_end_date
-    FROM training_blocks b
-    JOIN training_macros m ON m.id = b.macro_id
-    WHERE b.id = CAST(:bid AS uuid) AND m.program_id = :pid
-""")
-
 # Le bloc SEUL, dans la projection de `_BLOCS` : `read_block` rend le même
 # `BlocLu` que `read_tree`, par les mêmes `_sortie_*`, sans lire le programme.
 _BLOC_LU = text("""
@@ -471,7 +462,7 @@ def read_block_content(conn, program_id: str, block_id: str,
         # Même règle que `verifier` (`metier_training_structure.py`).
         return None
     p_ = {"pid": program_id, "bid": block_id}
-    bloc = conn.execute(_BLOC, p_).mappings().first()
+    bloc = conn.execute(_BLOC_LU, p_).mappings().first()
     if bloc is None:
         return None
 
@@ -605,33 +596,3 @@ def read_block(conn, program_id: str, block_id: str) -> dict | None:
         _grouper(conn.execute(_OBJECTIFS_DU_BLOC, p).mappings().all(), "bloc_uuid"),
     )
     return _sortie_bloc(bloc, semaines, lu, voit_les_masquees=True)
-
-
-def lire_base(conn, block_uuid: str) -> dict:
-    """Rend la BASE d'un bloc, dans la forme que le front connaît.
-
-    ⚠️ Réutilise le mappage de la lecture d'arbre (`_BASE_SORTIE`) : avec deux
-    mappages, un champ ajouté n'arriverait que d'un côté, et la génération lirait
-    une BASE amputée sans que rien ne le dise.
-    """
-    bloc = conn.execute(text(
-        "SELECT day_split, selected_principals, s1_start_date, s1_end_date "
-        "FROM training_blocks WHERE id = CAST(:b AS uuid)"), {"b": block_uuid}).mappings().first()
-    lignes = {
-        table: conn.execute(
-            text(f"SELECT l.* FROM {table} l WHERE l.block_id = CAST(:b AS uuid) "
-                 "ORDER BY l.position"),
-            {"b": block_uuid},
-        ).mappings().all()
-        for table in ("training_base_principles", "training_base_accessories")
-    }
-    return {
-        "daySplit": bloc["day_split"] or [],
-        "principles": [_sortie(l, _BASE_SORTIE) for l in lignes["training_base_principles"]],
-        "accessories": [_sortie(l, _BASE_SORTIE) for l in lignes["training_base_accessories"]],
-        # ⚠️ PAS de `or []` : NULL (jamais configuré → repli canonique) et `[]`
-        # (retiré à la main → sélection vide) ne disent pas la même chose.
-        "selectedPrincipaux": bloc["selected_principals"],
-        "s1StartDate": bloc["s1_start_date"].isoformat() if bloc["s1_start_date"] else "",
-        "s1EndDate": bloc["s1_end_date"].isoformat() if bloc["s1_end_date"] else "",
-    }

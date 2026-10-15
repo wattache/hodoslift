@@ -35,7 +35,7 @@ from app.entrainement.arbre_creation import (
 )
 from app.entrainement.generation_semaine import generer_semaine
 from app.entrainement.semaine_suivante import semaine_suivante
-from app.entrainement.training_tree import lire_base, version_des_objectifs
+from app.entrainement.training_tree import version_des_objectifs
 from app.entrainement.schemas_training_lecture import SemaineLue
 from app.entrainement import metier_training_structure as metier
 from app.notifications.metier_push import notifier_nouvelle_semaine
@@ -383,17 +383,20 @@ def generate_week(program_id: str, block_id: str,
         ErreurMetier: `semaine_deja_remplie` (409) ; `base_sans_dates` (409) par
             `metier.exiger_les_dates_de_s1`."""
     with get_session() as conn:
-        bloc = metier.verifier(conn, "bloc", program_id, block_id)
-        base = lire_base(conn, str(bloc["id"]))
+        bloc_sql = metier.verifier(conn, "bloc", program_id, block_id)
+        # La trame et les semaines par `bloc_de_l_arbre`, comme `next-week` : une
+        # seule lecture du bloc, celle du contrat (FRE-231).
+        bloc = metier.bloc_de_l_arbre(conn, program_id, str(bloc_sql["id"]))
+        base = bloc["base"]
         metier.exiger_les_dates_de_s1(base)
         semaine = generer_semaine(base)
 
-        existante = metier.premiere_semaine_du_bloc(conn, str(bloc["id"]))
+        existante = bloc["weeks"][0] if bloc["weeks"] else None
 
         if existante is None:
-            week_id = metier.inserer_la_semaine(conn, str(bloc["id"]), semaine)
+            week_id = metier.inserer_la_semaine(conn, str(bloc_sql["id"]), semaine)
         else:
-            deja = existante["session_count"]
+            deja = len(existante["sessions"])
             if deja:
                 raise ErreurMetier(
                     "semaine_deja_remplie", status.HTTP_409_CONFLICT,

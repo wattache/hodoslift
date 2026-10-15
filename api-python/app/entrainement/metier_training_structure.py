@@ -410,13 +410,6 @@ def retirer_la_relecture_de(conn, session_id) -> None:
     conn.execute(DERELIRE_SQL, {"sid": session_id})
 
 
-def premiere_semaine_du_bloc(conn, block_id: str):
-    """La première semaine du bloc, avec son compte de séances — `None` s'il n'en a pas."""
-    return conn.execute(text(
-        "SELECT id, number, session_count FROM semaines_lues WHERE block_id = CAST(:b AS uuid) "
-        "ORDER BY number LIMIT 1"), {"b": block_id}).mappings().first()
-
-
 def inserer_la_semaine(conn, block_id: str, semaine: dict):
     """Insère une semaine calculée par le serveur (génération, semaine suivante).
 
