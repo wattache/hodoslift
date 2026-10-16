@@ -12,11 +12,11 @@ poids et la taille, mesures datées, vivent sur la semaine.
 """
 
 from typing import NamedTuple
-from uuid import UUID
 
 from sqlalchemy import text
 
 from app.socle.empreinte import empreinte
+from app.entrainement.arbre_creation import est_un_uuid
 from app.entrainement.prescription import COLONNES_LIGNE, COLONNES_PAR_TABLE, NATURE_PAR_DEFAUT
 from app.entrainement.records import travail_note_sans_ressenti
 
@@ -453,13 +453,7 @@ def read_block_content(conn, program_id: str, block_id: str,
     Rend `None` si le bloc n'appartient pas à ce programme : c'est un 404, pas
     un 403. On ne confirme pas l'existence de ce qu'on n'a pas le droit de voir.
     """
-    try:
-        UUID(block_id)
-    except (ValueError, AttributeError, TypeError):
-        # ⚠️ Un id qui n'est pas un uuid est INTROUVABLE, pas une erreur serveur :
-        # sans ce filtre, `CAST(:bid AS uuid)` lève et le client reçoit un 500 là
-        # où un 404 lui dit la vérité.
-        # Même règle que `verifier` (`metier_training_structure.py`).
+    if not est_un_uuid(block_id):
         return None
     p_ = {"pid": program_id, "bid": block_id}
     bloc = conn.execute(_BLOC_LU, p_).mappings().first()

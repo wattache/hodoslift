@@ -8,12 +8,11 @@
   · les moyennes par série, DÉRIVÉES ici et non au front (`DERIVEES`).
 """
 
-from uuid import UUID
 
 from fastapi import status
 from sqlalchemy import text
 
-from app.entrainement.arbre_creation import retrouver
+from app.entrainement.arbre_creation import retrouver, est_un_uuid
 
 from app.entrainement.prescription import (
     CHAMPS_COPIES, COLONNES_LIGNE, FORMAT_DE_LIGNE, NATURE_PAR_DEFAUT, NATURES_CHRONOMETREES,
@@ -88,10 +87,8 @@ def _uuid_ou_404(valeur: str, quoi: str) -> str:
     Raises:
         ErreurMetier: `objet_arbre_introuvable` (404).
     """
-    try:
-        UUID(valeur)
-    except (ValueError, AttributeError, TypeError):
-        raise ErreurMetier("objet_arbre_introuvable", status.HTTP_404_NOT_FOUND, detail=f"{quoi} introuvable") from None
+    if not est_un_uuid(valeur):
+        raise ErreurMetier("objet_arbre_introuvable", status.HTTP_404_NOT_FOUND, detail=f"{quoi} introuvable")
     return valeur
 
 

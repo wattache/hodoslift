@@ -14,7 +14,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.entrainement.prescription import CHAMPS_COPIES, NATURE_PAR_DEFAUT
+from app.entrainement.prescription import CHAMPS_COPIES, NATURE_PAR_DEFAUT, MOUVEMENTS_PRINCIPAUX
 
 # ⚠️ LA GRILLE EST UN CYCLE — J1 … Jn — : rien n'impose sept jours, même si les
 # coachs en configurent sept. Le jour est une ÉTIQUETTE : aucun code ne dérive
@@ -34,9 +34,6 @@ def rang_de_cycle(jour: Any) -> int:
     trouve = _JOUR_DE_CYCLE.match(jour.strip()) if isinstance(jour, str) else None
     return int(trouve.group(1)) if trouve else _APRES_TOUT
 
-# L'ordre CANONIQUE des mouvements principaux — le repli quand le coach n'a
-# jamais configuré sa sélection.
-MOUVEMENTS_PRINCIPAUX = ["MUSCLE UP", "PULL UP", "CHIN UP", "DIPS", "SQUAT"]
 
 # ⚠️ DÉRIVÉ du vocabulaire partagé, pas recopié (FRE-45) : voir `prescription.py`,
 # `incrementRef` compris.
@@ -82,9 +79,9 @@ def nom_du_jour(jour: dict, nb_jours: int) -> str:
     propre = (jour.get("label") or "").strip()
     if propre:
         return propre
-    trouve = re.fullmatch(r"J(\d+)", (jour.get("day") or "").strip())
-    if nb_jours == len(JOURS_DE_LA_SEMAINE) and trouve and 1 <= int(trouve.group(1)) <= 7:
-        return JOURS_DE_LA_SEMAINE[int(trouve.group(1)) - 1]
+    rang = rang_de_cycle(jour.get("day"))
+    if nb_jours == len(JOURS_DE_LA_SEMAINE) and 1 <= rang <= 7:
+        return JOURS_DE_LA_SEMAINE[rang - 1]
     return jour["day"]
 
 def generer_semaine(

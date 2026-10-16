@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.socle.schemas_common import vide_en_none
+
 #: Les champs de prescription, communs aux trois tables de lignes (séance, BASE
 #: principes, BASE accessoires).
 #:
@@ -23,6 +25,11 @@ CHAMPS_PRESCRIPTION: frozenset[str] = frozenset({
     "reps", "repsUnit", "weight", "weightLocked", "assistance", "aimedRPE",
     "rest", "coachNote", "increment", "incrementUnit",
 })
+
+#: L'ordre CANONIQUE des mouvements principaux : le repli de la génération quand
+#: le coach n'a jamais configuré sa sélection, et les colonnes des records.
+MOUVEMENTS_PRINCIPAUX: list[str] = ["MUSCLE UP", "PULL UP", "CHIN UP", "DIPS", "SQUAT"]
+
 
 def realise_vide() -> dict[str, Any]:
     """Le RÉALISÉ d'une ligne, vide : ce qui appartient à la semaine entraînée et
@@ -110,7 +117,7 @@ def vide_vaut_absence(cle: str, v: Any) -> Any:
     # moyenne des repos serait fausse.
     if cle == "rest" and v.strip() in SENTINELLES_DE_REPOS:
         return None
-    return None if v.strip() == "" else v
+    return vide_en_none(v)
 
 
 def valeur_ligne(cle: str, v: Any) -> Any:

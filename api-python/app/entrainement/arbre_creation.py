@@ -14,6 +14,7 @@ d'unicité (FRE-134).
 from __future__ import annotations
 
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import text
 
@@ -22,6 +23,7 @@ from fastapi import status
 from app.entrainement.prescription import COLONNES_LIGNE, COLONNES_PAR_TABLE, normaliser_groupes, valeur_ligne
 from app.entrainement.schemas_training_structure import BlockCreate, WeekCreate
 from app.socle.erreurs import ErreurMetier
+from app.socle.schemas_common import vide_en_none
 
 def COLONNE_SQL(cle: str) -> str:
     """Traduit une clé camelCase en colonne.
@@ -37,7 +39,18 @@ def date_ou_none(v):
     ⚠️ Nécessaire ICI parce que le contenu d'une semaine (`sessions[]`) est un
     dictionnaire LIBRE : Pydantic ne valide que les champs déclarés, et le front
     écrit « pas de date » par `''`."""
-    return v or None
+    return vide_en_none(v)
+
+
+def est_un_uuid(valeur) -> bool:
+    """Un id qui n'est pas un uuid est INTROUVABLE, pas une erreur serveur : sans
+    ce filtre, le `CAST(... AS uuid)` de la requête lève, et c'est un 500 — un
+    vieux client envoie encore des ids Firestore."""
+    try:
+        UUID(valeur)
+    except (ValueError, AttributeError, TypeError):
+        return False
+    return True
 
 
 

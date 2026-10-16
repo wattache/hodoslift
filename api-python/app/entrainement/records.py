@@ -15,8 +15,10 @@ from typing import Any
 
 from sqlalchemy import text
 
+from app.entrainement.prescription import MOUVEMENTS_PRINCIPAUX
+
 # Les cinq mouvements qui ont une colonne dans le tableau.
-MOUVEMENTS = ["MUSCLE UP", "PULL UP", "CHIN UP", "DIPS", "SQUAT"]
+MOUVEMENTS = MOUVEMENTS_PRINCIPAUX
 
 # ⚠️ La TRACE, sur l'arbre vivant : `ff_tracee`, LA définition de « réalisé »
 # (FRE-71, FRE-216) — un RPE ressenti, global ou par série, FAIL compris. La

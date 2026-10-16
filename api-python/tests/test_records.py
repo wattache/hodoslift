@@ -85,6 +85,16 @@ def _records(monde):
 # LA RÈGLE CENTRALE — un record est ce qui a été FAIT
 # --------------------------------------------------------------------------- #
 
+def test_les_cinq_mouvements_ont_leurs_records_chin_up_compris(monde):
+    """Les colonnes du tableau sont `MOUVEMENTS_PRINCIPAUX` — la liste que la
+    génération prend pour ordre de repli (FRE-239). MUTATION QUI ROUGIT :
+    retirer CHIN UP de la liste — son record disparaîtrait sans bruit."""
+    s = _semaine(monde)
+    for nom in ("MUSCLE UP", "PULL UP", "CHIN UP", "DIPS", "SQUAT"):
+        _ligne(monde, s, name=nom, weight="20")
+    assert {m for (m, _reps) in _records(monde)} == {"MUSCLE UP", "PULL UP", "CHIN UP", "DIPS", "SQUAT"}
+
+
 def test_une_ligne_SANS_RPE_ne_fait_pas_un_record(monde):
     """⚠️ LE DÉFAUT D'ORIGINE, signalé par William le 18/08 : le tableau affichait
     des records jamais soulevés. Une ligne « SQUAT 3×3 @ 140 » posée par le coach

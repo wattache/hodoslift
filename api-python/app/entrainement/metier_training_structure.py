@@ -11,14 +11,13 @@ Ce que `routes_training_structure.py` appelle, sans HTTP :
 """
 
 from typing import Any
-from uuid import UUID
 
 from fastapi import status
 from sqlalchemy import text
 
 from app.entrainement.arbre_creation import (
     retrouver,
-    date_ou_none, inserer_avec_numero, inserer_ligne, json_ou_none,
+    date_ou_none, est_un_uuid, inserer_avec_numero, inserer_ligne, json_ou_none,
 )
 from app.entrainement.prescription import normaliser_groupes, realise_vide
 from app.entrainement.records import TRACE_ARBRE
@@ -131,13 +130,9 @@ def verifier(conn, niveau: str, program_id: str, objet_id: str):
 
     Raises:
         ErreurMetier: `objet_arbre_introuvable` (404)."""
-    try:
-        UUID(objet_id)
-    except (ValueError, AttributeError, TypeError):
-        # Un id qui n'est pas un uuid est INTROUVABLE, pas une erreur serveur :
-        # sans ce filtre le `CAST(... AS uuid)` lève, et c'est un 500.
+    if not est_un_uuid(objet_id):
         raise ErreurMetier("objet_arbre_introuvable", status.HTTP_404_NOT_FOUND,
-                            detail=f"{niveau} introuvable") from None
+                           detail=f"{niveau} introuvable")
     row = conn.execute(text(f"SELECT x.* {_REMONTEE[niveau]}"),
                        {"id": objet_id, "pid": program_id}).mappings().first()
     if row is None:
