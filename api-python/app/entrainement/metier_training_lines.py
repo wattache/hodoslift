@@ -191,7 +191,7 @@ def propager_la_nature(conn, session_id, group_id: str | None, nature: str | Non
     if not group_id:
         conn.execute(
             text("UPDATE training_exercises SET group_kind = NULL WHERE session_id = :sid "
-                 "AND (group_id IS NULL OR group_id = '')"),
+                 "AND group_id IS NULL"),
             {"sid": session_id},
         )
         return
@@ -279,12 +279,13 @@ def ranger_les_liens(conn, session_id) -> None:
     seulement après un patch du lien. La même règle que
     `prescription.normaliser_groupes` pour les écritures en masse.
     """
+    # Hors groupe (`group_id` NULL), `n.group_id = e.group_id` n'est jamais vrai :
+    # le NOT EXISTS couvre ce cas sans test à part.
     conn.execute(
         text("UPDATE training_exercises e SET unbroken = false "
-             "WHERE e.session_id = :sid AND e.unbroken AND ("
-             "  coalesce(e.group_id, '') = '' OR NOT EXISTS ("
+             "WHERE e.session_id = :sid AND e.unbroken AND NOT EXISTS ("
              "    SELECT 1 FROM training_exercises n WHERE n.session_id = e.session_id "
-             "       AND n.group_id = e.group_id AND n.position > e.position))"),
+             "       AND n.group_id = e.group_id AND n.position > e.position)"),
         {"sid": session_id},
     )
 

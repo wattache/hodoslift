@@ -32,12 +32,6 @@ from app.entrainement import metier_training_lines as metier
 router = APIRouter(prefix="/programs/{program_id}", tags=["training"])
 
 
-# Les champs où un `None` explicite (« vider la case ») s'écrit `''`, parce que la
-# colonne est NOT NULL. ⚠️ VIDE, et gardé pour la prochaine colonne NOT NULL :
-# `name` n'y est pas (FRE-123) — il référence la bibliothèque, et une clé
-# étrangère REFUSE `''` là où elle accepte `NULL`.
-_NON_NULLABLES: set[str] = set()
-
 # ⚠️ Ce que la lecture rend mais que l'écriture IGNORE (FRE-103). `mechano` est
 # DÉRIVÉ (`ff_mechano`, aucune colonne). Le contrat l'ACCEPTE — ce que la lecture
 # rend doit pouvoir être renvoyé tel quel — mais il n'atteint jamais le SQL, où
@@ -65,7 +59,7 @@ def patch_exercise(
     # ⚠️ `''` devient `NULL` ICI AUSSI (FRE-137), et c'est le chemin qui compte :
     # le PATCH réécrit la ligne à chaque saisie de réalisé. La règle vit dans
     # `prescription`, où la création la prend aussi.
-    fourni = {k: vide_vaut_absence(k, "" if v is None and k in _NON_NULLABLES else v)
+    fourni = {k: vide_vaut_absence(k, v)
               for k, v in payload.model_dump(exclude_unset=True).items()
               if k not in _LECTURE_SEULE}
     # ⚠️ Un tableau VIDE devient `NULL` : `''` contre `NULL`, sur un type tableau.
