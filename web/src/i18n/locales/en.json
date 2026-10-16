@@ -52,7 +52,12 @@
     "nouvelAthlete": "New athlete",
     "prenom": "First name",
     "personnes": "People",
-    "athleteChez": "Athlete at {{structure}}"
+    "athleteChez": "Athlete at {{structure}}",
+    "archivage": "Archiving",
+    "archiveeLe": "Profile archived on {{quand}}: it no longer appears in any athlete list.",
+    "reactiver": "Reactivate the profile",
+    "ficheActive": "Active profile.",
+    "archiver": "Archive the profile"
   },
   "ajouterAthlete": {
     "action": "Add an athlete",

@@ -3057,7 +3057,7 @@
           "athletes"
         ],
         "summary": "Set Athlete Archive",
-        "description": "Archive un athlète qui suspend le coaching, ou le réactive. Son coach seul.\n\n404 SI L'ATHLÈTE N'EST PAS LE SIEN — et non 403, comme l'affectation du kiné\njuste au-dessus : un coach visant l'athlète d'un autre n'apprend pas qu'il\nexiste.\n\n⚠️ RIEN N'EST SUPPRIMÉ NI CACHÉ CÔTÉ SERVEUR. Les lectures continuent de\nservir cet athlète — c'est l'ÉCRAN qui masque. Filtrer ici ferait de\n« reprendre plus tard » un aller simple, et retirerait l'athlète des endroits\noù il est NOMMÉ : une compétition passée, un bilan, un objectif.\n\n⚠️ `clock_timestamp()` ET NON `now()`, qui rend l'heure de DÉBUT DE\nTRANSACTION : deux archivages dans la même transaction porteraient la même\ndate, et « archivé le » cesserait d'ordonner quoi que ce soit.\n\nRaises:\n    ErreurMetier: `athlete_introuvable` (404).",
+        "description": "Archive un athlète qui suspend le coaching, ou le réactive. Son coach, ou un admin.\n\nL'admin parce que l'annuaire est son écran : une fiche archivée ne paraît plus\ndans aucun sélecteur, et sans lui personne d'autre que son coach ne la\nrouvrirait (Théo, archivé de lui-même le 15/09, ne se voyait plus).\n\n404 SI L'ATHLÈTE N'EST PAS LE SIEN — et non 403, comme l'affectation du kiné\njuste au-dessus : un coach visant l'athlète d'un autre n'apprend pas qu'il\nexiste.\n\n⚠️ RIEN N'EST SUPPRIMÉ NI CACHÉ CÔTÉ SERVEUR. Les lectures continuent de\nservir cet athlète — c'est l'ÉCRAN qui masque. Filtrer ici ferait de\n« reprendre plus tard » un aller simple, et retirerait l'athlète des endroits\noù il est NOMMÉ : une compétition passée, un bilan, un objectif.\n\n⚠️ `clock_timestamp()` ET NON `now()`, qui rend l'heure de DÉBUT DE\nTRANSACTION : deux archivages dans la même transaction porteraient la même\ndate, et « archivé le » cesserait d'ordonner quoi que ce soit.\n\nRaises:\n    ErreurMetier: `athlete_introuvable` (404).",
         "operationId": "set_athlete_archive_athletes__athlete_id__archive_patch",
         "security": [
           {
@@ -3098,16 +3098,6 @@
           },
           "401": {
             "description": "Jeton absent, expiré ou invalide.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erreur"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Authentifié, mais hors de son périmètre.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11027,6 +11017,17 @@
               }
             ],
             "title": "Supportjusquau"
+          },
+          "archiveLe": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archivele"
           }
         },
         "type": "object",

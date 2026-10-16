@@ -851,6 +851,27 @@ def test_un_AUTRE_coach_ne_peut_pas_archiver(auth_as, sql):
     assert r.status_code == 404
 
 
+def test_l_admin_voit_l_archivage_dans_l_annuaire_et_reactive(auth_as, sql):
+    """Une fiche archivée ne paraît dans aucun sélecteur : sans l'admin, seul son
+    coach la rouvrait (Théo, archivé le 15/09, coach de lui-même, ne se voyait
+    plus). MUTATION QUI ROUGIT : réserver la route au coach de la fiche."""
+    _seed_athlete(sql, "uuid-a1", "a1", first_name="A", coach_uid="coach-1")
+    auth_as(uid="coach-1").patch("/athletes/a1/archive", json={"archive": True}, headers=_AUTH)
+    _admin(sql, "admin-1")
+    admin = auth_as(uid="admin-1")
+
+    fiche = next(a for a in admin.get("/athletes/annuaire", headers=_AUTH).json() if a["id"] == "a1")
+    assert fiche["archiveLe"] is not None
+    r = admin.patch("/athletes/a1/archive", json={"archive": False}, headers=_AUTH)
+    assert r.status_code == 200, r.text[:300]
+    assert next(a for a in admin.get("/athletes/annuaire", headers=_AUTH).json() if a["id"] == "a1")["archiveLe"] is None
+
+
+def test_l_admin_qui_vise_une_fiche_inconnue_recoit_404(auth_as, sql):
+    _admin(sql, "admin-1")
+    assert auth_as(uid="admin-1").patch("/athletes/zz/archive", json={"archive": True}, headers=_AUTH).status_code == 404
+
+
 # --------------------------------------------------------------------------- #
 # L'âge se calcule depuis la date de naissance (FRE-168)
 # --------------------------------------------------------------------------- #

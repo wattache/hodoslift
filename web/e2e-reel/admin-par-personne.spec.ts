@@ -23,6 +23,7 @@ test.afterEach(() => {
   colonne(`DELETE FROM kines WHERE uid = 'e2e-athlete-user'`);
   colonne(`UPDATE athletes SET coach_uid = 'e2e-coach', structure = 'french-forge' WHERE legacy_id = 'e2e-athlete'`);
   colonne(`UPDATE programs SET coach_uid = 'e2e-coach' WHERE id = 'e2e-program'`);
+  colonne(`UPDATE athletes SET archive_le = NULL WHERE legacy_id = 'e2e-athlete'`);
 });
 
 /** Chercher une personne, ouvrir sa fiche. */
@@ -35,6 +36,18 @@ async function ouvrir(page: Page, nom: string) {
   await page.getByRole('list', { name: 'Personnes' }).getByRole('button', { name: new RegExp('^' + nom) }).click();
   await expect(page.getByRole('heading', { level: 2, name: nom })).toBeVisible();
 }
+
+test('une fiche archivée se voit dans la fiche Admin, et l’admin la réactive', async ({ page }) => {
+  /** L'admin ne coache pas l'athlète E2E : avant, seul son coach pouvait la
+   *  rouvrir, et aucun sélecteur ne la montrait plus (Théo, 15/09). */
+  colonne(`UPDATE athletes SET archive_le = now() WHERE legacy_id = 'e2e-athlete'`);
+  await ouvrir(page, 'Athlète E2E');
+  await expect(page.getByText(/Fiche archivée le/)).toBeVisible();
+
+  await page.getByRole('button', { name: 'Réactiver la fiche' }).click();
+  await expect.poll(() => colonne(`SELECT coalesce(archive_le::text, 'active') FROM athletes WHERE legacy_id = 'e2e-athlete'`)).toBe('active');
+  await expect(page.getByText('Fiche active.')).toBeVisible();
+});
 
 test('un rôle Kiné se donne et se retire depuis la fiche', async ({ page }) => {
   await ouvrir(page, 'Athlète E2E');

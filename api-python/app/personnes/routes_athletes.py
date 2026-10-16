@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, Query, status
 from app.socle.erreurs import erreurs
 from app.socle.audit import log_write
 from app.socle.auth import verify_token
-from app.socle.authz import require_admin, require_coach
+from app.socle.authz import compte, require_admin, require_coach
 from app.socle.db import get_session
 from app.personnes.identifiants import nouvel_identifiant
 from app.personnes.schemas_athlete_profile import (AccesSupportDemande, AthleteArchive, AthleteCoachReassign,
@@ -385,13 +385,17 @@ def set_athlete_kine(
 
 
 @router.patch("/{athlete_id}/archive", response_model=AthleteArchiveEcrit,
-              responses=erreurs(401, 403, 404))
+              responses=erreurs(401, 404))
 def set_athlete_archive(
     athlete_id: str,
     payload: AthleteArchive,
-    claims: dict = Depends(require_coach),
+    claims: dict = Depends(verify_token),
 ) -> dict:
-    """Archive un athlète qui suspend le coaching, ou le réactive. Son coach seul.
+    """Archive un athlète qui suspend le coaching, ou le réactive. Son coach, ou un admin.
+
+    L'admin parce que l'annuaire est son écran : une fiche archivée ne paraît plus
+    dans aucun sélecteur, et sans lui personne d'autre que son coach ne la
+    rouvrirait (Théo, archivé de lui-même le 15/09, ne se voyait plus).
 
     404 SI L'ATHLÈTE N'EST PAS LE SIEN — et non 403, comme l'affectation du kiné
     juste au-dessus : un coach visant l'athlète d'un autre n'apprend pas qu'il
@@ -411,7 +415,8 @@ def set_athlete_archive(
     """
     uid = claims["uid"]
     with get_session() as session:
-        if metier.athlete_du_coach(session, legacy=athlete_id, coach=uid) is None:
+        if (metier.athlete_du_coach(session, legacy=athlete_id, coach=uid) is None
+                and not (compte(uid, session).admin and metier.fiche_existe(session, legacy=athlete_id))):
             raise ErreurMetier("athlete_introuvable", status.HTTP_404_NOT_FOUND,
                                "athlète introuvable")
         quand = metier.horloge(session) if payload.archive else None

@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
 import { useMe } from '@/api/hooks/use-me';
-import { useAnnuaireAthletes, useAccesSupport, useReassignCoach } from '@/api/hooks/use-athletes';
+import { useAnnuaireAthletes, useAccesSupport, useArchiverAthlete, useReassignCoach } from '@/api/hooks/use-athletes';
 import { useSetUserCoach, useSetUserKine, useUsers } from '@/api/hooks/use-users';
 import { useStructure } from '@/api/hooks/use-structure-choisie';
 import type { AthleteAnnuaire, UserRow } from '@/api/types';
@@ -86,6 +86,7 @@ export function AdminView() {
   const setUserKine = useSetUserKine();
   const reassignCoach = useReassignCoach();
   const accesSupport = useAccesSupport();
+  const archiverAthlete = useArchiverAthlete();
   const { setSelectedId } = useAthleteSelection();
   const navigate = useNavigate();
 
@@ -183,6 +184,13 @@ export function AdminView() {
       onSuccess: () => { if (ouvrir) { setSelectedId(athleteId); void navigate('/dashboard'); } },
       onSettled: () => setSavingId(null),
     });
+  };
+
+  /** Archiver ou réactiver une fiche : l'admin aussi, puisqu'une fiche archivée
+   *  ne paraît plus dans aucun sélecteur. */
+  const archiver = (athleteId: string, archive: boolean) => {
+    setSavingId(athleteId);
+    archiverAthlete.mutate({ athleteId, archive }, { onError, onSettled: () => setSavingId(null) });
   };
 
   const loading = usersLoading || athletesLoading;
@@ -304,6 +312,7 @@ export function AdminView() {
             poserKine={poserKine}
             reaffecter={reaffecter}
             support={support}
+            archiver={archiver}
           />
         ) : (
           <div className="rounded-xl border border-dashed border-border bg-card/40 p-10 text-center text-sm text-muted-foreground">
@@ -372,13 +381,14 @@ function Interrupteur({ checked, disabled, onChange, label }: {
   );
 }
 
-function Fiche({ p, coachs, athletes, suivis, occupe, nomDeStructure, onRetour, onOuvrir, poserCoach, poserKine, reaffecter, support }: {
+function Fiche({ p, coachs, athletes, suivis, occupe, nomDeStructure, onRetour, onOuvrir, poserCoach, poserKine, reaffecter, support, archiver }: {
   p: Personne; coachs: Personne[]; athletes: Personne[]; suivis: Personne[]; occupe: boolean;
   nomDeStructure: (s: string) => string;
   onRetour: () => void; onOuvrir: (cle: string) => void;
   poserCoach: (uid: string, v: boolean) => void; poserKine: (uid: string, v: boolean) => void;
   reaffecter: (athleteId: string, coachUid: string) => void;
   support: (athleteId: string, ouvrir: boolean) => void;
+  archiver: (athleteId: string, archive: boolean) => void;
 }) {
   const { t } = useTranslation();
   const sansCompte = p.uid === null;
@@ -470,6 +480,33 @@ function Fiche({ p, coachs, athletes, suivis, occupe, nomDeStructure, onRetour, 
               {coachs.map(c => <option key={c.uid!} value={c.uid!}>{c.nom}</option>)}
             </select>
             <p className="text-xs text-muted-foreground">{t('admin.coachsDisponibles', { count: coachs.length })}</p>
+          </div>
+        </section>
+      )}
+
+      {/* L'ARCHIVAGE : une fiche archivée disparaît de tous les sélecteurs, y compris
+          celui de l'athlète coach de lui-même. L'admin la voit et la rouvre ici. */}
+      {p.fiche && (
+        <section className="flex flex-col gap-2">
+          <h3 className={titre}>{t('admin.archivage')}</h3>
+          <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3">
+            {p.fiche.archiveLe ? (
+              <>
+                <p className="text-sm">{t('admin.archiveeLe', { quand: formatMoment(p.fiche.archiveLe) })}</p>
+                <button type="button" disabled={occupe} onClick={() => archiver(p.fiche!.id, false)}
+                        className={cn('h-11 rounded-lg border border-gold/60 bg-gold/10 px-3 text-sm font-medium hover:bg-gold/20', occupe && 'opacity-50')}>
+                  {t('admin.reactiver')}
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">{t('admin.ficheActive')}</p>
+                <button type="button" disabled={occupe} onClick={() => archiver(p.fiche!.id, true)}
+                        className={cn('h-11 rounded-lg border border-border px-3 text-sm hover:border-gold', occupe && 'opacity-50')}>
+                  {t('admin.archiver')}
+                </button>
+              </>
+            )}
           </div>
         </section>
       )}

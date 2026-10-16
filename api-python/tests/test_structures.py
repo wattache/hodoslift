@@ -364,7 +364,7 @@ def test_l_annuaire_des_fiches_rend_TOUTES_celles_de_la_structure_sans_programme
     # cours de l'admin qui lit, et l'écran Admin s'en sert pour son bouton (FRE-202).
     assert fiche == {"id": "fiche-nico", "firstName": "Nico", "lastName": "", "email": None,
                      "linkedUserId": "nico", "coachId": "aubin", "kineUid": None,
-                     "supportJusquAu": None}
+                     "supportJusquAu": None, "archiveLe": None}
 
 
 def test_l_annuaire_des_fiches_est_reserve_a_l_admin(auth_as, monde):

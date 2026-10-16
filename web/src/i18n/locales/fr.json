@@ -52,7 +52,12 @@
     "nouvelAthlete": "Nouvel athlète",
     "prenom": "Prénom",
     "personnes": "Personnes",
-    "athleteChez": "Athlète chez {{structure}}"
+    "athleteChez": "Athlète chez {{structure}}",
+    "archivage": "Archivage",
+    "archiveeLe": "Fiche archivée le {{quand}} : elle n’apparaît plus dans aucune liste d’athlètes.",
+    "reactiver": "Réactiver la fiche",
+    "ficheActive": "Fiche active.",
+    "archiver": "Archiver la fiche"
   },
   "ajouterAthlete": {
     "action": "Ajouter un athlète",

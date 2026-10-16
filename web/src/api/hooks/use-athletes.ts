@@ -149,7 +149,7 @@ export function useSetAthleteKine() {
   });
 }
 
-/** PATCH /athletes/{id}/archive — SON coach uniquement (autz serveur).
+/** PATCH /athletes/{id}/archive — son coach, ou un admin (autz serveur).
  *
  *  ⚠️ ARCHIVER N'EST PAS SUPPRIMER, ni détacher. L'athlète garde son programme,
  *  son historique et son coach — il disparaît des LISTES, et il en revient. Le

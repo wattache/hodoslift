@@ -797,7 +797,11 @@ export interface paths {
         head?: never;
         /**
          * Set Athlete Archive
-         * @description Archive un athlète qui suspend le coaching, ou le réactive. Son coach seul.
+         * @description Archive un athlète qui suspend le coaching, ou le réactive. Son coach, ou un admin.
+         *
+         *     L'admin parce que l'annuaire est son écran : une fiche archivée ne paraît plus
+         *     dans aucun sélecteur, et sans lui personne d'autre que son coach ne la
+         *     rouvrirait (Théo, archivé de lui-même le 15/09, ne se voyait plus).
          *
          *     404 SI L'ATHLÈTE N'EST PAS LE SIEN — et non 403, comme l'affectation du kiné
          *     juste au-dessus : un coach visant l'athlète d'un autre n'apprend pas qu'il
@@ -2694,6 +2698,8 @@ export interface components {
             kineUid?: string | null;
             /** Supportjusquau */
             supportJusquAu?: string | null;
+            /** Archivele */
+            archiveLe?: string | null;
         };
         /**
          * AthleteArchive
@@ -8382,15 +8388,6 @@ export interface operations {
             };
             /** @description Jeton absent, expiré ou invalide. */
             401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erreur"];
-                };
-            };
-            /** @description Authentifié, mais hors de son périmètre. */
-            403: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -367,6 +367,10 @@ def coach_de_la_meme_structure(session, *, coach, legacy):
     return session.execute(COACH_DE_LA_MEME_STRUCTURE_SQL, {"coach": coach, "legacy": legacy}).first()
 
 
+def fiche_existe(session, *, legacy) -> bool:
+    return session.execute(_FICHE_SQL, {"legacy": legacy}).scalar() is not None
+
+
 def athlete_du_coach(session, *, legacy, coach):
     return session.execute(ATHLETE_DU_COACH_SQL, {"legacy": legacy, "coach": coach}).first()
 
@@ -406,7 +410,7 @@ def horloge(session):
 # qu'on ne peut pas ouvrir n'a rien à faire dans la réponse.
 ANNUAIRE_SQL = text(
     "SELECT a.legacy_id, a.first_name, a.last_name, a.email, a.user_uid, a.coach_uid, a.kine_uid, "
-    f"{_SUPPORT_JUSQU_AU} AS support_jusqu_au "
+    f"a.archive_le, {_SUPPORT_JUSQU_AU} AS support_jusqu_au "
     "FROM athletes a "
     "WHERE (CAST(:structure AS text) IS NULL OR a.structure = :structure) "
     "ORDER BY a.first_name, a.last_name"
@@ -417,7 +421,8 @@ def annuaire(session, *, uid, structure) -> list[dict]:
     return [
         {"id": r["legacy_id"], "firstName": r["first_name"] or "", "lastName": r["last_name"] or "",
          "email": r["email"], "linkedUserId": r["user_uid"], "coachId": r["coach_uid"],
-         "kineUid": r["kine_uid"], "supportJusquAu": _iso(r["support_jusqu_au"])}
+         "kineUid": r["kine_uid"], "supportJusquAu": _iso(r["support_jusqu_au"]),
+         "archiveLe": _iso(r["archive_le"])}
         for r in session.execute(ANNUAIRE_SQL, {"uid": uid, "structure": structure}).mappings().all()
     ]
 

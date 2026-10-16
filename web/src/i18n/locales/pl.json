@@ -62,7 +62,12 @@
     "nouvelAthlete": "Nowy zawodnik",
     "prenom": "Imię",
     "personnes": "Osoby",
-    "athleteChez": "Zawodnik w {{structure}}"
+    "athleteChez": "Zawodnik w {{structure}}",
+    "archivage": "Archiwizacja",
+    "archiveeLe": "Karta zarchiwizowana {{quand}}: nie pojawia się już na żadnej liście zawodników.",
+    "reactiver": "Przywróć kartę",
+    "ficheActive": "Karta aktywna.",
+    "archiver": "Archiwizuj kartę"
   },
   "ajouterAthlete": {
     "action": "Dodaj zawodnika",

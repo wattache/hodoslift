@@ -130,3 +130,6 @@ class AthleteAnnuaire(BaseModel):
     kineUid: str | None = None
     # Mon accès support en cours sur cette fiche, et sa fin (FRE-202).
     supportJusquAu: str | None = None
+    # ⚠️ `None` ET NON `''` — « active » est une ABSENCE de date. L'admin la voit
+    # pour pouvoir réactiver une fiche qu'aucun sélecteur ne lui montre.
+    archiveLe: str | None = None
