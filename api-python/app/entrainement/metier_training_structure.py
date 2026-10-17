@@ -21,6 +21,7 @@ from app.entrainement.arbre_creation import (
 )
 from app.entrainement.prescription import normaliser_groupes, realise_vide
 from app.entrainement.records import TRACE_ARBRE
+from app.entrainement.relecture import A_RELIRE_SQL
 from app.socle.erreurs import ErreurMetier
 from app.entrainement.training_tree import read_block
 
@@ -35,15 +36,19 @@ OBJECTIFS_DU_BLOC = text(
 # Le coach COCHE qu'il a vu une séance : ouvrir n'est pas lire. La règle qui la
 # remet dans la file vit dans `app/entrainement/relecture.py`.
 #
-# ⚠️ IDEMPOTENTES TOUTES LES DEUX. Recocher ne DÉPLACE pas la date déjà posée :
-# sinon une séance modifiée entre deux clics passerait pour relue. Décocher ce
-# qui n'est pas coché rend 200.
+# ⚠️ IDEMPOTENTES TOUTES LES DEUX. Recocher une séance déjà relue, et pas
+# modifiée depuis, ne DÉPLACE pas la date : un double clic ne fait rien. Mais
+# une séance REVENUE dans la file (modifiée par un autre après la relecture,
+# `A_RELIRE_SQL`) prend la date du nouveau clic — sinon elle n'en sortait plus :
+# le serveur gardait l'ancienne date, et la séance restait « modifiée après
+# relecture » à chaque clic. Décocher ce qui n'est pas coché rend 200.
 # --------------------------------------------------------------------------- #
 
 RELIRE_SQL = text(
-    "UPDATE training_sessions "
-    "   SET relue_le = coalesce(relue_le, clock_timestamp()), relue_par = coalesce(relue_par, :uid) "
-    " WHERE id = CAST(:sid AS uuid)"
+    "UPDATE training_sessions s "
+    f"   SET relue_le = CASE WHEN {A_RELIRE_SQL} THEN clock_timestamp() ELSE s.relue_le END, "
+    f"       relue_par = CASE WHEN {A_RELIRE_SQL} THEN :uid ELSE s.relue_par END "
+    " WHERE s.id = CAST(:sid AS uuid)"
 )
 DERELIRE_SQL = text(
     "UPDATE training_sessions SET relue_le = NULL, relue_par = NULL "

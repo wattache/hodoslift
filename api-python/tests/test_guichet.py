@@ -165,6 +165,20 @@ def test_MODIFIEE_PAR_L_ATHLETE_apres_relecture_elle_revient(monde):
     assert len(_seances("coach-1")) == 1
 
 
+def test_REVENUE_dans_la_file_elle_en_ressort_au_clic_suivant(monde):
+    """Nico, SCAPPULIFT, 17/10 : « Vu · suivant » ne faisait rien. La séance,
+    relue le 24/09 puis modifiée par l'athlète le 29/09, revenait dans la file ;
+    le recocher rendait 200 mais gardait la date du 24/09 — elle restait à relire,
+    à chaque clic. MUTATION QUI ROUGIT : revenir à `coalesce(relue_le, …)`."""
+    sid = _seance_id(monde)
+    _relire(sid)
+    eid = _exercice_id(monde, "DIPS")
+    _client("ath-1").patch(f"/programs/p1/exercises/{eid}", json={"feltRPE": "9"}, headers=_AUTH)
+    assert len(_seances("coach-1")) == 1
+    _relire(sid)
+    assert _seances("coach-1") == []
+
+
 def test_REORDONNEE_PAR_LE_COACH_qui_l_a_relue_elle_ne_revient_PAS(monde):
     """Critère 3 — le geste-piège du guichet. MUTATION QUI ROUGIT : retirer
     `AND s.modifiee_par IS DISTINCT FROM s.relue_par` de `A_RELIRE_SQL`."""
