@@ -4,6 +4,7 @@ import { api } from '@/api/client';
 import { mockGuichet, mockGuichetRelire, mockGuichetVu, mockResolve } from '@/api/mock';
 import { isFirebaseConfigured } from '@/firebase';
 import type { Guichet } from '@/api/types';
+import { toastSaveError } from '@/lib/save-error';
 
 const isMock = !isFirebaseConfigured;
 
@@ -37,6 +38,8 @@ export function useMarquerRelue() {
         ? mockResolve(mockGuichetRelire(sessionId))
         : api.post<unknown, Record<string, never>>(`/programs/${programId}/sessions/${sessionId}/relecture`, {}),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['guichet'] }),
+    // Un refus se DIT : sans lui, « Vu · suivant » ne fait rien à l'écran.
+    onError: toastSaveError,
   });
 }
 
@@ -50,5 +53,6 @@ export function useMarquerSignalementVu() {
         ? mockResolve(mockGuichetVu(athleteId, date))
         : api.post<unknown, Record<string, never>>(`/athletes/${athleteId}/signalements/${date}/vu`, {}),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['guichet'] }),
+    onError: toastSaveError,
   });
 }
