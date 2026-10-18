@@ -16,8 +16,28 @@ import { initializeApp, type FirebaseApp } from 'firebase/app';
 import { connectAuthEmulator, getAuth, GoogleAuthProvider, type Auth } from 'firebase/auth';
 
 const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
-const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN;
 const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
+
+/** Les adresses de production de l'application, servies par le même site. */
+export const ADRESSES_DE_L_APP = ['app.hodoslift.com', 'trainer.french-forge.com'];
+
+/** Le domaine d'authentification : CELUI DE LA PAGE quand elle est une adresse de
+ *  l'app, la configuration sinon (local, émulateur, harnais).
+ *
+ *  ⚠️ LA CONNEXION GOOGLE PASSE PAR `<authDomain>/__/auth/handler`, qui écrit son
+ *  état sur CETTE origine : depuis une autre (Safari, PWA installée), il est
+ *  illisible au retour — « missing initial state ». Avec deux adresses servies
+ *  pendant le passage à app.hodoslift.com, une seule valeur figée en casserait
+ *  une. Chacune doit être un domaine autorisé de Firebase ET une redirection du
+ *  client OAuth. */
+export function domaineDAuthentification(hostname: string, parDefaut: string | undefined): string | undefined {
+  return ADRESSES_DE_L_APP.includes(hostname) ? hostname : parDefaut;
+}
+
+const authDomain = domaineDAuthentification(
+  typeof window !== 'undefined' ? window.location.hostname : '',
+  import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+);
 
 /** Config incomplète → mode DEV-MOCK (pas de login, fixtures locales). */
 export const isFirebaseConfigured = Boolean(apiKey && authDomain && projectId);

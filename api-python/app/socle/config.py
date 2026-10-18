@@ -73,6 +73,9 @@ class Settings(BaseSettings):
 
     # Origines autorisées (CORS). Surchargeable via ALLOWED_ORIGINS (JSON list).
     allowed_origins: list[str] = [
+        # L'adresse HodosLift de l'application, servie par le même site que
+        # trainer.french-forge.com ; elle la remplace, trainer y sera rapatriée.
+        "https://app.hodoslift.com",
         "https://trainer.french-forge.com",
         # Site vitrine (apex) : la landing appelle la route publique coach_profiles
         # en fetch cross-origin (contrairement à un <img>, qui n'a pas besoin de CORS).

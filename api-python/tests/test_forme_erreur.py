@@ -235,6 +235,16 @@ def test_une_ANCIENNE_ADRESSE_n_est_plus_une_origine(ancienne):
         == "https://trainer.french-forge.com"
 
 
+@pytest.mark.parametrize("origine", ["https://app.hodoslift.com", "https://trainer.french-forge.com"])
+def test_les_deux_adresses_de_l_application_sont_des_origines(origine):
+    """app.hodoslift.com remplace trainer.french-forge.com ; pendant le passage,
+    les deux servent la même app. MUTATION QUI ROUGIT : retirer app.hodoslift.com
+    de `allowed_origins` — la nouvelle adresse ne lirait aucune réponse."""
+    client = TestClient(app)
+    pre_vol = {"Origin": origine, "Access-Control-Request-Method": "GET"}
+    assert client.options("/health", headers=pre_vol).headers.get("access-control-allow-origin") == origine
+
+
 def test_le_détail_d_une_exception_imprévue_NE_SORT_PAS(monkeypatch):
     """⚠️ UN MESSAGE D'EXCEPTION PORTE PARFOIS LA DONNÉE. Un poids, une note du
     kiné, un fragment de requête : la trace complète va dans les logs, où elle est
