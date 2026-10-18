@@ -12,7 +12,10 @@ import { cn } from '@/lib/utils';
  *  logo et le changement de structure ont leur ligne, `ChoixDeStructure`. */
 export function SignatureDeStructure() {
   const { courante } = useStructure();
-  return <span className="truncate text-[10px] text-sidebar-foreground/45">by {courante?.nom ?? 'French Forge'}</span>;
+  // Rien tant que la structure n'est pas connue : un nom par défaut serait celui
+  // d'une AUTRE structure pour qui n'est pas chez French Forge.
+  if (!courante) return null;
+  return <span className="truncate text-[10px] text-sidebar-foreground/45">by {courante.nom}</span>;
 }
 
 /** OÙ L'ON EST — LE LOGO DE LA STRUCTURE, ET LE CHANGEMENT (FRE-13).

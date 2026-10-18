@@ -26,6 +26,7 @@ import { useLocalStorageState } from '@/lib/storage';
 import { useLangueServie } from '@/lib/langue-servie';
 import { useAthleteSelection } from '@/lib/athlete-selection';
 import { useAuth } from '@/auth/auth-context';
+import { useStructure } from '@/api/hooks/use-structure-choisie';
 
 type ThemeKey = 'dark' | 'light';
 
@@ -82,6 +83,7 @@ export function AppShell() {
 function HeaderTitle() {
   const { t } = useTranslation();
   const { pathname } = useLocation();
+  const { courante } = useStructure();
 
   /* ⚠️ PLUS DE SOUS-TITRE D'ATHLÈTE (constat 07) : le sélecteur, juste à gauche,
      porte le nom en entier. Le répéter en gris 11 px dessous le doublerait. */
@@ -95,8 +97,15 @@ function HeaderTitle() {
     '/documentation': t('views.documentation'),
     '/library': t('views.library'),
     '/admin': t('views.admin'),
+    '/kine': t('nav.kine'),
+    '/profil': t('nav.profil'),
+    '/signalements': t('nav.signalements'),
+    '/bilan-modeles': t('nav.bilanModeles'),
+    '/ma-page': t('nav.myPublicPage'),
   };
-  const titre = Object.entries(titres).find(([path]) => pathname.startsWith(path))?.[1] ?? 'French Forge';
+  // Une page sans titre propre porte le nom de la STRUCTURE courante, jamais un
+  // nom écrit en dur : chez ElGustoLift, « French Forge » était faux.
+  const titre = Object.entries(titres).find(([path]) => pathname.startsWith(path))?.[1] ?? courante?.nom ?? '';
 
   return (
     <div className="flex min-w-0 flex-1 flex-col leading-tight">
