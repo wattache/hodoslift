@@ -384,7 +384,9 @@
     "mois": "Month",
     "moisPrecedent": "Previous month",
     "moisSuivant": "Next month",
-    "ajouterLe": "Add an event on {{jour}}"
+    "ajouterLe": "Add an event on {{jour}}",
+    "nouvelEvenement": "New event",
+    "modifierLEvenement": "Edit event"
   },
   "charts": {
     "aboveZero": "Above zero: the block was harder than programmed. Below: there was room to spare.",

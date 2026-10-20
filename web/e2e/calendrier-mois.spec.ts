@@ -15,7 +15,9 @@ test('la vue Mois se choisit, se retrouve au retour, et toucher un jour ouvre le
   const jour = (await cases.evaluateAll((els, a) =>
     els.map(e => e.getAttribute('data-jour')!).find(j => j !== a), aujourdhui))!;
   await page.locator(`[role="gridcell"][data-jour="${jour}"] > button`).first().click();
-  const brouillon = page.locator('[data-brouillon-debut]');
+  // Une FENÊTRE, pas une ligne de la liste : au téléphone, la liste est hors de l'écran.
+  const brouillon = page.getByRole('dialog');
+  await expect(brouillon).toContainText('Nouvel évènement');
   await expect(brouillon).toHaveAttribute('data-brouillon-debut', jour);
   await expect(brouillon).toHaveAttribute('data-brouillon-fin', jour);
 

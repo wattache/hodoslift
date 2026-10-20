@@ -426,7 +426,9 @@
     "mois": "Miesiąc",
     "moisPrecedent": "Poprzedni miesiąc",
     "moisSuivant": "Następny miesiąc",
-    "ajouterLe": "Dodaj wydarzenie {{jour}}"
+    "ajouterLe": "Dodaj wydarzenie {{jour}}",
+    "nouvelEvenement": "Nowe wydarzenie",
+    "modifierLEvenement": "Edytuj wydarzenie"
   },
   "charts": {
     "aboveZero": "Powyżej zera: blok był cięższy niż zaplanowano. Poniżej: był zapas.",

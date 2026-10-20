@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, Dumbbell, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
 
 import type { CalendarEvent, CalendarEventInput } from '@/api/types';
 import { useDeleteEvent, useEvents, usePatchEvent, useUpsertEvent } from '@/api/hooks/use-events';
@@ -203,19 +204,6 @@ function EventsManager({ athleteId, events, canEdit, draft, setDraft }: {
 }) {
   const { t } = useTranslation();
   const confirm = useConfirm();
-  // Ouvert depuis la frise, le formulaire est plus bas que le geste : on l'amène.
-  const section = useRef<HTMLElement>(null);
-  const ouvert = draft !== null;
-  // Le formulaire vit AU-DESSUS des deux vues : un jour touché en bas du mois
-  // l'ouvrirait hors de l'écran, au téléphone. On l'amène à l'œil.
-  const formulaire = useRef<HTMLDivElement>(null);
-  const debutDuBrouillon = draft?.startDate;
-  useEffect(() => {
-    if (debutDuBrouillon) formulaire.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }, [debutDuBrouillon]);
-  useEffect(() => {
-    if (ouvert) section.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, [ouvert]);
 
   const upsertEvent = useUpsertEvent(athleteId);
   const patchEvent = usePatchEvent(athleteId);
@@ -243,72 +231,97 @@ function EventsManager({ athleteId, events, canEdit, draft, setDraft }: {
   };
 
   return (
-    <section ref={section} className="rounded-xl border border-border bg-card">
+    <section className="rounded-xl border border-border bg-card">
       <header className="flex items-center justify-between border-b border-border px-4 py-3">
         <h2 className="text-sm font-semibold">{t('calendar.evenements')}</h2>
-        {canEdit && !draft && (
+        {canEdit && (
           <Button size="sm" className="h-8 bg-gold text-gold-foreground hover:bg-gold/90" onClick={() => setDraft(emptyDraft())}>
             <Plus className="h-3.5 w-3.5" /> {t('common.add')}
           </Button>
         )}
       </header>
 
-      {draft && (
-        <div ref={formulaire} data-brouillon-debut={draft.startDate} data-brouillon-fin={draft.endDate}
-             className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/20 px-4 py-3">
-          <div className="flex gap-1">
-            {EVENT_CATEGORIES.map(c => (
-              <button
-                key={c.emoji}
-                type="button"
-                title={t(c.cle)}
-                onClick={() => setDraft(d => d && { ...d, type: c.type, emoji: c.emoji })}
-                className={cn(
-                  'flex h-8 w-8 items-center justify-center rounded-md border text-base',
-                  draft.type === c.type ? 'border-gold bg-gold/15' : 'border-border hover:bg-accent',
-                )}
-              >
-                {c.emoji}
-              </button>
-            ))}
-          </div>
-            <Input
-              value={draft.name}
-              onChange={e => setDraft(d => d && { ...d, name: e.target.value })}
-              placeholder={t('calendar.nomDeLEvenement')}
-              className="h-8 flex-1 min-w-[160px] text-sm"
-              autoFocus
-            />
-          <DatePicker value={draft.startDate} title={t('calendar.debut')}
-                      onChange={v => setDraft(d => d && { ...d, startDate: v })} />
-          <span className="text-muted-foreground">→</span>
-          <DatePicker value={draft.endDate} title={t('common.fin')} min={draft.startDate}
-                      onChange={v => setDraft(d => d && { ...d, endDate: v })} />
-          <button
-            type="button"
-            aria-pressed={draft.canTrain}
-            title={t('calendar.peutOnSEntrainer')}
-            onClick={() => setDraft(d => d && { ...d, canTrain: !d.canTrain })}
-            className={cn(
-              'flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium',
-              draft.canTrain
-                ? 'border-gold bg-gold/15 text-foreground'
-                : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground',
-            )}
-          >
-            <Dumbbell className="h-3.5 w-3.5" />
-            {draft.canTrain ? t('misc.trainOk') : t('misc.noTrainingShort')}
-          </button>
-          <Button size="sm" className="h-8 bg-gold text-gold-foreground hover:bg-gold/90" onClick={save}>
-            <Check className="h-3.5 w-3.5" /> {draft.id ? t('common.save') : t('misc.create')}
-          </Button>
-          <Button size="sm" variant="ghost" className="h-8" onClick={() => setDraft(null)}>
-            <X className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      )}
+      {/* LE FORMULAIRE EST UNE FENÊTRE (FRE-245) : il s'ouvre là où est le geste —
+          un jour du mois, la frise, « Ajouter » ou le crayon d'une ligne —, au
+          lieu d'une ligne de la liste, hors de l'écran au téléphone. */}
+      <DialogPrimitive.Root open={draft !== null} onOpenChange={o => { if (!o) setDraft(null); }}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/70 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=open]:fade-in-0" />
+          {draft && (
+            <DialogPrimitive.Content
+              data-brouillon-debut={draft.startDate} data-brouillon-fin={draft.endDate}
+              className="fixed left-1/2 top-1/2 z-50 flex w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-xl border border-border/80 bg-card p-5 shadow-[0_24px_60px_rgba(0,0,0,0.45)] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
+              <div className="flex items-start justify-between gap-3">
+                <DialogPrimitive.Title className="text-sm font-semibold">
+                  {draft.id ? t('calendar.modifierLEvenement') : t('calendar.nouvelEvenement')}
+                </DialogPrimitive.Title>
+                <DialogPrimitive.Close aria-label={t('common.cancel')} className="-m-1 rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
+                  <X className="h-4 w-4" />
+                </DialogPrimitive.Close>
+              </div>
+              <DialogPrimitive.Description className="sr-only">{t('calendar.nomDeLEvenement')}</DialogPrimitive.Description>
+              <form className="flex flex-col gap-4" onSubmit={e => { e.preventDefault(); save(); }}>
+                <div className="flex flex-wrap gap-1.5">
+                  {EVENT_CATEGORIES.map(c => (
+                    <button
+                      key={c.emoji}
+                      type="button"
+                      title={t(c.cle)}
+                      aria-pressed={draft.type === c.type}
+                      onClick={() => setDraft(d => d && { ...d, type: c.type, emoji: c.emoji })}
+                      className={cn(
+                        'flex h-9 w-9 items-center justify-center rounded-md border text-base',
+                        draft.type === c.type ? 'border-gold bg-gold/15' : 'border-border hover:bg-accent',
+                      )}
+                    >
+                      {c.emoji}
+                    </button>
+                  ))}
+                </div>
+                <Input
+                  value={draft.name}
+                  onChange={e => setDraft(d => d && { ...d, name: e.target.value })}
+                  placeholder={t('calendar.nomDeLEvenement')}
+                  className="h-9 text-sm"
+                  autoFocus
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <DatePicker value={draft.startDate} title={t('calendar.debut')}
+                              onChange={v => setDraft(d => d && { ...d, startDate: v })} />
+                  <span className="text-muted-foreground">→</span>
+                  <DatePicker value={draft.endDate} title={t('common.fin')} min={draft.startDate}
+                              onChange={v => setDraft(d => d && { ...d, endDate: v })} />
+                </div>
+                <button
+                  type="button"
+                  aria-pressed={draft.canTrain}
+                  title={t('calendar.peutOnSEntrainer')}
+                  onClick={() => setDraft(d => d && { ...d, canTrain: !d.canTrain })}
+                  className={cn(
+                    'flex h-9 items-center gap-1.5 self-start rounded-md border px-2.5 text-xs font-medium',
+                    draft.canTrain
+                      ? 'border-gold bg-gold/15 text-foreground'
+                      : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground',
+                  )}
+                >
+                  <Dumbbell className="h-3.5 w-3.5" />
+                  {draft.canTrain ? t('misc.trainOk') : t('misc.noTrainingShort')}
+                </button>
+                <div className="flex justify-end gap-2">
+                  <DialogPrimitive.Close asChild>
+                    <Button type="button" size="sm" variant="ghost" className="h-9">{t('common.cancel')}</Button>
+                  </DialogPrimitive.Close>
+                  <Button type="submit" size="sm" className="h-9 bg-gold text-gold-foreground hover:bg-gold/90" disabled={!draft.name.trim()}>
+                    <Check className="h-3.5 w-3.5" /> {draft.id ? t('common.save') : t('misc.create')}
+                  </Button>
+                </div>
+              </form>
+            </DialogPrimitive.Content>
+          )}
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
 
-      {sorted.length === 0 && !draft ? (
+      {sorted.length === 0 ? (
         <div className="px-4 py-8 text-center text-sm text-muted-foreground">{t('calendar.aucunEvenement')}</div>
       ) : (
         <ul className="divide-y divide-border">

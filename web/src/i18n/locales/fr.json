@@ -384,7 +384,9 @@
     "mois": "Mois",
     "moisPrecedent": "Mois précédent",
     "moisSuivant": "Mois suivant",
-    "ajouterLe": "Ajouter un évènement le {{jour}}"
+    "ajouterLe": "Ajouter un évènement le {{jour}}",
+    "nouvelEvenement": "Nouvel évènement",
+    "modifierLEvenement": "Modifier l'évènement"
   },
   "charts": {
     "aboveZero": "Au-dessus de zéro : le bloc a été plus dur que programmé. En dessous : il restait de la marge.",
