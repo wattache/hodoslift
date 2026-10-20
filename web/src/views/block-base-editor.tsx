@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, ChevronUp, ChevronDown, Dumbbell, Eye, EyeOff, Link2, Link2Off, Lock, LockOpen, ListChecks, Minus, Plus, RotateCw, Settings2, Sparkles, TriangleAlert, Trash2, Wand2 } from 'lucide-react';
+import { CalendarDays, ChevronUp, ChevronDown, Dumbbell, Eye, EyeOff, Link2, Link2Off, Lock, LockOpen, ListChecks, Minus, Plus, RotateCw, Settings2, Sparkles, TriangleAlert, Trash2, Wand2, Copy } from 'lucide-react';
 import type {
   IncrementUnit, BlockBase, DayTiers, ExerciseKind, Principle, BaseAccessory, OneRepMax } from '@/api/types';
 import type { BlockEditing } from '@/api/types';
@@ -19,6 +19,7 @@ import { MovementHistory } from '@/components/training/movement-history';
 import { useLocalStorageState } from '@/lib/storage';
 import { usePreferenceProgression } from '@/lib/preference-progression';
 import { cn } from '@/lib/utils';
+import { dupliquerAccessoire, dupliquerPrincipe } from '@/lib/dupliquer-base';
 import { DatePicker } from '@/components/ui/date-picker';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useTranslation } from 'react-i18next';
@@ -1085,6 +1086,7 @@ export function BlockBaseEditor({ blockLabel, programId, blockId, base, lib, can
                             p={p} lib={lib} usedTiers={usedTiers}
                             onUpdate={(f, v) => updatePrinciple(i, f, v)} onSetKind={k => setPrincipleKind(i, k)}
                             onRemove={() => void removePrinciple(i)}
+                            onDuplicate={() => commit({ ...draft, daySplit, principles: dupliquerPrincipe(principles, i) })}
                           />
                         </div>
                       </div>
@@ -1193,7 +1195,8 @@ export function BlockBaseEditor({ blockLabel, programId, blockId, base, lib, can
                         tailleDuGroupe={membres}
                         onSetGroupKind={(nature) => choisirNatureDuGroupe(i, nature)}
                         onUpdate={(f, v) => updateAccessory(i, f, v)} onSetKind={k => setAccessoryKind(i, k)}
-                        onRemove={() => void removeAccessory(i)} />
+                        onRemove={() => void removeAccessory(i)}
+                        onDuplicate={() => commit({ ...draft, daySplit, principles, accessories: dupliquerAccessoire(accessories, i) })} />
 
                       {/* Le geste de liaison se lit ENTRE les deux lignes qu'il
                           relie. Première version : une icône de 12 px à 40 %
@@ -1338,12 +1341,13 @@ function SectionShell({
 }
 
 /* ---- Ligne de principe ---- */
-export function PrincipleRow({ p, lib, usedTiers, onUpdate, onSetKind, onRemove }: {
+export function PrincipleRow({ p, lib, usedTiers, onUpdate, onSetKind, onRemove, onDuplicate }: {
   p: Principle; lib: CoachLib; usedTiers: Set<1 | 2 | 3>;
   /** `string[]` pour le seul champ qui en porte : les variantes (FRE-33). */
   onUpdate: (field: keyof Principle, value: string | null | string[] | boolean) => void;
   onSetKind: (kind: ExerciseKind) => void;
   onRemove: () => void;
+  onDuplicate?: () => void;
 }) {
   const { t } = useTranslation();
   // ⚠️ LE TIER DU PRINCIPE EST TOUJOURS PROPOSÉ, même absent de la répartition :
@@ -1415,7 +1419,14 @@ export function PrincipleRow({ p, lib, usedTiers, onUpdate, onSetKind, onRemove 
         </div>
       </Field>
       <Field label={t("base.note")}><Txt value={p.coachNote ?? ''} onChange={v => onUpdate('coachNote', v)} w={160} /></Field>
-      <button type="button" onClick={onRemove} className="ml-auto flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/15 hover:text-destructive">
+      {onDuplicate && (
+        <button type="button" onClick={onDuplicate} aria-label={t("session.dupliquerLaLigne", { nom: p.name || t("base.sansNom") })}
+                title={t("session.dupliquer")}
+                className="ml-auto flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground">
+          <Copy className="h-3.5 w-3.5" />
+        </button>
+      )}
+      <button type="button" onClick={onRemove} className={cn('flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/15 hover:text-destructive', !onDuplicate && 'ml-auto')}>
         <Trash2 className="h-3.5 w-3.5" />
       </button>
     </div>
@@ -1423,7 +1434,7 @@ export function PrincipleRow({ p, lib, usedTiers, onUpdate, onSetKind, onRemove 
 }
 
 /* ---- Ligne d'accessoire ---- */
-function AccessoryRow({ a, lib, jours, libelleDuJour, sortedRenforcement, ouvreLeGroupe, suiteDuGroupe, tailleDuGroupe, onSetGroupKind, onUpdate, onSetKind, onRemove }: {
+function AccessoryRow({ a, lib, jours, libelleDuJour, sortedRenforcement, ouvreLeGroupe, suiteDuGroupe, tailleDuGroupe, onSetGroupKind, onUpdate, onSetKind, onRemove, onDuplicate }: {
   a: BaseAccessory; lib: CoachLib;
   /** Les jours du cycle — c'est la grille qui en décide, pas cette ligne. */
   jours: string[];
@@ -1443,6 +1454,7 @@ function AccessoryRow({ a, lib, jours, libelleDuJour, sortedRenforcement, ouvreL
   onUpdate: (field: keyof BaseAccessory, value: string | null | string[] | boolean) => void;
   onSetKind: (kind: ExerciseKind) => void;
   onRemove: () => void;
+  onDuplicate?: () => void;
 }) {
   const { t } = useTranslation();
   const nature: NatureDeGroupe = natureDe(a);
@@ -1535,7 +1547,14 @@ function AccessoryRow({ a, lib, jours, libelleDuJour, sortedRenforcement, ouvreL
         </div>
       </Field>
       <Field label={t("base.note")}><Txt value={a.coachNote ?? ''} onChange={v => onUpdate('coachNote', v)} w={160} /></Field>
-      <button type="button" onClick={onRemove} className="ml-auto flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/15 hover:text-destructive">
+      {onDuplicate && (
+        <button type="button" onClick={onDuplicate} aria-label={t("session.dupliquerLaLigne", { nom: a.name || t("base.sansNom") })}
+                title={t("session.dupliquer")}
+                className="ml-auto flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground">
+          <Copy className="h-3.5 w-3.5" />
+        </button>
+      )}
+      <button type="button" onClick={onRemove} className={cn('flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/15 hover:text-destructive', !onDuplicate && 'ml-auto')}>
         <Trash2 className="h-3.5 w-3.5" />
       </button>
     </div>
