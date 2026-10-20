@@ -67,6 +67,16 @@ export function DonneesDeLAthlete({ p, categories, jours, onChange, onRemove }: 
           {(p.gender ? categories[p.gender] ?? [] : []).map(c => <option key={c} value={c}>{c}</option>)}
         </select>
       </label>
+      {/* Le tirage : l'emplacement « PULL UP » se dispute en pull up OU en chin up,
+          au choix de l'athlète — et c'est ce mouvement-là que compte son palmarès. */}
+      <label className={champ}>
+        {t('competition.tirage')}
+        <select value={p.tirage ?? 'PULL UP'} className={select}
+                onChange={e => onChange({ tirage: e.target.value as 'PULL UP' | 'CHIN UP' })}>
+          <option value="PULL UP">Pull up</option>
+          <option value="CHIN UP">Chin up</option>
+        </select>
+      </label>
       {jours && (
         <label className={champ}>
           {t('competition.jourDePassage')}

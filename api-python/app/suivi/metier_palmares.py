@@ -15,6 +15,7 @@ from typing import Any
 from sqlalchemy import text
 
 from app.competitions import metier_competitions
+from app.competitions.metier_competitions import mouvement_reel
 from app.competitions.scoring import compute_ris
 from app.entrainement.records import lire_records
 
@@ -38,7 +39,7 @@ _PRS_SQL = text(
 )
 # ⚠️ PAR LA FICHE (`athlete_id`), pas par le nom : un invité homonyme n'est pas lui.
 _ESSAIS_SQL = text("""
-    SELECT upper(m.movement) AS mouvement, a.weight_kg, co.name AS competition,
+    SELECT m.movement AS emplacement, p.tirage, a.weight_kg, co.name AS competition,
            coalesce(p.competes_on, co.start_date) AS jour
     FROM competition_attempts a
     JOIN competition_participants p ON p.id = a.participant_id
@@ -75,7 +76,7 @@ def meilleurs_singles(session, aid: str) -> dict[str, dict[str, Any]]:
             "charge": float(r["weight_kg"]), "date": r["performed_on"].isoformat() if r["performed_on"] else None,
             "source": "manuel", "contexte": None})
     for r in session.execute(_ESSAIS_SQL, {"aid": aid}).mappings():
-        _meilleur(singles, r["mouvement"], {
+        _meilleur(singles, mouvement_reel(r["emplacement"], r["tirage"]), {
             "charge": float(r["weight_kg"]), "date": r["jour"].isoformat() if r["jour"] else None,
             "source": "competition", "contexte": r["competition"]})
     return singles

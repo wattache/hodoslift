@@ -610,6 +610,10 @@ export interface CompetitionInput {
   flights?: Flight[];
 }
 
+/** Un participant tel qu'il s'ÉCRIT : le contrat d'écriture, pas celui de lecture —
+ *  `mouvementReel` est servi et refusé en retour (`extra="forbid"`). */
+export type ParticipantEcrit = components['schemas']['Participant'];
+
 export type CompetitionPatch = Partial<CompetitionInput>;
 
 /** La réponse du `PATCH /competitions/{id}` : ce qui a été écrit, et la NOUVELLE

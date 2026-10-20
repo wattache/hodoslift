@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '@/api/client';
 import { clesDeDisponibilite, invalider } from '@/api/cles';
 import { mockAthletes, mockAvailability, mockCoachAvailability, mockCompetitions, mockResolve, mockWeightCategories } from '@/api/mock';
-import type { AthleteInscriptible, CoachAvailability, CoachAvailabilityPut, CoachAvailabilityStatus, CoachCompetitionAvailability, Competition, CompetitionCreate, CompetitionEcrite, CompetitionInput, CompetitionPatch, CompParticipant, WeightCategories } from '@/api/types';
+import type { ParticipantEcrit, AthleteInscriptible, CoachAvailability, CoachAvailabilityPut, CoachAvailabilityStatus, CoachCompetitionAvailability, Competition, CompetitionCreate, CompetitionEcrite, CompetitionInput, CompetitionPatch, CompParticipant, WeightCategories } from '@/api/types';
 import { isFirebaseConfigured } from '@/firebase';
 import { useSlugCourant } from '@/api/hooks/use-structure-choisie';
 
@@ -45,9 +45,9 @@ export function useWeightCategories() {
  *  retire pas la propriété à l'exécution, et un objet venant du serveur n'est
  *  pas un littéral, donc l'excès n'est pas signalé à la compilation. La seule
  *  garantie est de RECONSTRUIRE l'objet champ par champ. */
-type ParticipantEcrit = Omit<CompParticipant, 'score' | 'ris' | 'risTotal' | 'projection' | 'flight'>;
+type ParticipantLu = Omit<CompParticipant, 'score' | 'ris' | 'risTotal' | 'projection' | 'flight'>;
 
-function toParticipantInput(p: ParticipantEcrit): ParticipantEcrit {
+function toParticipantInput(p: ParticipantLu): ParticipantEcrit {
   return {
     name: p.name,
     uid: p.uid,
@@ -55,10 +55,12 @@ function toParticipantInput(p: ParticipantEcrit): ParticipantEcrit {
     bodyweight: p.bodyweight,
     gender: p.gender,
     weightCategory: p.weightCategory,
+    tirage: p.tirage ?? 'PULL UP',
     // ⚠️ RECONSTRUIT CHAMP PAR CHAMP : un champ oublié ici n'arrive jamais au
     // serveur, et s'efface au premier enregistrement (FRE-204). Le `flight`, lui,
     // se déduit de la catégorie : il ne repart pas.
-    movements: p.movements,
+    // ⚠️ `mouvementReel` est SERVI, pas écrit : brokkr le refuserait en retour.
+    movements: p.movements.map(m => ({ name: m.name, attempts: m.attempts })),
   };
 }
 
@@ -71,9 +73,11 @@ function toParticipantInput(p: ParticipantEcrit): ParticipantEcrit {
 // obligeait donc l'appelant à fournir des champs qu'il n'a pas le droit
 // d'envoyer, ce qui ne se voyait pas tant que `score` était marqué optionnel par
 // erreur dans le contrat écrit à la main.
-export function toWritePayload<T extends { participants?: ParticipantEcrit[] }>(input: T): T {
+export function toWritePayload<T extends { participants?: ParticipantLu[] }>(input: T): T {
+  // Le type de RETOUR reste celui de l'entrée pour les appelants ; ce qui part est
+  // la forme d'écriture, sans `mouvementReel` — brokkr la valide (`extra="forbid"`).
   return input.participants
-    ? { ...input, participants: input.participants.map(toParticipantInput) }
+    ? { ...input, participants: input.participants.map(toParticipantInput) as unknown as T['participants'] }
     : input;
 }
 

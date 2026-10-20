@@ -646,7 +646,8 @@
       "realistic": "Realistic — the target",
       "optimistic": "Optimistic — stretch"
     },
-    "annonceHorsPlan": "Declared off plan: {{charge}} kg — tap to remove"
+    "annonceHorsPlan": "Declared off plan: {{charge}} kg — tap to remove",
+    "tirage": "Pull"
   },
   "cycle": {
     "menstruation": "Menstruation",

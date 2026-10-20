@@ -114,6 +114,9 @@ def _expected_doc(comp_id, created_by):
     d["endDate"] = "2026-03-01"
     for p in d["participants"]:
         p["competesOn"] = None  # toujours renvoyé, null si non renseigné
+        p["tirage"] = "PULL UP"  # le tirage par défaut
+        for m in p["movements"]:
+            m["mouvementReel"] = m["name"]  # aucun emplacement PULL UP ici
     d["participants"][0]["score"] = 130.0  # MU best rep 30 + SQUAT 100 (34 norep ignoré)
     d["participants"][1]["score"] = 120.0
     # ⚠️ LE TOTAL DU BARÈME ÉGALE LE SCORE ICI, et c'est un hasard de fixture :
@@ -878,8 +881,8 @@ def test_un_participant_RENSEIGNE_porte_tous_ses_champs(auth_as, sql):
     alice = client.get("/competitions", headers=_AUTH).json()[0]["participants"][0]
 
     assert set(alice) == {"name", "uid", "bodyweight", "gender", "weightCategory",
-                          "competesOn", "movements", "score", "ris", "risTotal", "projection"}
-    assert set(alice["movements"][0]) == {"name", "attempts"}
+                          "competesOn", "movements", "score", "ris", "risTotal", "projection", "tirage"}
+    assert set(alice["movements"][0]) == {"name", "mouvementReel", "attempts"}
 
 
 def test_un_participant_NU_omet_ses_optionnels_mais_garde_competesOn_et_score(auth_as, sql):
@@ -899,7 +902,7 @@ def test_un_participant_NU_omet_ses_optionnels_mais_garde_competesOn_et_score(au
     client.put("/competitions/c1", json=doc, headers=_AUTH)
     nu = client.get("/competitions", headers=_AUTH).json()[0]["participants"][0]
 
-    assert set(nu) == {"name", "competesOn", "movements", "score", "ris", "risTotal", "projection"}
+    assert set(nu) == {"name", "competesOn", "movements", "score", "ris", "risTotal", "projection", "tirage"}
     # La projection aussi, TOUJOURS là : sans essai, elle vaut zéro partout (FRE-203).
     assert nu["projection"] == {"pessimistic": 0.0, "realistic": 0.0, "optimistic": 0.0}
     assert nu["competesOn"] is None and nu["score"] == 0.0
@@ -1161,3 +1164,24 @@ def test_la_baisse_est_refusee_aussi_par_un_patch(auth_as, sql):
     r = client.patch("/competitions/c1", json={"version": _v(client), "participants": _squat(
         {"weight": 100, "result": "rep"}, {"weight": 97.5, "result": ""})["participants"]}, headers=_AUTH)
     assert (r.status_code, r.json()["code"]) == (422, "annonce_en_baisse")
+
+
+def test_le_tirage_dit_le_mouvement_reel_et_le_palmares_le_suit(auth_as, sql):
+    """L'emplacement « PULL UP » se dispute en pull up OU en chin up, au choix de
+    chaque athlète. Théo, toujours en chin up, voyait ses chin ups comptés au
+    pull up de sa table 1RM. MUTATION QUI ROUGIT : `mouvement_reel` qui rend
+    l'emplacement tel quel."""
+    client = auth_as(uid="coach-1")
+    doc = {"name": "C", "date": "2026-03-01", "movementNames": ["PULL UP", "SQUAT"],
+           "participants": [
+               {"name": "Théo", "tirage": "CHIN UP", "movements": [
+                   {"name": "PULL UP", "attempts": [{"weight": 95, "result": "rep"}]}]},
+               {"name": "Aubin", "movements": [
+                   {"name": "PULL UP", "attempts": [{"weight": 105, "result": "rep"}]}]}]}
+    assert client.put("/competitions/c1", json=doc, headers=_AUTH).status_code == 200
+    lus = {p["name"]: p for p in client.get("/competitions", headers=_AUTH).json()[0]["participants"]}
+    assert (lus["Théo"]["tirage"], lus["Théo"]["movements"][0]["mouvementReel"]) == ("CHIN UP", "CHIN UP")
+    assert (lus["Aubin"]["tirage"], lus["Aubin"]["movements"][0]["mouvementReel"]) == ("PULL UP", "PULL UP")
+    # Un tirage hors des deux est refusé.
+    doc["participants"][0]["tirage"] = "ROWING"
+    assert client.put("/competitions/c1", json=doc, headers=_AUTH).status_code == 422

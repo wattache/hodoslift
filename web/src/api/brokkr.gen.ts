@@ -4856,6 +4856,8 @@ export interface components {
         MouvementLu: {
             /** Name */
             name: string;
+            /** Mouvementreel */
+            mouvementReel?: string | null;
             /** Attempts */
             attempts: components["schemas"]["EssaiLu"][];
         };
@@ -5226,6 +5228,12 @@ export interface components {
             gender?: ("M" | "F") | null;
             /** Weightcategory */
             weightCategory?: string | null;
+            /**
+             * Tirage
+             * @default PULL UP
+             * @enum {string}
+             */
+            tirage: "PULL UP" | "CHIN UP";
             /** Competeson */
             competesOn?: string | null;
         };
@@ -5243,6 +5251,12 @@ export interface components {
             weightCategory?: string | null;
             /** Flight */
             flight?: string | null;
+            /**
+             * Tirage
+             * @default PULL UP
+             * @enum {string}
+             */
+            tirage: "PULL UP" | "CHIN UP";
             /** Competeson */
             competesOn: string | null;
             /** Movements */

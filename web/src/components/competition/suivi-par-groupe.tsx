@@ -131,11 +131,12 @@ export function SuiviParGroupe({ plateau, participants, groupes, flight, onChois
           )}
           <div className="flex flex-col gap-2">
             {movementNames.map(m => {
-              const attempts = p.movements.find(mv => mv.name === m)?.attempts;
+              const mouvement = p.movements.find(mv => mv.name === m);
+              const attempts = mouvement?.attempts;
               const enCours = plateau.tour?.mouvement === m && plateau.tour.flight === flight;
               return (
                 <div key={m} className="grid grid-cols-[4rem_1fr] items-center gap-2 sm:grid-cols-[6rem_1fr]">
-                  <span className={cn('font-mono text-[11px] uppercase leading-tight tracking-wider', enCours ? 'text-gold' : 'text-muted-foreground')}>{m}</span>
+                  <span className={cn('font-mono text-[11px] uppercase leading-tight tracking-wider', enCours ? 'text-gold' : 'text-muted-foreground')}>{mouvement?.mouvementReel ?? m}</span>
                   <div className="flex gap-1.5">
                     {Array.from({ length: maxAttempts }, (_, ai) => attempts?.[ai] ? (
                       <CaseDEssai key={ai} grande nom={p.name} mouvement={m} attempts={attempts} ai={ai}

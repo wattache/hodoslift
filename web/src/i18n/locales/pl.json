@@ -696,7 +696,8 @@
       "realistic": "Realistyczny — cel",
       "optimistic": "Optymistyczny — ambitny"
     },
-    "annonceHorsPlan": "Zgłoszone poza planem: {{charge}} kg — dotknij, aby usunąć"
+    "annonceHorsPlan": "Zgłoszone poza planem: {{charge}} kg — dotknij, aby usunąć",
+    "tirage": "Podciąganie"
   },
   "cycle": {
     "menstruation": "Miesiączka",

@@ -646,7 +646,8 @@
       "realistic": "Réaliste — cible visée",
       "optimistic": "Optimiste — stretch"
     },
-    "annonceHorsPlan": "Annoncé hors plan : {{charge}} kg — toucher pour retirer"
+    "annonceHorsPlan": "Annoncé hors plan : {{charge}} kg — toucher pour retirer",
+    "tirage": "Tirage"
   },
   "cycle": {
     "menstruation": "Menstruation",

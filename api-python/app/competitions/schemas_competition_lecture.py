@@ -54,6 +54,11 @@ class MouvementLu(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str
+    # ⚠️ SERVI : le mouvement que CET athlète a disputé — `name` est l'emplacement
+    # de la compétition, « PULL UP » même pour un chin up (`mouvement_reel`).
+    # Toujours rendu par brokkr ; facultatif au contrat pour un participant que
+    # l'écran vient de créer, qui n'a pas encore été relu.
+    mouvementReel: str | None = Field(default=None)
     attempts: list[EssaiLu]
 
 
@@ -69,6 +74,7 @@ class ParticipantLu(BaseModel):
     # ⚠️ DÉDUIT, pas saisi (FRE-204) : le flight de sa catégorie. Absent quand
     # aucun flight ne porte sa catégorie.
     flight: str | None = Field(default=None)
+    tirage: Literal["PULL UP", "CHIN UP"] = "PULL UP"
     # …et ces deux-ci TOUJOURS présents, d'où l'absence de défaut.
     competesOn: str | None
     movements: list[MouvementLu]

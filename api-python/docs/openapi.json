@@ -17393,6 +17393,17 @@
             "type": "string",
             "title": "Name"
           },
+          "mouvementReel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mouvementreel"
+          },
           "attempts": {
             "items": {
               "$ref": "#/components/schemas/EssaiLu"
@@ -18412,6 +18423,15 @@
             ],
             "title": "Weightcategory"
           },
+          "tirage": {
+            "type": "string",
+            "enum": [
+              "PULL UP",
+              "CHIN UP"
+            ],
+            "title": "Tirage",
+            "default": "PULL UP"
+          },
           "competesOn": {
             "anyOf": [
               {
@@ -18495,6 +18515,15 @@
               }
             ],
             "title": "Flight"
+          },
+          "tirage": {
+            "type": "string",
+            "enum": [
+              "PULL UP",
+              "CHIN UP"
+            ],
+            "title": "Tirage",
+            "default": "PULL UP"
           },
           "competesOn": {
             "anyOf": [

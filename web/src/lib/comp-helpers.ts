@@ -59,6 +59,8 @@ export function createEmptyParticipant(movementNames: string[], maxAttempts: num
     // que le serveur rend, et le tableau de bord le lit pour son J−x. L'omettre
     // ici faisait diverger un participant neuf de celui qu'un rechargement donne.
     competesOn: null,
+    // Le tirage par défaut ; le coach passe son athlète en chin up sur sa carte.
+    tirage: 'PULL UP',
     movements: movementNames.map(m => ({ name: m, attempts: emptyAttempts(maxAttempts) })),
     // ⚠️ DÉRIVÉS : le serveur les recalcule à chaque écriture. Ils sont ici pour
     // que la forme locale d'un participant neuf soit celle qu'un rechargement

@@ -54,8 +54,11 @@ export function computeCompetitionPRs(
     if (!participant) continue;
 
     for (const movementResult of participant.movements) {
-      if (!(PRINCIPAL_MOVEMENTS as readonly string[]).includes(movementResult.name)) continue;
-      const movement = movementResult.name as PrincipalMovement;
+      // Le mouvement DISPUTÉ, servi par brokkr : un chin up sur l'emplacement
+      // « PULL UP » compte au chin up.
+      const nom = movementResult.mouvementReel ?? movementResult.name;
+      if (!(PRINCIPAL_MOVEMENTS as readonly string[]).includes(nom)) continue;
+      const movement = nom as PrincipalMovement;
       const bestWeight = movementResult.attempts
         .filter((attempt) => attempt.result === "rep")
         .reduce((max, attempt) => Math.max(max, attempt.weight), 0);

@@ -83,3 +83,14 @@ def test_le_total_des_quatre_places_et_son_ris_au_poids_actuel(auth_as, sql):
     sql.execute(text("INSERT INTO athlete_prs (athlete_id, movement, reps, weight_kg) VALUES (CAST(:a AS uuid), 'DIPS', 1, 90)"), {"a": A1})
     doc = coach.get("/athletes/a1/palmares", headers=_AUTH).json()
     assert doc["total"] == 20 + 65 + 90 + 180 and doc["ris"] > 0
+
+
+def test_un_chin_up_de_competition_compte_au_chin_up_du_palmares(auth_as, sql):
+    """Le tirage de l'athlète décide : son meilleur single va au CHIN UP, et son
+    1RM de pull up n'en hérite pas. MUTATION QUI ROUGIT : lire l'emplacement."""
+    coach = auth_as(uid="coach-1")
+    _une_competition(coach, sql, "open-2026", "2026-05-10", {"PULL UP": [(95, "rep")]})
+    sql.execute(text("UPDATE competition_participants SET tirage = 'CHIN UP' WHERE name = 'A Un'"))
+    doc = coach.get("/athletes/a1/palmares", headers=_AUTH).json()
+    assert {s["mouvement"]: s["charge"] for s in doc["records"]} == {"CHIN UP": 95}
+    assert doc["unRm"] == {"chinUp": 95}

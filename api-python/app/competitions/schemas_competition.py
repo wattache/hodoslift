@@ -52,6 +52,8 @@ class Participant(BaseModel):
     bodyweight: float | None = Field(default=None, ge=0, le=500)
     gender: Literal["M", "F"] | None = None
     weightCategory: str | None = Field(default=None, max_length=40)
+    # Le mouvement qu'il dispute sur l'emplacement « PULL UP » (`mouvement_reel`).
+    tirage: Literal["PULL UP", "CHIN UP"] = "PULL UP"
     # Le jour où CET athlète passe. `validate_competes_on` vérifie qu'il tombe dans
     # [startDate, endDate].
     competesOn: str | None = None

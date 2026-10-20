@@ -1076,7 +1076,11 @@ CREATE TABLE competition_participants (
     -- (`competition_flight_categories`).
     UNIQUE (competition_id, name),
     -- Si le sexe est NULL la contrainte ne s'applique pas (MATCH SIMPLE).
-    FOREIGN KEY (gender, weight_category) REFERENCES weight_categories(gender, code)
+    FOREIGN KEY (gender, weight_category) REFERENCES weight_categories(gender, code),
+    -- Le mouvement disputé sur l'emplacement « PULL UP » : pull up ou chin up,
+    -- au choix de chaque athlète (`metier_competitions.mouvement_reel`).
+    tirage          text NOT NULL DEFAULT 'PULL UP'
+                    CONSTRAINT competition_participants_tirage CHECK (tirage IN ('PULL UP', 'CHIN UP'))
 );
 CREATE INDEX ON competition_participants (athlete_id);
 

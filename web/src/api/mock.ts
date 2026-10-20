@@ -643,7 +643,7 @@ function inscritDuPlateau(
   const vise = (tier: 'pessimistic' | 'realistic' | 'optimistic') => movements.reduce((t, m) =>
     t + Math.max(meilleur(m), ...m.attempts.filter(a => a.result === '').map(a => a.weights[tier])), 0);
   return {
-    name, uid, gender, weightCategory, bodyweight, flight, competesOn: null, movements, score,
+    name, uid, gender, weightCategory, bodyweight, flight, competesOn: null, tirage: 'PULL UP', movements, score,
     projection: { pessimistic: vise('pessimistic'), realistic: vise('realistic'), optimistic: vise('optimistic') },
     risTotal: score, ris: null,
   };
@@ -671,6 +671,7 @@ export const mockCompetitions: Competition[] = [
         name: 'Léa Martin',
         uid: 'mock-coach',
         competesOn: iso(39),
+        tirage: 'PULL UP',
         bodyweight: 62,
         gender: 'F',
         weightCategory: '-64',
@@ -713,6 +714,7 @@ export const mockCompetitions: Competition[] = [
         name: 'Léa Martin',
         uid: 'mock-coach',
         competesOn: null,
+        tirage: 'PULL UP',
         bodyweight: 61.5,
         gender: 'F',
         weightCategory: '-64',
@@ -788,6 +790,7 @@ export const mockCompetitions: Competition[] = [
         name: 'Léa Martin',
         uid: 'mock-coach',
         competesOn: iso(112),
+        tirage: 'PULL UP',
         bodyweight: 62,
         gender: 'F',
         weightCategory: '-64',

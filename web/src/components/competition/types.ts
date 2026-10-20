@@ -13,11 +13,18 @@ export interface Attempt {
   varUsed?: boolean;
 }
 
-export interface Movement { name: string; attempts: Attempt[] }
+export interface Movement {
+  name: string; attempts: Attempt[];
+  /** SERVI par brokkr : le mouvement disputé sur cet emplacement — « CHIN UP »
+   *  sur l'emplacement « PULL UP » d'un athlète qui tire en chin up. */
+  mouvementReel?: string | null;
+}
 
 export interface Participant {
   name: string; uid?: string; bodyweight?: number; gender?: RisGender;
   weightCategory?: string; movements: Movement[]; score: number;
+  /** Pull up ou chin up sur l'emplacement « PULL UP », au choix de l'athlète. */
+  tirage?: 'PULL UP' | 'CHIN UP';
   /** ⚠️ SERVI PAR BROKKR (FRE-141). `null` quand il ne peut pas l'être — poids
    *  ou genre manquant, aucun essai valide. */
   ris?: number | null;

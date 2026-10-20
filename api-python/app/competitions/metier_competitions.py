@@ -309,8 +309,8 @@ _INSERT_MOVEMENT_SQL = text(
 _INSERT_PARTICIPANT_SQL = text(
     """
     INSERT INTO competition_participants
-        (competition_id, athlete_id, name, competes_on, bodyweight_kg, gender, weight_category)
-    VALUES (:cid, :athlete_id, :name, :competes_on, :bodyweight_kg, :gender, :weight_category)
+        (competition_id, athlete_id, name, competes_on, bodyweight_kg, gender, weight_category, tirage)
+    VALUES (:cid, :athlete_id, :name, :competes_on, :bodyweight_kg, :gender, :weight_category, :tirage)
     RETURNING id
     """
 )
@@ -346,6 +346,21 @@ def athlete_map(session) -> dict:
 # --------------------------------------------------------------------------- #
 
 
+#: Les deux tirages : l'emplacement « PULL UP » d'une compétition est disputé
+#: en pull up OU en chin up, au choix de chaque athlète.
+TIRAGES = ("PULL UP", "CHIN UP")
+
+
+def mouvement_reel(emplacement: str, tirage: str | None) -> str:
+    """Le mouvement que CET athlète a disputé sur cet emplacement.
+
+    ⚠️ LA SEULE DÉFINITION : la lecture des compétitions et le palmarès
+    l'appellent. Les chin ups de Théo s'écrivaient en pull up, et sa table 1RM
+    portait une charge de chin up au pull up."""
+    nom = emplacement.upper()
+    return (tirage or "PULL UP") if nom == "PULL UP" else nom
+
+
 def participants_to_internal(participants: list[Participant], athletes_par_uid: dict) -> list[dict]:
     """Traduit les participants Pydantic en dicts au format colonnes.
 
@@ -361,6 +376,7 @@ def participants_to_internal(participants: list[Participant], athletes_par_uid: 
                 "bodyweight_kg": p.bodyweight,
                 "gender": p.gender,
                 "weight_category": p.weightCategory,
+                "tirage": p.tirage,
                 "movements": [
                     {
                         "name": m.name,
@@ -480,6 +496,7 @@ def write_children(session, cid, movement_names: list[str], participants: list[d
                 "bodyweight_kg": p["bodyweight_kg"],
                 "gender": p["gender"],
                 "weight_category": p["weight_category"],
+                "tirage": p["tirage"],
             },
         ).scalar()
         for m in p["movements"]:
@@ -579,7 +596,7 @@ _READ_MOVEMENTS = text(
 # La vue agrège, Python applique le barème.
 _READ_PARTICIPANTS = text(
     "SELECT cp.id, cp.competition_id, cp.name, cp.competes_on, cp.bodyweight_kg, cp.gender, "
-    "cp.weight_category, a.user_uid, cs.score, cs.total_bareme_kg "
+    "cp.weight_category, cp.tirage, a.user_uid, cs.score, cs.total_bareme_kg "
     "FROM competition_participants cp "
     "LEFT JOIN athletes a ON a.id = cp.athlete_id "
     "LEFT JOIN competition_scores cs ON cs.participant_id = cp.id "
@@ -678,7 +695,9 @@ def recompose_all(session, cid=None) -> list[dict]:
         # Mouvements du participant = ceux où il a des essais, dans l'ordre de la compét.
         part_att = att_by_part.get(p["id"], {})
         ordered = [mv for mv in mv_by_comp.get(p["competition_id"], []) if mv in part_att]
-        pdoc["movements"] = [{"name": mv, "attempts": part_att[mv]} for mv in ordered]
+        pdoc["tirage"] = p["tirage"]
+        pdoc["movements"] = [{"name": mv, "mouvementReel": mouvement_reel(mv, p["tirage"]), "attempts": part_att[mv]}
+                             for mv in ordered]
         # ⚠️ Le score aussi vient de la VUE : elle agrège sur `upper(movement)`,
         # là où « SQUAT » et « Squat » coexistent dans `competition_movements`.
         # Un calcul sur le nom brut en ferait deux mouvements.
@@ -753,7 +772,7 @@ def load_participants_internal(session, cid) -> list[dict]:
     """
     parts = session.execute(
         text(
-            "SELECT id, athlete_id, name, competes_on, bodyweight_kg, gender, weight_category "
+            "SELECT id, athlete_id, name, competes_on, bodyweight_kg, gender, weight_category, tirage "
             "FROM competition_participants WHERE competition_id = :cid ORDER BY name"
         ),
         {"cid": cid},
@@ -783,7 +802,7 @@ def load_participants_internal(session, cid) -> list[dict]:
                 "name": p["name"], "athlete_id": p["athlete_id"],
                 "competes_on": iso(p["competes_on"]) if p["competes_on"] is not None else None,
                 "bodyweight_kg": p["bodyweight_kg"], "gender": p["gender"],
-                "weight_category": p["weight_category"],
+                "weight_category": p["weight_category"], "tirage": p["tirage"],
                 "movements": [{"name": mv, "attempts": movs[mv]} for mv in movs],
             }
         )
