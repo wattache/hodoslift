@@ -17,7 +17,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { toastSaveError } from '@/lib/save-error';
 import { EVENT_CATEGORIES, draftFromEvent, estModifiable, type DraftEvent } from '@/lib/evenement-calendrier';
-import { FriseDePeriodisation } from '@/components/periodization-frise';
+import { BandeauDeSituation, FriseDePeriodisation } from '@/components/periodization-frise';
 import { CalendrierMois } from '@/components/calendrier-mois';
 import { useLocalStorageState } from '@/lib/storage';
 import { lignesDeMacro, semaineDEntree, type BandeDeBloc, type EvenementDeFrise } from '@/lib/frise-periodisation';
@@ -127,6 +127,19 @@ export function CalendarView() {
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
+      {/* Ce qui vaut pour les DEUX vues se pose au-dessus du sélecteur : la
+          situation du jour et la liste des évènements (FRE-245). */}
+      <BandeauDeSituation
+        macros={macros}
+        evenements={evenementsDeFrise}
+        aujourdhui={todayISO()}
+        onBloc={ouvrirLeBloc}
+        onCompetition={id => void navigate(`/competitions/${id}`)}
+        onEvenement={ouvrirLEvenement}
+      />
+      {athleteId && (
+        <EventsManager athleteId={athleteId} events={events} canEdit={sel.canEdit} draft={draft} setDraft={setDraft} />
+      )}
       <div role="group" aria-label={t('calendar.vue')} className="flex self-start rounded-lg border border-border bg-card p-0.5 text-xs">
         {(['frise', 'mois'] as const).map(v => (
           <button key={v} type="button" aria-pressed={vue === v} onClick={() => setVue(v)}
@@ -156,9 +169,6 @@ export function CalendarView() {
           onCompetition={id => void navigate(`/competitions/${id}`)}
           onEvenement={ouvrirLEvenement}
         />
-      )}
-      {athleteId && (
-        <EventsManager athleteId={athleteId} events={events} canEdit={sel.canEdit} draft={draft} setDraft={setDraft} />
       )}
     </div>
   );
@@ -196,6 +206,13 @@ function EventsManager({ athleteId, events, canEdit, draft, setDraft }: {
   // Ouvert depuis la frise, le formulaire est plus bas que le geste : on l'amène.
   const section = useRef<HTMLElement>(null);
   const ouvert = draft !== null;
+  // Le formulaire vit AU-DESSUS des deux vues : un jour touché en bas du mois
+  // l'ouvrirait hors de l'écran, au téléphone. On l'amène à l'œil.
+  const formulaire = useRef<HTMLDivElement>(null);
+  const debutDuBrouillon = draft?.startDate;
+  useEffect(() => {
+    if (debutDuBrouillon) formulaire.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [debutDuBrouillon]);
   useEffect(() => {
     if (ouvert) section.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [ouvert]);
@@ -237,7 +254,7 @@ function EventsManager({ athleteId, events, canEdit, draft, setDraft }: {
       </header>
 
       {draft && (
-        <div data-brouillon-debut={draft.startDate} data-brouillon-fin={draft.endDate}
+        <div ref={formulaire} data-brouillon-debut={draft.startDate} data-brouillon-fin={draft.endDate}
              className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/20 px-4 py-3">
           <div className="flex gap-1">
             {EVENT_CATEGORIES.map(c => (

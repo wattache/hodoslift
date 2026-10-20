@@ -87,7 +87,6 @@ export function FriseDePeriodisation({
   const { t } = useTranslation();
   const lignes = useMemo(() => lignesDeMacro(macros, aujourdhui), [macros, aujourdhui]);
   const axe = useMemo(() => axeDeLaFrise(lignes, evenements, aujourdhui), [lignes, evenements, aujourdhui]);
-  const sit = useMemo(() => situation(lignes, evenements, aujourdhui), [lignes, evenements, aujourdhui]);
   const zoom = useMemo(() => zoomDeSemaines(lignes, evenements, aujourdhui), [lignes, evenements, aujourdhui]);
   const jalons = useMemo(() => jalonsAVenir(lignes, evenements, aujourdhui), [lignes, evenements, aujourdhui]);
 
@@ -101,7 +100,6 @@ export function FriseDePeriodisation({
 
   return (
     <div className="flex flex-col gap-5">
-      <Bandeau sit={sit} onBloc={onBloc} onCompetition={onCompetition} onEvenement={onEvenement} />
       <Frise lignes={lignes} axe={axe} evenements={evenements} aujourdhui={aujourdhui}
              onCompetition={onCompetition} onBloc={onBloc} />
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -139,6 +137,23 @@ function Carte({ couleur, etiquette, titre, ligne1, ligne2, onClick, titreDuLien
     ? <button type="button" onClick={onClick} title={titreDuLien}
               className={cn(classe, 'transition-colors hover:border-gold/60')} style={style}>{contenu}</button>
     : <div className={classe} style={style}>{contenu}</div>;
+}
+
+/** Le bandeau, hors de la frise : il vaut pour la frise ET pour le mois (FRE-245),
+ *  et se pose au-dessus du sélecteur de vue. Rien sans semaine datée — la frise
+ *  dit alors seule qu'il n'y a rien à placer. */
+export function BandeauDeSituation({ macros, evenements, aujourdhui, onBloc, onCompetition, onEvenement }: {
+  macros: MacroDeStructure[];
+  evenements: EvenementDeFrise[];
+  aujourdhui: ISO;
+  onBloc: (bloc: BandeDeBloc) => void;
+  onCompetition: (competitionId: string) => void;
+  onEvenement: (id: string) => void;
+}) {
+  const lignes = useMemo(() => lignesDeMacro(macros, aujourdhui), [macros, aujourdhui]);
+  const sit = useMemo(() => situation(lignes, evenements, aujourdhui), [lignes, evenements, aujourdhui]);
+  if (lignes.length === 0) return null;
+  return <Bandeau sit={sit} onBloc={onBloc} onCompetition={onCompetition} onEvenement={onEvenement} />;
 }
 
 function Bandeau({ sit, onBloc, onCompetition, onEvenement }: {
