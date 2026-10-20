@@ -18,11 +18,17 @@ import { useConfirm } from '@/components/ui/confirm-dialog';
 import { toastSaveError } from '@/lib/save-error';
 import { EVENT_CATEGORIES, draftFromEvent, estModifiable, type DraftEvent } from '@/lib/evenement-calendrier';
 import { FriseDePeriodisation } from '@/components/periodization-frise';
-import { semaineDEntree, type BandeDeBloc, type EvenementDeFrise } from '@/lib/frise-periodisation';
+import { CalendrierMois } from '@/components/calendrier-mois';
+import { useLocalStorageState } from '@/lib/storage';
+import { lignesDeMacro, semaineDEntree, type BandeDeBloc, type EvenementDeFrise } from '@/lib/frise-periodisation';
 
 
 
-/** VUE CALENDRIER — LA FRISE DE PÉRIODISATION, ET ELLE SEULE (16/09).
+/** VUE CALENDRIER — LA FRISE DE PÉRIODISATION, et le MOIS à côté (FRE-245).
+ *
+ *  Le mois est revenu à la demande des utilisateurs (20/10), sous une forme qui
+ *  évite ce qui avait fait retirer l'ancienne grille (ci-dessous) : un seul mois,
+ *  la couleur du TYPE de bloc, et toucher un jour pour y saisir un évènement.
  *
  *  ⚠️ DEUX VUES ONT DISPARU LE MÊME JOUR, et pour deux raisons opposées. La
  *  grille de douze mini-mois montrait des JOURS, pas une périodisation : 365
@@ -48,6 +54,10 @@ export function CalendarView() {
   // Le formulaire d'événement est TENU ICI : la frise l'ouvre (clic ou glissé
   // sur des jours, « Saisir un événement »), la liste en dessous l'édite.
   const [draft, setDraft] = useState<DraftEvent | null>(null);
+  // La vue choisie se garde sur l'appareil : un coach qui préfère le mois le
+  // retrouve, sans que ça change ce que voient les autres.
+  const [vue, setVue] = useLocalStorageState<'frise' | 'mois'>('eitri-calendrier-vue', 'frise', (v): v is 'frise' | 'mois' => v === 'frise' || v === 'mois');
+  const { t } = useTranslation();
   const saisir = useCallback((debut: string, fin: string) => {
     setDraft({ ...emptyDraft(), type: 'other', emoji: '📌', startDate: debut, endDate: fin });
   }, []);
@@ -109,21 +119,44 @@ export function CalendarView() {
     })),
   ];
 
+  const ouvrirLEvenement = (id: string) => {
+    const ev = events.find(e => e.id === id);
+    if (ev) setDraft(draftFromEvent(ev));
+  };
+  const blocs = useMemo(() => lignesDeMacro(macros, todayISO()).flatMap(l => l.blocs), [macros]);
+
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
-      <FriseDePeriodisation
-        macros={macros}
-        evenements={evenementsDeFrise}
-        aujourdhui={todayISO()}
-        peutSaisir={sel.canEdit && !!athleteId}
-        onSaisir={saisir}
-        onCompetition={id => void navigate(`/competitions/${id}`)}
-        onBloc={ouvrirLeBloc}
-        onEvenement={id => {
-          const ev = events.find(e => e.id === id);
-          if (ev) setDraft(draftFromEvent(ev));
-        }}
-      />
+      <div role="group" aria-label={t('calendar.vue')} className="flex self-start rounded-lg border border-border bg-card p-0.5 text-xs">
+        {(['frise', 'mois'] as const).map(v => (
+          <button key={v} type="button" aria-pressed={vue === v} onClick={() => setVue(v)}
+                  className={cn('h-7 rounded-md px-3', vue === v ? 'bg-gold font-semibold text-gold-foreground' : 'text-muted-foreground hover:text-foreground')}>
+            {t(`calendar.${v}`)}
+          </button>
+        ))}
+      </div>
+      {vue === 'frise' ? (
+        <FriseDePeriodisation
+          macros={macros}
+          evenements={evenementsDeFrise}
+          aujourdhui={todayISO()}
+          peutSaisir={sel.canEdit && !!athleteId}
+          onSaisir={saisir}
+          onCompetition={id => void navigate(`/competitions/${id}`)}
+          onBloc={ouvrirLeBloc}
+          onEvenement={ouvrirLEvenement}
+        />
+      ) : (
+        <CalendrierMois
+          blocs={blocs}
+          evenements={evenementsDeFrise}
+          aujourdhui={todayISO()}
+          peutSaisir={sel.canEdit && !!athleteId}
+          onSaisir={saisir}
+          onCompetition={id => void navigate(`/competitions/${id}`)}
+          onEvenement={ouvrirLEvenement}
+        />
+      )}
       {athleteId && (
         <EventsManager athleteId={athleteId} events={events} canEdit={sel.canEdit} draft={draft} setDraft={setDraft} />
       )}

@@ -378,7 +378,13 @@
     "evenements": "Événements",
     "nomDeLEvenement": "Nom de l'événement",
     "peutOnSEntrainer": "Peut-on s'entraîner pendant l'événement ?",
-    "supprimerLEvenement": "Supprimer l’événement « {{titre}} » ?"
+    "supprimerLEvenement": "Supprimer l’événement « {{titre}} » ?",
+    "vue": "Vue du calendrier",
+    "frise": "Frise",
+    "mois": "Mois",
+    "moisPrecedent": "Mois précédent",
+    "moisSuivant": "Mois suivant",
+    "ajouterLe": "Ajouter un évènement le {{jour}}"
   },
   "charts": {
     "aboveZero": "Au-dessus de zéro : le bloc a été plus dur que programmé. En dessous : il restait de la marge.",

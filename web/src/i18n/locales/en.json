@@ -378,7 +378,13 @@
     "evenements": "Events",
     "nomDeLEvenement": "Event name",
     "peutOnSEntrainer": "Can you train during the event?",
-    "supprimerLEvenement": "Delete event “{{titre}}”?"
+    "supprimerLEvenement": "Delete event “{{titre}}”?",
+    "vue": "Calendar view",
+    "frise": "Timeline",
+    "mois": "Month",
+    "moisPrecedent": "Previous month",
+    "moisSuivant": "Next month",
+    "ajouterLe": "Add an event on {{jour}}"
   },
   "charts": {
     "aboveZero": "Above zero: the block was harder than programmed. Below: there was room to spare.",

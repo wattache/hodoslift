@@ -420,7 +420,13 @@
     "evenements": "Wydarzenia",
     "nomDeLEvenement": "Nazwa wydarzenia",
     "peutOnSEntrainer": "Czy w trakcie wydarzenia można trenować?",
-    "supprimerLEvenement": "Usunąć wydarzenie „{{titre}}”?"
+    "supprimerLEvenement": "Usunąć wydarzenie „{{titre}}”?",
+    "vue": "Widok kalendarza",
+    "frise": "Oś czasu",
+    "mois": "Miesiąc",
+    "moisPrecedent": "Poprzedni miesiąc",
+    "moisSuivant": "Następny miesiąc",
+    "ajouterLe": "Dodaj wydarzenie {{jour}}"
   },
   "charts": {
     "aboveZero": "Powyżej zera: blok był cięższy niż zaplanowano. Poniżej: był zapas.",
