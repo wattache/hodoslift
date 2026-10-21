@@ -509,6 +509,18 @@ def test_reordonner_refuse_une_liste_incomplete(monde):
                  json={"ids": ids[:1]}, headers=_AUTH).status_code == 422
 
 
+def test_reordonner_les_seances_refuse_un_doublon(monde):
+    """MUTATION QUI ROUGIT : retirer `exiger_la_liste_complete` de `reorder_sessions`."""
+    semaine = _id(monde, "semaine", "p1")
+    c = _client("coach-1")
+    c.post(f"/programs/p1/weeks/{semaine}/sessions", json={"name": "Mardi"}, headers=_AUTH)
+    ids = [str(r[0]) for r in monde.execute(text(
+        "SELECT id FROM training_sessions WHERE week_id = CAST(:w AS uuid)"), {"w": semaine}).all()]
+    r = c.put(f"/programs/p1/weeks/{semaine}/sessions/order", json={"ids": [*ids, ids[0]]}, headers=_AUTH)
+    assert r.status_code == 422
+    assert r.json()["code"] == "reordonnancement_incoherent"
+
+
 def test_supprimer_une_seance_ne_laisse_pas_de_trou(monde):
     semaine = _id(monde, "semaine", "p1")
     c = _client("coach-1")

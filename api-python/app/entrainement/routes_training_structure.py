@@ -31,7 +31,8 @@ from app.socle.schemas_ecriture import (ArbreCree, ChampsEcrits, Confirmation, C
                                Denombrement, ObjectifsRemplaces, ObjetCree)
 # Le vocabulaire d'une ligne vit dans `prescription.py` (FRE-45), jamais ici.
 from app.entrainement.arbre_creation import (
-    creer_bloc, creer_seances, creer_semaine,
+    creer_bloc, creer_seances, creer_semaine, exiger_la_liste_complete, ids_des_enfants,
+    poser_l_ordre, repositionner,
 )
 from app.entrainement.generation_semaine import generer_semaine
 from app.entrainement.semaine_suivante import semaine_suivante
@@ -509,7 +510,7 @@ def delete_session(program_id: str, session_id: str,
         # suppression massive reste constatable (FRE-130).
         detruit = metier.contenu_realise(conn, "seance", program_id, session_id)
         metier.supprimer_l_objet(conn, "seance", session_id)
-        metier.repositionner_les_seances(conn, seance["week_id"])
+        repositionner(conn, "training_sessions", "week_id", seance["week_id"])
     log_write(uid=access.claims["uid"], resource="training_session",
               doc_path=f"programs/{program_id}/sessions/{session_id}", fields=["delete"],
               count=detruit["lignes"])
@@ -521,13 +522,10 @@ def reorder_sessions(program_id: str, week_id: str, payload: Order,
                      access: ProgramAccess = Depends(_coach)) -> dict:
     with get_session() as conn:
         semaine = metier.verifier(conn, "semaine", program_id, week_id)
-        actuels = metier.ids_des_seances(conn, semaine["id"])
-        if len(set(payload.ids)) != len(payload.ids) or set(payload.ids) != actuels:
-            raise ErreurMetier("reordonnancement_incoherent", 
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="la liste doit contenir exactement les séances de la semaine, "
-                       "une fois chacune")
-        metier.poser_l_ordre_des_seances(conn, payload.ids)
+        exiger_la_liste_complete(
+            payload.ids, ids_des_enfants(conn, "training_sessions", "week_id", semaine["id"]),
+            "la liste doit contenir exactement les séances de la semaine, une fois chacune")
+        poser_l_ordre(conn, "training_sessions", payload.ids)
     log_write(uid=access.claims["uid"], resource="training_session",
               doc_path=f"programs/{program_id}/weeks/{week_id}/sessions/order",
               fields=["order"], count=len(payload.ids))

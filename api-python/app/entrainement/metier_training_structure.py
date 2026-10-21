@@ -450,23 +450,3 @@ def ajouter_une_seance(conn, week_id, payload) -> str:
     return str(session_id)
 
 
-def repositionner_les_seances(conn, week_id) -> None:
-    """0..n-1 sans trou. La contrainte d'unicité est DEFERRABLE : les positions
-    peuvent se croiser le temps de la transaction."""
-    conn.execute(text(
-        "UPDATE training_sessions s SET position = t.rang - 1 FROM ("
-        "  SELECT id, row_number() OVER (ORDER BY position) AS rang "
-        "  FROM training_sessions WHERE week_id = :w) t "
-        "WHERE s.id = t.id AND s.position <> t.rang - 1"), {"w": week_id})
-
-
-def ids_des_seances(conn, week_id) -> set[str]:
-    return {str(r[0]) for r in conn.execute(text(
-        "SELECT id FROM training_sessions WHERE week_id = :w"), {"w": week_id}).all()}
-
-
-def poser_l_ordre_des_seances(conn, ids: list[str]) -> None:
-    """Pose les positions dans l'ordre de la liste — UN UPDATE, pas un par séance."""
-    conn.execute(text("UPDATE training_sessions s SET position = t.ord - 1 "
-                      "FROM unnest(CAST(:ids AS uuid[])) WITH ORDINALITY AS t(id, ord) "
-                      "WHERE s.id = t.id"), {"ids": list(ids)})

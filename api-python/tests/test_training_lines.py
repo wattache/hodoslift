@@ -272,6 +272,20 @@ def test_reordonner_refuse_une_liste_partielle(monde):
     assert r.status_code == 422
 
 
+def test_reordonner_refuse_un_doublon(monde):
+    """Toutes les lignes, mais l'une DEUX fois : l'ensemble est juste, le compte
+    non. Accepté, le doublon poserait deux positions à la même ligne.
+
+    MUTATION QUI ROUGIT : comparer les seuls ensembles dans `exiger_la_liste_complete`."""
+    sid = _seance(monde, "prog-1")
+    ids = [str(r[0]) for r in monde.execute(text(
+        "SELECT id FROM training_exercises WHERE session_id = CAST(:s AS uuid)"), {"s": sid}).all()]
+    r = _client("coach-1").put(f"/programs/prog-1/sessions/{sid}/exercises/order",
+                               json={"exerciseIds": [*ids, ids[0]]})
+    assert r.status_code == 422
+    assert r.json()["code"] == "reordonnancement_incoherent"
+
+
 def test_reordonner_refuse_un_intrus(monde):
     """Une ligne d'une AUTRE séance dans la liste — la vérification porte sur
     l'ensemble, pas seulement sur le compte."""

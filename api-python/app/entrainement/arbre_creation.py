@@ -129,6 +129,44 @@ def retrouver(conn, table: str, parent_col: str, parent_id, objet_id) -> str:
     return str(objet_id)
 
 
+# L'ORDRE DES ENFANTS D'UN PARENT — les lignes d'une séance, les séances d'une
+# semaine. Une seule écriture pour les deux : `table` et `parent_col` viennent
+# du code, jamais de la requête. La contrainte d'unicité de `position` est
+# DEFERRABLE : les positions peuvent se croiser le temps de la transaction.
+def repositionner(conn, table: str, parent_col: str, parent_id) -> None:
+    """Repositionne les enfants de 0 à n-1, sans trou, dans leur ordre actuel."""
+    conn.execute(text(
+        f"UPDATE {table} x SET position = t.rang - 1 FROM ("
+        f"  SELECT id, row_number() OVER (ORDER BY position) AS rang "
+        f"  FROM {table} WHERE {parent_col} = :parent) t "
+        f"WHERE x.id = t.id AND x.position <> t.rang - 1"), {"parent": parent_id})
+
+
+def ids_des_enfants(conn, table: str, parent_col: str, parent_id) -> set[str]:
+    return {str(r[0]) for r in conn.execute(
+        text(f"SELECT id FROM {table} WHERE {parent_col} = :parent"), {"parent": parent_id}).all()}
+
+
+def poser_l_ordre(conn, table: str, ids: list[str]) -> None:
+    """Pose les positions dans l'ordre de la liste — UN UPDATE, pas un par enfant."""
+    conn.execute(text(
+        f"UPDATE {table} x SET position = t.ord - 1 "
+        f"FROM unnest(CAST(:ids AS uuid[])) WITH ORDINALITY AS t(id, ord) "
+        f"WHERE x.id = t.id"), {"ids": list(ids)})
+
+
+def exiger_la_liste_complete(recus: list[str], actuels: set[str], detail: str) -> None:
+    """Un réordonnancement porte EXACTEMENT les enfants du parent : ni oubli, ni
+    intrus, ni doublon. C'est ce qui le distingue d'un état partiel.
+
+    Raises:
+        ErreurMetier: `reordonnancement_incoherent` (422).
+    """
+    if len(set(recus)) != len(recus) or set(recus) != actuels:
+        raise ErreurMetier("reordonnancement_incoherent",
+                           status.HTTP_422_UNPROCESSABLE_CONTENT, detail=detail)
+
+
 def creer_seances(conn, week_id, seances: list[dict[str, Any]]) -> list[dict]:
     """Insère les séances d'une semaine et rend LEURS IDS, alignés sur la requête.
 

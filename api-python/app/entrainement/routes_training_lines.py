@@ -27,6 +27,9 @@ from app.entrainement.relecture import marquer_modifiee
 from app.entrainement.schemas_training_line import ExerciseLineCreate, ExerciseLinePatch, ExerciseMove, ExerciseOrder
 from app.socle.schemas_ecriture import ChampsEcrits, Denombrement, LigneSupprimee, ObjetCree
 from app.socle.erreurs import ErreurMetier
+from app.entrainement.arbre_creation import (
+    exiger_la_liste_complete, ids_des_enfants, poser_l_ordre, repositionner,
+)
 from app.entrainement import metier_training_lines as metier
 
 router = APIRouter(prefix="/programs/{program_id}", tags=["training"])
@@ -201,7 +204,7 @@ def delete_exercise(
         ligne = metier.exercice(conn, program_id, exercise_id)
         metier.supprimer_la_ligne(conn, exercise_id)
         orphelins = metier.nettoyer_groupe(conn, ligne["session_id"], ligne["group_id"])
-        metier.renumeroter(conn, ligne["session_id"])
+        repositionner(conn, "training_exercises", "session_id", ligne["session_id"])
         metier.ranger_les_liens(conn, ligne["session_id"])
         marquer_modifiee(conn, ligne["session_id"], access.claims["uid"])
     log_write(uid=access.claims["uid"], resource="training_line",
@@ -228,15 +231,11 @@ def reorder_exercises(
     """
     with get_session() as conn:
         metier.seance(conn, program_id, session_id)
-        actuels = metier.ids_de_la_seance(conn, session_id)
         recus = payload.exerciseIds
-        if len(set(recus)) != len(recus) or set(recus) != actuels:
-            raise ErreurMetier("reordonnancement_incoherent", 
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="la liste doit contenir exactement les exercices de la séance, "
-                       "une fois chacun",
-            )
-        metier.poser_l_ordre(conn, recus)
+        exiger_la_liste_complete(
+            recus, ids_des_enfants(conn, "training_exercises", "session_id", session_id),
+            "la liste doit contenir exactement les exercices de la séance, une fois chacun")
+        poser_l_ordre(conn, "training_exercises", recus)
         # ⚠️ Le réordonnancement AUSSI : le coach relit, réordonne, et sans
         # `modifiee_par` la séance lui reviendrait dans la file.
         metier.ranger_les_liens(conn, session_id)
@@ -274,7 +273,7 @@ def move_exercise(
                                detail="la séance cible n'est pas dans la même semaine")
         deplaces = metier.deplacer_vers(conn, ligne, cible_id, payload.position) if source_id != cible_id else []
         for sid in (source_id, cible_id):
-            metier.renumeroter(conn, sid)
+            repositionner(conn, "training_exercises", "session_id", sid)
             metier.ranger_les_liens(conn, sid)
             marquer_modifiee(conn, sid, access.claims["uid"])
     log_write(uid=access.claims["uid"], resource="training_line",

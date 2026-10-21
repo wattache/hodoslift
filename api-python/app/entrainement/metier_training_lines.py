@@ -13,6 +13,7 @@ from fastapi import status
 from sqlalchemy import text
 
 from app.entrainement.arbre_creation import retrouver, est_un_uuid
+from app.entrainement.metier_training_structure import verifier
 
 from app.entrainement.prescription import (
     CHAMPS_COPIES, COLONNES_LIGNE, FORMAT_DE_LIGNE, NATURE_PAR_DEFAUT, NATURES_CHRONOMETREES,
@@ -115,32 +116,19 @@ def exercice(conn, program_id: str, exercise_id: str):
 
 
 def seance(conn, program_id: str, session_id: str):
-    row = conn.execute(
-        text("SELECT s.id FROM training_sessions s "
-             "JOIN training_weeks w ON w.id = s.week_id "
-             "JOIN training_blocks b ON b.id = w.block_id "
-             "JOIN training_macros m ON m.id = b.macro_id "
-             "WHERE s.id = CAST(:sid AS uuid) AND m.program_id = :pid"),
-        {"sid": _uuid_ou_404(session_id, "séance"), "pid": program_id},
-    ).mappings().first()
-    if row is None:
-        raise ErreurMetier("seance_introuvable", status.HTTP_404_NOT_FOUND, detail="séance introuvable")
-    return row
+    """La séance, par la remontée commune (`verifier`) — sous son propre code.
 
+    ⚠️ `seance_introuvable` et pas `objet_arbre_introuvable` : c'est le contrat
+    des routes de lignes, que le front connaît.
 
-def renumeroter(conn, session_id) -> None:
-    """Repositionne les lignes de la séance de 0 à n-1, sans trou.
-
-    La contrainte d'unicité est DEFERRABLE : les positions peuvent se croiser le
-    temps de la transaction.
+    Raises:
+        ErreurMetier: `objet_arbre_introuvable` (id mal formé), `seance_introuvable` (404).
     """
-    conn.execute(
-        text("UPDATE training_exercises e SET position = t.rang - 1 FROM ("
-             "  SELECT id, row_number() OVER (ORDER BY position) AS rang "
-             "  FROM training_exercises WHERE session_id = :sid) t "
-             "WHERE e.id = t.id AND e.position <> t.rang - 1"),
-        {"sid": session_id},
-    )
+    _uuid_ou_404(session_id, "séance")
+    try:
+        return verifier(conn, "seance", program_id, session_id)
+    except ErreurMetier:
+        raise ErreurMetier("seance_introuvable", status.HTTP_404_NOT_FOUND, detail="séance introuvable") from None
 
 
 def nettoyer_groupe(conn, session_id, group_id: str | None) -> int:
@@ -356,24 +344,6 @@ def dupliquer_sous_son_groupe(conn, ligne, exercise_id: str):
 def supprimer_la_ligne(conn, exercise_id: str) -> None:
     conn.execute(text("DELETE FROM training_exercises WHERE id = CAST(:eid AS uuid)"),
                  {"eid": exercise_id})
-
-
-def ids_de_la_seance(conn, session_id: str) -> set[str]:
-    return {
-        str(r[0]) for r in conn.execute(
-            text("SELECT id FROM training_exercises WHERE session_id = :sid"),
-            {"sid": session_id}).all()
-    }
-
-
-def poser_l_ordre(conn, exercise_ids: list[str]) -> None:
-    """Pose les positions dans l'ordre de la liste — UN UPDATE, pas un par ligne."""
-    conn.execute(
-        text("UPDATE training_exercises e SET position = t.ord - 1 "
-             "FROM unnest(CAST(:ids AS uuid[])) WITH ORDINALITY AS t(id, ord) "
-             "WHERE e.id = t.id"),
-        {"ids": list(exercise_ids)},
-    )
 
 
 def meme_semaine(conn, session_a, session_b) -> bool:
