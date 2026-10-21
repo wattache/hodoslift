@@ -35,7 +35,7 @@ from app.entrainement.arbre_creation import (
 )
 from app.entrainement.generation_semaine import generer_semaine
 from app.entrainement.semaine_suivante import semaine_suivante
-from app.entrainement.training_tree import version_des_objectifs
+from app.entrainement.training_tree import objectifs_du_bloc, version_des_objectifs
 from app.entrainement.schemas_training_lecture import SemaineLue
 from app.entrainement import metier_training_structure as metier
 from app.notifications.metier_push import notifier_nouvelle_semaine
@@ -212,7 +212,7 @@ def replace_objectives(program_id: str, block_id: str, payload: ObjectivesReplac
         metier.verifier(conn, "bloc", program_id, block_id)
         # ⚠️ La version se relit DANS la transaction d'écriture (FRE-163) : lue
         # avant, elle laisserait la fenêtre qu'elle prétend fermer.
-        actuelle = version_des_objectifs(metier.objectifs_du_bloc(conn, block_id))
+        actuelle = version_des_objectifs(objectifs_du_bloc(conn, block_id))
         if payload.version != actuelle:
             raise ErreurMetier(
                 "objectifs_perimes",
@@ -222,7 +222,7 @@ def replace_objectives(program_id: str, block_id: str, payload: ObjectivesReplac
         sortie = metier.remplacer_les_objectifs(conn, block_id, objectifs)
         # Relue plutôt que recalculée de ce qui a été reçu : c'est ce que la
         # prochaine lecture rendra, donc ce que la prochaine écriture comparera.
-        nouvelle = version_des_objectifs(metier.objectifs_du_bloc(conn, block_id))
+        nouvelle = version_des_objectifs(objectifs_du_bloc(conn, block_id))
     log_write(uid=access.claims["uid"], resource="block_objectives",
               doc_path=f"programs/{program_id}/blocks/{block_id}/objectives",
               fields=["objectives"], count=len(objectifs))

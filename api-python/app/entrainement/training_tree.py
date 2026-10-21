@@ -69,43 +69,62 @@ _MACROS = text("""
     FROM training_macros WHERE program_id = :pid ORDER BY number, legacy_id
 """)
 
+
+# LES DEUX PORTÉES (FRE-119, FRE-232). Chaque lecture s'écrit UNE fois, et ne
+# diffère d'une portée à l'autre que par ce fragment : deux copies d'une
+# projection divergent au premier champ ajouté d'un seul côté.
+#
+# ⚠️ La portée BLOC ne remonte pas au programme : `_bloc_lu` vérifie déjà
+# l'appartenance du bloc. Et elle borne le TRAVAIL autant que la réponse — une
+# séance lue au programme entier ne rougirait aucun test (la sortie n'itère que
+# les semaines du bloc), mais remonterait tout l'historique à chaque clic.
+def _par_programme(colonne: str) -> str:
+    return f"""
+    JOIN training_blocks b ON b.id = {colonne}
+    JOIN training_macros m ON m.id = b.macro_id
+    WHERE m.program_id = :pid"""
+
+
+def _par_bloc(colonne: str) -> str:
+    return f"WHERE {colonne} = CAST(:bid AS uuid)"
+
+
 # Les blocs et les semaines viennent de leurs VUES (FRE-219) : bornes, trame,
 # visibilité et compte de séances y sont posés une fois, pour l'arbre comme
 # pour la charpente.
-_BLOCS = text("""
+def _blocs(filtre: str):
+    return text(f"""
     SELECT b.id, b.macro_id, b.number, b.name,
            b.day_split, b.selected_principals, b.granularity,
            b.s1_start_date, b.s1_end_date,
            b.debut, b.fin, b.visible_a_l_athlete, b.a_une_base
     FROM blocs_lus b
-    WHERE b.program_id = :pid ORDER BY b.number, b.legacy_id
+    WHERE b.program_id = :pid {filtre} ORDER BY b.number, b.legacy_id
 """)
 
-_SEMAINES = text("""
+
+def _semaines(portee: str):
+    return text(f"""
     SELECT w.id, w.block_id, w.number, w.name, w.hidden, w.start_date, w.end_date,
            w.athlete_weight_kg, w.athlete_height_cm, w.session_count
     FROM semaines_lues w
-    JOIN training_blocks b ON b.id = w.block_id
-    JOIN training_macros m ON m.id = b.macro_id
-    WHERE m.program_id = :pid ORDER BY w.number, w.legacy_id
+    {portee} ORDER BY w.number, w.legacy_id
 """)
 
-_SEANCES = text("""
+
+def _seances(portee: str):
+    return text(f"""
     SELECT s.id, s.week_id, s.position, s.name, s.session_date, s.form_of_the_day
     FROM training_sessions s
     JOIN training_weeks w ON w.id = s.week_id
-    JOIN training_blocks b ON b.id = w.block_id
-    JOIN training_macros m ON m.id = b.macro_id
-    WHERE m.program_id = :pid ORDER BY s.position
+    {portee} ORDER BY s.position
 """)
+
 
 # `e.*` volontairement : énumérer les colonnes ferait disparaître sans erreur un
 # champ ajouté et oublié ici. C'est `_EXERCICE_SORTIE`, plus bas, qui dit ce qui
-# sort : elle est le CONTRAT.
-#
-# Une seule requête, deux PORTÉES (le programme, un bloc — FRE-119) : deux copies
-# du calcul de `mechano` divergeraient au premier ajustement de la formule
-# (FRE-103). Seul le fragment de portée change.
+# sort : elle est le CONTRAT. Une seule requête : deux copies du calcul de
+# `mechano` divergeraient au premier ajustement de la formule (FRE-103).
 def _exercices(portee: str):
     return text(f"""
     SELECT e.*,
@@ -144,79 +163,53 @@ def _exercices(portee: str):
 """)
 
 
-_EXERCICES = _exercices("""
-    JOIN training_blocks b ON b.id = w.block_id
-    JOIN training_macros m ON m.id = b.macro_id
-    WHERE m.program_id = :pid""")
+def _base_lignes(table: str, portee: str):
+    return text(f"SELECT l.* FROM {table} l {portee} ORDER BY l.position")
 
-_BASE_LIGNES = """
-    SELECT l.* FROM {table} l
-    JOIN training_blocks b ON b.id = l.block_id
-    JOIN training_macros m ON m.id = b.macro_id
-    WHERE m.program_id = :pid ORDER BY l.position
-"""
 
-# Les mêmes lectures, bornées au BLOC (FRE-119). Elles ne remontent pas jusqu'au
-# programme : `_BLOC_LU` vérifie déjà l'appartenance du bloc.
-#
-# ⚠️ Seule `_SEMAINES_DU_BLOC` borne la RÉPONSE ; les deux autres bornent le
-# TRAVAIL. Élargir `_SEANCES_DU_BLOC` au programme entier ne rougit AUCUN test —
-# la sortie n'itère que les semaines de ce bloc — mais remonte tout l'historique
-# à chaque clic.
-# Le bloc SEUL, dans la projection de `_BLOCS` : `read_block` rend le même
-# `BlocLu` que `read_tree`, par les mêmes `_sortie_*`, sans lire le programme.
-_BLOC_LU = text("""
-    SELECT b.id, b.macro_id, b.number, b.name,
-           b.day_split, b.selected_principals, b.granularity,
-           b.s1_start_date, b.s1_end_date,
-           b.debut, b.fin, b.visible_a_l_athlete, b.a_une_base
-    FROM blocs_lus b
-    WHERE b.program_id = :pid AND b.id = CAST(:bid AS uuid)
-""")
-
-_SEMAINES_DU_BLOC = text("""
-    SELECT w.id, w.block_id, w.number, w.name, w.hidden, w.start_date, w.end_date,
-           w.athlete_weight_kg, w.athlete_height_cm, w.session_count
-    FROM semaines_lues w
-    WHERE w.block_id = CAST(:bid AS uuid) ORDER BY w.number, w.legacy_id
-""")
-
-_OBJECTIFS_DU_BLOC = text("""
+def _objectifs(portee: str):
+    return text(f"""
     SELECT o.block_id AS bloc_uuid, o.id, o.exercise, o.variant, o.format, o.sets,
            o.reps, o.weight_min, o.weight_max, o.assistance, o.atteint_le
     FROM block_objectives o
-    WHERE o.block_id = CAST(:bid AS uuid)
+    {portee}
     ORDER BY o.position
 """)
 
-_SEANCES_DU_BLOC = text("""
-    SELECT s.id, s.week_id, s.position, s.name, s.session_date, s.form_of_the_day
-    FROM training_sessions s
-    JOIN training_weeks w ON w.id = s.week_id
-    WHERE w.block_id = CAST(:bid AS uuid) ORDER BY s.position
-""")
 
-_EXERCICES_DU_BLOC = _exercices("WHERE w.block_id = CAST(:bid AS uuid)")
-
-_BASE_LIGNES_DU_BLOC = """
-    SELECT l.* FROM {table} l
-    WHERE l.block_id = CAST(:bid AS uuid) ORDER BY l.position
-"""
-
-_OBJECTIFS = text("""
-    SELECT o.block_id AS bloc_uuid, o.id, o.exercise, o.variant, o.format, o.sets,
-           o.reps, o.weight_min, o.weight_max, o.assistance, o.atteint_le
-    FROM block_objectives o
-    JOIN training_blocks b ON b.id = o.block_id
-    JOIN training_macros m ON m.id = b.macro_id
-    WHERE m.program_id = :pid
-    ORDER BY o.position
-""")
+_BLOCS = _blocs("")
+_BLOC_LU = _blocs("AND b.id = CAST(:bid AS uuid)")
+_SEMAINES = _semaines(_par_programme("w.block_id"))
+_SEMAINES_DU_BLOC = _semaines(_par_bloc("w.block_id"))
+_SEANCES = _seances(_par_programme("w.block_id"))
+_SEANCES_DU_BLOC = _seances(_par_bloc("w.block_id"))
+_EXERCICES = _exercices(_par_programme("w.block_id"))
+_EXERCICES_DU_BLOC = _exercices(_par_bloc("w.block_id"))
+_PRINCIPES = _base_lignes("training_base_principles", _par_programme("l.block_id"))
+_PRINCIPES_DU_BLOC = _base_lignes("training_base_principles", _par_bloc("l.block_id"))
+_ACCESSOIRES = _base_lignes("training_base_accessories", _par_programme("l.block_id"))
+_ACCESSOIRES_DU_BLOC = _base_lignes("training_base_accessories", _par_bloc("l.block_id"))
+_OBJECTIFS = _objectifs(_par_programme("o.block_id"))
+_OBJECTIFS_DU_BLOC = _objectifs(_par_bloc("o.block_id"))
 
 _ATHLETE = text("""
     SELECT a.first_name, a.last_name FROM programs p
     JOIN athletes a ON a.id = p.athlete_id WHERE p.id = :pid
 """)
+
+
+def _identite(conn, program_id: str) -> dict:
+    """Le nom de l'athlète du programme ; `''` des deux côtés s'il n'en a pas."""
+    athlete = conn.execute(_ATHLETE, {"pid": program_id}).mappings().first()
+    return ({"firstName": athlete["first_name"], "lastName": athlete["last_name"]}
+            if athlete else {"firstName": "", "lastName": ""})
+
+
+def objectifs_du_bloc(conn, block_id: str) -> list:
+    """Les objectifs d'un bloc, par la requête de l'arbre : la version exigée à
+    l'écriture se calcule sur les MÊMES lignes que celle servie à la lecture."""
+    return conn.execute(_OBJECTIFS_DU_BLOC, {"bid": block_id}).mappings().all()
+
 
 # Colonne → clé du contrat, DÉRIVÉ de `COLONNES_LIGNE` (contrat → colonne) : la
 # liste explicite est une, l'écriture et la lecture la partagent (FRE-233). Un
@@ -390,10 +383,7 @@ def read_structure(conn, program_id: str, voit_les_masquees: bool = True) -> dic
     semaine vide, il lui faut le compte, pas le contenu (`semaines_lues`).
     """
     p = {"pid": program_id}
-    athlete = conn.execute(_ATHLETE, p).mappings().first()
-    identite = ({"firstName": athlete["first_name"], "lastName": athlete["last_name"]}
-                if athlete else {"firstName": "", "lastName": ""})
-
+    identite = _identite(conn, program_id)
     macros = conn.execute(_MACROS, p).mappings().all()
     blocs = _grouper(conn.execute(_BLOCS, p).mappings().all(), "macro_id")
     semaines = _grouper(conn.execute(_SEMAINES, p).mappings().all(), "block_id")
@@ -413,23 +403,8 @@ def read_structure(conn, program_id: str, voit_les_masquees: bool = True) -> dic
             "objectives": [_sortie_objectif(o) for o in objectifs.get(str(b["id"]), [])],
             "objectivesVersion": version_des_objectifs(objectifs.get(str(b["id"]), [])),
             "hasBase": b["a_une_base"],
-            "weeks": [{
-                "id": str(w["id"]),
-                "weekNumber": w["number"],
-                "name": w["name"],
-                "hidden": w["hidden"],
-                "startDate": _iso(w["start_date"]),
-                "endDate": _iso(w["end_date"]),
-                "athlete": {
-                    **identite,
-                    # ⚠️ `None` et non `0` (FRE-137) : la plupart des semaines
-                    # n'ont pas de pesée. Un athlète de zéro kilo n'existe pas ;
-                    # « pas pesé cette semaine-là », si.
-"weight": float(w["athlete_weight_kg"]) if w["athlete_weight_kg"] is not None else None,
-                    "height": float(w["athlete_height_cm"]) if w["athlete_height_cm"] is not None else None,
-                },
-                "sessionCount": w["session_count"],
-            } for w in _visibles(semaines.get(str(b["id"]), []), voit_les_masquees)],
+            "weeks": [_sortie_semaine(w, identite)
+                      for w in _visibles(semaines.get(str(b["id"]), []), voit_les_masquees)],
         } for b in _blocs_visibles(blocs.get(str(m["id"]), []), voit_les_masquees)],
     } for m in macros]}
 
@@ -463,10 +438,8 @@ def read_block_content(conn, program_id: str, block_id: str,
     semaines = conn.execute(_SEMAINES_DU_BLOC, p_).mappings().all()
     seances = _grouper(conn.execute(_SEANCES_DU_BLOC, p_).mappings().all(), "week_id")
     exercices = _grouper(conn.execute(_EXERCICES_DU_BLOC, p_).mappings().all(), "session_id")
-    principes = conn.execute(
-        text(_BASE_LIGNES_DU_BLOC.format(table="training_base_principles")), p_).mappings().all()
-    accessoires = conn.execute(
-        text(_BASE_LIGNES_DU_BLOC.format(table="training_base_accessories")), p_).mappings().all()
+    principes = conn.execute(_PRINCIPES_DU_BLOC, p_).mappings().all()
+    accessoires = conn.execute(_ACCESSOIRES_DU_BLOC, p_).mappings().all()
 
     return {
         "base": _sortie_base(bloc, list(principes), list(accessoires)),
@@ -484,21 +457,14 @@ def read_tree(conn, program_id: str, voit_les_masquees: bool = True) -> dict:
     `voit_les_masquees` : cf. `_visibles` (FRE-158).
     """
     p = {"pid": program_id}
-    athlete = conn.execute(_ATHLETE, p).mappings().first()
-    identite = ({"firstName": athlete["first_name"], "lastName": athlete["last_name"]}
-                if athlete else {"firstName": "", "lastName": ""})
-
+    identite = _identite(conn, program_id)
     macros = conn.execute(_MACROS, p).mappings().all()
     blocs = _grouper(conn.execute(_BLOCS, p).mappings().all(), "macro_id")
     semaines = _grouper(conn.execute(_SEMAINES, p).mappings().all(), "block_id")
     seances = _grouper(conn.execute(_SEANCES, p).mappings().all(), "week_id")
     exercices = _grouper(conn.execute(_EXERCICES, p).mappings().all(), "session_id")
-    principes = _grouper(
-        conn.execute(text(_BASE_LIGNES.format(table="training_base_principles")), p)
-        .mappings().all(), "block_id")
-    accessoires = _grouper(
-        conn.execute(text(_BASE_LIGNES.format(table="training_base_accessories")), p)
-        .mappings().all(), "block_id")
+    principes = _grouper(conn.execute(_PRINCIPES, p).mappings().all(), "block_id")
+    accessoires = _grouper(conn.execute(_ACCESSOIRES, p).mappings().all(), "block_id")
     objectifs = _grouper(conn.execute(_OBJECTIFS, p).mappings().all(), "bloc_uuid")
 
     lu = _Lu(identite, seances, exercices, principes, accessoires, objectifs)
@@ -525,8 +491,14 @@ class _Lu(NamedTuple):
     objectifs: dict
 
 
-def _sortie_semaine(w, lu: _Lu) -> dict:
-    return {
+def _sortie_semaine(w, identite: dict, sessions: list | None = None) -> dict:
+    """UNE semaine, pour la charpente comme pour l'arbre.
+
+    Sans `sessions` (la charpente), la semaine porte son COMPTE de séances :
+    la barre éteint la pastille d'une semaine vide, il lui faut le compte, pas
+    le contenu. Avec, l'arbre y range ses séances.
+    """
+    sortie = {
         "id": str(w["id"]),
         "weekNumber": w["number"],
         "name": w["name"],
@@ -536,13 +508,19 @@ def _sortie_semaine(w, lu: _Lu) -> dict:
         # Le poids et la taille sont des mesures DATÉES (celles de cette
         # semaine) ; le nom vient de la fiche athlète.
         "athlete": {
-            **lu.identite,
-            # ⚠️ `None` et non `0` (FRE-137) : cf. `read_structure`.
+            **identite,
+            # ⚠️ `None` et non `0` (FRE-137) : la plupart des semaines n'ont pas
+            # de pesée. Un athlète de zéro kilo n'existe pas ; « pas pesé cette
+            # semaine-là », si.
             "weight": float(w["athlete_weight_kg"]) if w["athlete_weight_kg"] is not None else None,
             "height": float(w["athlete_height_cm"]) if w["athlete_height_cm"] is not None else None,
         },
-        "sessions": [_sortie_seance(s, lu.exercices) for s in lu.seances.get(str(w["id"]), [])],
     }
+    if sessions is None:
+        sortie["sessionCount"] = w["session_count"]
+    else:
+        sortie["sessions"] = sessions
+    return sortie
 
 
 def _sortie_bloc(b, semaines: list, lu: _Lu, voit_les_masquees: bool) -> dict:
@@ -557,7 +535,9 @@ def _sortie_bloc(b, semaines: list, lu: _Lu, voit_les_masquees: bool) -> dict:
         # Jamais absent, même vide : le front lit la clé sans la tester.
         "objectives": [_sortie_objectif(o) for o in lu.objectifs.get(bid, [])],
         "objectivesVersion": version_des_objectifs(lu.objectifs.get(bid, [])),
-        "weeks": [_sortie_semaine(w, lu) for w in _visibles(semaines, voit_les_masquees)],
+        "weeks": [_sortie_semaine(w, lu.identite,
+                                  [_sortie_seance(s, lu.exercices) for s in lu.seances.get(str(w["id"]), [])])
+                  for w in _visibles(semaines, voit_les_masquees)],
     }
 
 
@@ -575,18 +555,13 @@ def read_block(conn, program_id: str, block_id: str) -> dict | None:
     bloc = conn.execute(_BLOC_LU, p).mappings().first()
     if bloc is None:
         return None
-    athlete = conn.execute(_ATHLETE, p).mappings().first()
-    identite = ({"firstName": athlete["first_name"], "lastName": athlete["last_name"]}
-                if athlete else {"firstName": "", "lastName": ""})
     semaines = conn.execute(_SEMAINES_DU_BLOC, p).mappings().all()
     lu = _Lu(
-        identite,
+        _identite(conn, program_id),
         _grouper(conn.execute(_SEANCES_DU_BLOC, p).mappings().all(), "week_id"),
         _grouper(conn.execute(_EXERCICES_DU_BLOC, p).mappings().all(), "session_id"),
-        _grouper(conn.execute(text(_BASE_LIGNES_DU_BLOC.format(table="training_base_principles")), p)
-                 .mappings().all(), "block_id"),
-        _grouper(conn.execute(text(_BASE_LIGNES_DU_BLOC.format(table="training_base_accessories")), p)
-                 .mappings().all(), "block_id"),
+        _grouper(conn.execute(_PRINCIPES_DU_BLOC, p).mappings().all(), "block_id"),
+        _grouper(conn.execute(_ACCESSOIRES_DU_BLOC, p).mappings().all(), "block_id"),
         _grouper(conn.execute(_OBJECTIFS_DU_BLOC, p).mappings().all(), "bloc_uuid"),
     )
     return _sortie_bloc(bloc, semaines, lu, voit_les_masquees=True)

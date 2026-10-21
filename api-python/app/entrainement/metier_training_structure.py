@@ -26,10 +26,6 @@ from app.socle.erreurs import ErreurMetier
 from app.entrainement.training_tree import read_block
 
 
-OBJECTIFS_DU_BLOC = text(
-    "SELECT * FROM block_objectives WHERE block_id = CAST(:b AS uuid) ORDER BY position")
-
-
 # --------------------------------------------------------------------------- #
 # LA MARQUE DE RELECTURE
 #
@@ -348,10 +344,6 @@ def redater_les_semaines(conn, block_id: str, dates: list) -> None:
             "UPDATE training_weeks SET start_date = :d1, end_date = :d2 "
             "WHERE id = CAST(:w AS uuid) AND block_id = CAST(:b AS uuid)"),
             {"d1": d.startDate, "d2": d.endDate, "w": d.weekId, "b": block_id})
-
-
-def objectifs_du_bloc(conn, block_id: str) -> list:
-    return conn.execute(OBJECTIFS_DU_BLOC, {"b": block_id}).mappings().all()
 
 
 def remplacer_les_objectifs(conn, block_id: str, objectifs: list[dict]) -> list[dict]:

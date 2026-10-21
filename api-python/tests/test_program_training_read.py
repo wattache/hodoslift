@@ -494,6 +494,21 @@ def test_l_ARBRE_masque_la_semaine_a_l_athlete_et_la_garde_au_coach(monde):
     assert a_l_athlete == au_coach - {wid}
 
 
+def test_le_coach_LIT_que_la_semaine_est_masquee_dans_l_arbre_et_la_charpente(monde):
+    """Le coach voit la semaine masquée, et l'écran la marque comme telle par
+    `hidden` : c'est ce drapeau qui lui offre « Démasquer ». Lu en vrai, pas
+    par comparaison entre les deux lectures — elles partagent leur projection
+    de semaine (FRE-232), un défaut commun ne les ferait pas diverger.
+
+    MUTATION QUI ROUGIT : `"hidden": False` dans `_sortie_semaine`."""
+    wid, visible, _ = _la_masquee_et_sa_voisine(monde)
+    charpente = _client("coach-1").get("/programs/p1/structure", headers=_AUTH).json()
+    for lecture in (_arbre("coach-1"), charpente):
+        semaines = {w["id"]: w for m in lecture["macros"] for b in m["blocks"] for w in b["weeks"]}
+        assert semaines[wid]["hidden"] is True
+        assert semaines[visible]["hidden"] is False
+
+
 def test_la_CHARPENTE_masque_la_semaine_a_l_athlete(monde):
     """⚠️ LA CHARPENTE COMPTE AUTANT QUE L'ARBRE (FRE-119) : c'est elle que lit
     l'écran d'entraînement, et c'est d'elle que le front tire la semaine qu'il
