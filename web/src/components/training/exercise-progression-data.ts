@@ -1,7 +1,14 @@
 import type { SessionEditing, WeekEditing, ExerciseEditing } from "@/api/types";
 import { rpeToNumber, verdictDesSemainesRPE, type VerdictRPE } from "@/lib/rpe";
 import { afficherVariantes, cleVariantes } from "@/lib/variantes";
-import { effectiveWeight, parseWeight } from "@/lib/weight";
+import { chargeSaisie, parseWeight } from "@/lib/weight";
+
+/** La charge prescrite d'une semaine : `null` sans saisie, ou à `0` avec une bande. */
+function prescrit(ex: { weight?: string | null; assistance?: string | null } | undefined): number | null {
+  if (!ex) return null;
+  const c = chargeSaisie(ex.weight);
+  return c === 0 && (ex.assistance ?? '').trim() ? null : c;
+}
 
 export interface ProgressionPoint {
   label: string;
@@ -92,10 +99,11 @@ export function buildExerciseProgressionPoints(session: SessionEditing, exercise
       reps: ex?.reps ?? "",
       repsDone: ex?.repsDone ?? "",
       repsUnit: ex?.repsUnit ?? "count",
-      // `|| null` : absence de charge = trou dans la courbe, PAS un point à 0.
-      kg: (ex && parseWeight(ex.weight)) || null,
+      // Absence de charge = trou dans la courbe. Mais un « 0 » PRESCRIT est un
+      // point : au poids du corps — sauf avec une bande, qui s'écrit à sa place.
+      kg: prescrit(ex),
       kgDone: (ex && parseWeight(ex.weightDone)) || null,
-      kgEffective: (ex && effectiveWeight(ex)) || null,
+      kgEffective: (ex && parseWeight(ex.weightDone)) || prescrit(ex),
       assistance: ex?.assistance ?? "",
       rest: ex?.rest ?? "",
       restActual: ex?.restActual ?? "",

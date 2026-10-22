@@ -42,6 +42,11 @@ describe('charge et assistance', () => {
   it('ne rend RIEN quand il n’y a ni charge ni assistance', () => {
     // La vue affiche alors son propre tiret — elle ne reçoit pas une chaîne vide
     // qu'elle devrait distinguer de l'absence.
-    expect(chargeEtAssistance(ex('0', '   '))).toEqual([]);
+    expect(chargeEtAssistance(ex('', '   '))).toEqual([]);
+  });
+
+  it('écrit « 0 kg » pour un 0 PRESCRIT sans bande — au poids du corps, pas un tiret', () => {
+    // MUTATION QUI ROUGIT : retirer le repli `zero` de `chargeEtAssistance`.
+    expect(chargeEtAssistance(ex('0', '   '))).toEqual(['0 kg']);
   });
 });

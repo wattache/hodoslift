@@ -6,6 +6,18 @@ import type { ExerciseEditing } from '@/api/types';
  *  ⚠️ ACCEPTE `null` DEPUIS FRE-137 : le serveur ne déguise plus une absence en
  *  chaîne vide, et cette fonction la traitait déjà (`value || ''`). C'est la
  *  signature qui mentait, pas le corps. */
+/** La charge SAISIE, ou `null` si le champ est vide.
+ *
+ *  ⚠️ `0` N'EST PAS « PAS DE CHARGE » : un chin up « 0 kg », c'est au poids du
+ *  corps, prescrit comme tel. `parseWeight` rend `0` pour les deux — juste pour
+ *  un tonnage, faux pour un affichage, qui montrait un tiret à la place du 0. */
+export function chargeSaisie(value: string | null | undefined): number | null {
+  const brut = (value ?? '').trim();
+  if (!brut) return null;
+  const n = parseFloat(brut.replace(',', '.'));
+  return isNaN(n) || n < 0 ? null : n;
+}
+
 export function parseWeight(value: string | null | undefined): number {
   const n = parseFloat((value || '').replace(',', '.'));
   return isNaN(n) || n <= 0 ? 0 : n;
@@ -64,6 +76,9 @@ export function formatWeightWithActual(weight: string | null | undefined, weight
  *  prescription réelle, pas une saisie douteuse — en choisir une seule perdrait de
  *  l'information. */
 export function chargeEtAssistance(ex: Pick<ExerciseEditing, 'weight' | 'weightDone' | 'assistance'>): string[] {
-  return [formatWeightWithActual(ex.weight, ex.weightDone), (ex.assistance ?? '').trim()]
-    .filter(Boolean);
+  const aide = (ex.assistance ?? '').trim();
+  // « 0 kg » se lit, SAUF à côté d'une bande : avec elle, le 0 ne dit rien de
+  // plus que la bande elle-même.
+  const zero = !aide && chargeSaisie(ex.weight) === 0 && !parseWeight(ex.weightDone) ? '0 kg' : '';
+  return [formatWeightWithActual(ex.weight, ex.weightDone) || zero, aide].filter(Boolean);
 }
