@@ -27,9 +27,9 @@ describe('sectionKine', () => {
     expect(vers(sectionKine(compte({ isCoach: true })))).toEqual(['/signalements']);
   });
 
-  it('donne à la KINÉ les deux', () => {
+  it('donne à la KINÉ les deux, et la Bibliothèque qu’elle entretient (FRE-247)', () => {
     expect(vers(sectionKine(compte({ isKine: true }))))
-      .toEqual(['/signalements', '/bilan-modeles']);
+      .toEqual(['/signalements', '/bilan-modeles', '/library']);
   });
 
   it('donne au coach-kiné les deux, sans doublon', () => {
@@ -53,6 +53,18 @@ describe('sectionKine', () => {
     // `require_membre` et `require_kine` qui tranchent, jamais le titre d'admin.
     // La même confusion avait déjà caché « Ajouter un athlète » aux coachs.
     expect(sectionKine(compte({ isAdmin: true }))).toEqual([]);
+  });
+});
+
+describe('la Bibliothèque du kiné (FRE-247)', () => {
+  it('le kiné qui ne coache pas la reçoit sous Kiné', () => {
+    expect(vers(sectionKine(compte({ isKine: true })))).toContain('/library');
+  });
+  it('le coach-kiné ne la voit pas deux fois : elle est déjà sous Coach', () => {
+    expect(vers(sectionKine(compte({ isKine: true, isCoach: true })))).not.toContain('/library');
+  });
+  it('l’admin kiné ne la reçoit pas en plus sous Admin', () => {
+    expect(vers(sectionAdmin(compte({ isAdmin: true, isKine: true })))).toEqual(['/admin']);
   });
 });
 

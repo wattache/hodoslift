@@ -111,10 +111,10 @@ _DEMOTE_COACH_SQL = text("DELETE FROM coaches WHERE uid = :uid")
 #   programs.coach_uid          RESTRICT
 #   competitions.created_by     RESTRICT
 #
-# ⚠️ `library_entries.created_by` N'EN FAIT PAS PARTIE, et c'est délibéré (SET
-# NULL). Toute entrée de bibliothèque est PARTAGÉE : ce champ n'est qu'une trace
-# d'auteur, jamais lue ni consultée pour autoriser. Une trace que personne ne lit
-# n'a pas à empêcher un départ.
+# ⚠️ `library_entries.created_by` N'EN FAIT PAS PARTIE : il référence `users`
+# (l'auteur peut être un kiné), en SET NULL. Toute entrée de bibliothèque est
+# PARTAGÉE : ce champ n'est qu'une trace d'auteur, jamais lue ni consultée pour
+# autoriser. Une trace que personne ne lit n'a pas à empêcher un départ.
 #
 # ⚠️ UN PRÉ-CONTRÔLE PLUTÔT QUE LA LECTURE DE L'`IntegrityError` : Postgres
 # n'annonce que la PREMIÈRE contrainte rencontrée, alors qu'un compte peut être

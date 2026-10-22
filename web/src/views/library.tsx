@@ -45,9 +45,9 @@ export function LibraryView() {
   const [draft, setDraft] = useState<{ name: string; supports: string[] } | null>(null);
 
   const lib: Partial<Record<LibraryCategory, LibraryEntry[]>> = library ?? {};
-  // Le coach de la structure — ou l'admin, qui entretient celle qu'il regarde
-  // sans forcément y coacher (brokkr : `structure_ecrite`, `patch_entry`).
-  const canWrite = !!me?.isCoach || !!me?.isAdmin;
+  // Le staff de la structure, coach ou kiné (FRE-247, `require_staff`) — ou
+  // l'admin, qui entretient celle qu'il regarde sans forcément en être.
+  const canWrite = !!me?.isCoach || !!me?.isKine || !!me?.isAdmin;
   const compLifts = useMemo(() => (lib.exercices ?? []).filter(e => e.competition).map(e => e.name), [lib.exercices]);
 
   const onError = toastSaveError;

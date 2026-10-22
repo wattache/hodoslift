@@ -238,6 +238,7 @@ CODES: dict[str, str] = {
     "email_non_verifie": "Le compte existe mais son adresse n'est pas vérifiée.",
     "reserve_aux_coachs": "Geste réservé aux coachs.",
     "reserve_aux_admins": "Geste réservé aux administrateurs.",
+    "reserve_au_staff": "Geste réservé aux coachs et aux kinés.",
     # ⚠️ Sans porte dérobée pour le coach ni l'admin : composer un modèle de
     # bilan est un acte de praticien (bilan-kine.md §6).
     "reserve_aux_kines": "Geste réservé aux kinés.",

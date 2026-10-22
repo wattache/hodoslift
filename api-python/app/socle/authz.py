@@ -258,6 +258,12 @@ class Compte(NamedTuple):
     admin: bool
     athlete_id: str | None
     coach_structure: str | None
+    kine_structure: str | None = None
+
+    @property
+    def structures_du_staff(self) -> set[str]:
+        """Les structures où ce compte est du STAFF — il y coache, ou y est kiné."""
+        return {s for s in (self.coach_structure, self.kine_structure) if s}
 
     @property
     def membre(self) -> bool:
@@ -274,7 +280,8 @@ class Compte(NamedTuple):
 PERSONNE = Compte(coach=False, kine=False, admin=False, athlete_id=None, coach_structure=None)
 
 _COMPTE_SQL = text(
-    "SELECT est_coach, est_kine, is_admin, athlete_id, coach_structure FROM comptes WHERE uid = :uid"
+    "SELECT est_coach, est_kine, is_admin, athlete_id, coach_structure, kine_structure "
+    "FROM comptes WHERE uid = :uid"
 )
 
 
@@ -289,7 +296,7 @@ def compte(uid: str, session=None) -> Compte:
         if r is None:
             return PERSONNE
         return Compte(coach=bool(r[0]), kine=bool(r[1]), admin=bool(r[2]),
-                      athlete_id=r[3], coach_structure=r[4])
+                      athlete_id=r[3], coach_structure=r[4], kine_structure=r[5])
 
     if session is not None:
         return lire(session)
@@ -334,6 +341,25 @@ def require_kine(claims: dict = Depends(verify_token)) -> dict:
         raise ErreurMetier("reserve_aux_kines",
             status_code=status.HTTP_403_FORBIDDEN,
             detail="réservé aux kinés",
+        )
+    return claims
+
+
+def require_staff(claims: dict = Depends(verify_token)) -> dict:
+    """Dépendance FastAPI : coachs et kinés — le staff d'une structure.
+
+    Pour ce que le staff entretient ENSEMBLE, comme la bibliothèque : le kiné de
+    la structure y écrit au même titre que ses coachs (on n'arbitre pas entre
+    gens du staff).
+
+    Raises:
+        ErreurMetier: 403 `reserve_au_staff`.
+    """
+    qui = compte(claims["uid"])
+    if not (qui.coach or qui.kine):
+        raise ErreurMetier("reserve_au_staff",
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="réservé aux coachs et aux kinés",
         )
     return claims
 

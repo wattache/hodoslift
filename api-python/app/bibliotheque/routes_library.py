@@ -17,7 +17,7 @@ from sqlalchemy import text
 
 from app.socle.erreurs import erreurs
 from app.socle.audit import log_write
-from app.socle.authz import compte, require_coach, require_membre
+from app.socle.authz import compte, require_membre, require_staff
 from app.socle.structures import PREMIERE, structure_ecrite, structures_de
 from app.socle.db import get_session
 from app.bibliotheque.schemas_library import BibliothequeLue, LibraryEntryCreate, LibraryEntryPatch
@@ -114,10 +114,10 @@ def get_library(claims: dict = Depends(require_membre), structure: str | None = 
 @router.post("/entries", response_model=EntreeCreee, responses=erreurs(401, 403, 409))
 def create_entry(
     payload: LibraryEntryCreate,
-    claims: dict = Depends(require_coach),
+    claims: dict = Depends(require_staff),
     structure: str | None = _STRUCTURE_QUERY,
 ) -> dict:
-    """Crée une entrée dans la bibliothèque de la structure du coach.
+    """Crée une entrée dans la bibliothèque de la structure du staff (coach ou kiné).
 
     `competition` hors `exercices` est déjà refusé par le schéma (422).
 
@@ -129,7 +129,7 @@ def create_entry(
         row = session.execute(
             _INSERT_SQL,
             {
-                "structure": structure_ecrite(session, uid, structure),
+                "structure": structure_ecrite(session, uid, structure, kine_admis=True),
                 "category": payload.category,
                 "name": payload.name,
                 "competition": payload.competition,
@@ -156,7 +156,7 @@ def create_entry(
 def patch_entry(
     entry_id: str,
     payload: LibraryEntryPatch,
-    claims: dict = Depends(require_coach),
+    claims: dict = Depends(require_staff),
 ) -> dict:
     """Renomme une entrée, change son drapeau `competition` ou ses `supports`.
 
@@ -169,10 +169,10 @@ def patch_entry(
     """
     with get_session() as session:
         existing = session.execute(_SELECT_BY_ID_SQL, {"id": entry_id}).mappings().first()
-        # ⚠️ L'entrée d'une AUTRE structure n'existe pas pour ce coach (404, pas
+        # ⚠️ L'entrée d'une AUTRE structure n'existe pas pour ce staff (404, pas
         # 403) : la renommer propagerait aux lignes d'athlètes qu'il ne suit pas.
         qui = compte(claims["uid"], session)
-        if existing is None or (existing["structure"] != qui.coach_structure and not qui.admin):
+        if existing is None or (existing["structure"] not in qui.structures_du_staff and not qui.admin):
             raise ErreurMetier("entree_introuvable", status.HTTP_404_NOT_FOUND, "entrée introuvable")
 
         champs = payload.model_fields_set

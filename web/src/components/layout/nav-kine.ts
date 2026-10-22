@@ -69,13 +69,13 @@ export const NAV_COACH: EntreeNav[] = [
 const ADMIN: EntreeNav =
   { to: '/admin', labelKey: 'nav.admin', icon: Shield, accent: ACCENTS.gray };
 
-/** La section de l'admin — et, là où il ne coache pas, la BIBLIOTHÈQUE (19/09) :
+/** La section de l'admin — et, là où il n'est pas du staff, la BIBLIOTHÈQUE :
  *  brokkr le laisse entretenir celle de la structure qu'il regarde
- *  (`structure_ecrite`), et l'entrée vivait sous la section Coach, absente pour
- *  William chez French Forge. Vide pour qui n'est pas admin. */
+ *  (`structure_ecrite`). Le coach l'a sous Coach, le kiné sous Kiné : une seule
+ *  entrée par compte. Vide pour qui n'est pas admin. */
 export function sectionAdmin(me: Me | undefined): EntreeNav[] {
   if (!me?.isAdmin) return [];
-  return me.isCoach ? [ADMIN] : [ADMIN, BIBLIOTHEQUE];
+  return me.isCoach || me.isKine ? [ADMIN] : [ADMIN, BIBLIOTHEQUE];
 }
 
 /** Le tableau « qui va mal en ce moment » — lu par le STAFF ENTIER. */
@@ -102,5 +102,8 @@ export function sectionKine(me: Me | undefined): EntreeNav[] {
   return [
     ...(me?.isCoach || me?.isKine ? [SIGNALEMENTS] : []),
     ...(me?.isKine ? [MODELES] : []),
+    // Le kiné de la structure entretient la bibliothèque comme ses coachs
+    // (FRE-247, `require_staff`). Le coach-kiné l'a déjà sous Coach.
+    ...(me?.isKine && !me.isCoach ? [BIBLIOTHEQUE] : []),
   ];
 }

@@ -1130,7 +1130,7 @@
           "library"
         ],
         "summary": "Create Entry",
-        "description": "Crée une entrée dans la bibliothèque de la structure du coach.\n\n`competition` hors `exercices` est déjà refusé par le schéma (422).\n\nRaises:\n    ErreurMetier: `entree_deja_existante` (409).",
+        "description": "Crée une entrée dans la bibliothèque de la structure du staff (coach ou kiné).\n\n`competition` hors `exercices` est déjà refusé par le schéma (422).\n\nRaises:\n    ErreurMetier: `entree_deja_existante` (409).",
         "operationId": "create_entry_library_entries_post",
         "security": [
           {
@@ -14328,6 +14328,7 @@
               "email_non_verifie",
               "reserve_aux_coachs",
               "reserve_aux_admins",
+              "reserve_au_staff",
               "reserve_aux_kines",
               "reserve_aux_membres",
               "athlete_hors_perimetre",

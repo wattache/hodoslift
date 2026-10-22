@@ -505,3 +505,46 @@ def test_un_support_ABSENT_reste_possible(sql):
         "INSERT INTO library_entries (category, name) VALUES ('exercices', 'SANS SUPPORTS')"))
     assert sql.execute(text(
         "SELECT supports FROM library_entries WHERE name = 'SANS SUPPORTS'")).scalar() is None
+
+
+# --------------------------------------------------------------------------- #
+# LE KINÉ ÉCRIT DANS LA BIBLIOTHÈQUE DE SA STRUCTURE (FRE-247)
+# --------------------------------------------------------------------------- #
+
+
+def test_le_KINE_cree_et_renomme_dans_la_bibliotheque_de_sa_structure(auth_as, sql):
+    """Le kiné de la structure entretient la bibliothèque au même titre que ses
+    coachs. Il en est l'auteur — `created_by` référence `users`, pas `coaches`.
+
+    MUTATIONS QUI ROUGISSENT : `require_coach` sur la création ; la clé
+    étrangère vers `coaches` (500) ; `kine_admis=False` (aucune structure)."""
+    semer_un_membre(sql, "kine-1", role="kines")
+    client = auth_as(uid="kine-1")
+    r = client.post("/library/entries", json={"category": "exercices", "name": "NORDIC CURL"}, headers=_AUTH)
+    assert r.status_code == 200, r.text
+    eid = r.json()["id"]
+    assert sql.execute(text("SELECT structure, created_by FROM library_entries WHERE id = :id"),
+                       {"id": eid}).first() == ("french-forge", "kine-1")
+
+    autre = _seed(sql, "exercices", "SQUAT")
+    r = client.patch(f"/library/entries/{autre}", json={"name": "SQUAT PAUSE"}, headers=_AUTH)
+    assert r.status_code == 200, r.text
+    assert _row(sql, autre)[1] == "SQUAT PAUSE"
+
+
+def test_le_KINE_ne_touche_pas_la_bibliotheque_d_une_AUTRE_structure(auth_as, sql):
+    """MUTATION QUI ROUGIT : accepter toute structure en PATCH."""
+    semer_un_membre(sql, "kine-1", role="kines")
+    eid = _seed(sql, "exercices", "SQUAT")
+    sql.execute(text("UPDATE library_entries SET structure = 'elgustolift' WHERE id = :id"), {"id": eid})
+    r = auth_as(uid="kine-1").patch(f"/library/entries/{eid}", json={"name": "HACK"}, headers=_AUTH)
+    assert r.status_code == 404
+    assert _row(sql, eid)[1] == "SQUAT"
+
+
+def test_hors_du_staff_on_n_ecrit_pas_dans_la_bibliotheque(auth_as, sql):
+    """Sans rôle de staff : l'écriture est refusée, sous son code."""
+    client = auth_as(uid="pas-staff")
+    r = client.post("/library/entries", json={"category": "exercices", "name": "SQUAT"}, headers=_AUTH)
+    assert r.status_code == 403
+    assert r.json()["code"] == "reserve_au_staff"

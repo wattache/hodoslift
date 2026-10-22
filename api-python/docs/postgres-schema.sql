@@ -222,7 +222,8 @@ CREATE TABLE library_entries (
         supports IS NULL
         OR (cardinality(supports) > 0
             AND supports <@ ARRAY['MU', 'PU', 'DIP', 'SQ']::text[])),
-    created_by  text REFERENCES coaches(uid) ON DELETE SET NULL,
+    -- L'auteur : un membre du staff, coach ou kiné — d'où `users`, pas `coaches`.
+    created_by  text REFERENCES users(uid) ON DELETE SET NULL,
     created_at  timestamptz NOT NULL DEFAULT now(),
     -- ⚠️ UNE BIBLIOTHÈQUE PAR STRUCTURE (19/09) : « SQUAT » existe une fois dans
     -- CHACUNE. Les lignes la référencent par `(structure, categorie, nom)` —

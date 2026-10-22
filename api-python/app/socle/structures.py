@@ -73,8 +73,11 @@ def slugs_de(uid: str) -> set[str]:
     return {s["slug"] for s in structures_de(uid)}
 
 
-def structure_ecrite(session, uid: str, demandee: str | None) -> str:
+def structure_ecrite(session, uid: str, demandee: str | None, kine_admis: bool = False) -> str:
     """Où une ÉCRITURE de coach se range — bibliothèque, compétition.
+
+    `kine_admis` : la structure où l'on est KINÉ vaut aussi (la bibliothèque,
+    que tout le staff entretient) ; une compétition reste au coach.
 
     Celle où l'on COACHE, sauf l'admin, qui écrit dans celle qu'il nomme : il
     administre la structure qu'il regarde, et n'y coache pas forcément. Sans ce
@@ -85,9 +88,11 @@ def structure_ecrite(session, uid: str, demandee: str | None) -> str:
         ErreurMetier: `reserve_aux_coachs` (403) si un coach nomme une autre
             structure que la sienne."""
     qui = compte(uid, session)
-    sienne = qui.coach_structure
-    if demandee is None or demandee == sienne:
+    sienne = qui.coach_structure or (qui.kine_structure if kine_admis else None)
+    if demandee is None:
         return sienne
+    if demandee == sienne or (kine_admis and demandee in qui.structures_du_staff):
+        return demandee
     if qui.admin:
         return demandee
     raise ErreurMetier("reserve_aux_coachs", status.HTTP_403_FORBIDDEN,
