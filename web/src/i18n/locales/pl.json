@@ -1606,7 +1606,11 @@
     "surNSeries_other": "na {{count}} seriach",
     "auLieuDe": "{{fait}} zamiast {{prevu}}",
     "rpeRessenti": "odczuwane RPE {{rpe}}",
-    "conforme": "zgodnie z planem"
+    "conforme": "zgodnie z planem",
+    "copierSurLesSuivantes": "Skopiuj serię {{n}} do kolejnych",
+    "effacerLesSeries": "Wyczyścić zapisane serie?",
+    "effacerLesSeries_detail": "Wiersz wraca do jednego wpisu: RPE, powtórzenia i ciężar trzeba będzie wpisać ponownie dla całości.",
+    "effacer": "Wyczyść"
   },
   "share": {
     "bloc": "BLOK",

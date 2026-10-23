@@ -1,5 +1,6 @@
 import { Fragment, useState, useLayoutEffect, useRef } from "react";
-import { ChevronDown, ChevronUp, Plus, TriangleAlert, Video } from "lucide-react";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { ChevronDown, ChevronUp, Copy, Plus, TriangleAlert, Video } from "lucide-react";
 import type { ExerciseKind, ObjectifTechnique, SessionEditing, WeekEditing } from '@/api/types';
 import { cleMouvement } from "@/api/hooks/use-objectifs-techniques";
 import { ObjectifsPastille } from "@/components/training/objectifs-pastille";
@@ -32,6 +33,8 @@ export interface SessionTableProps {
    *  lequel l'athlète aurait dit « oublie le détail ». */
   onFeltRPEGlobal?: (exerciseIndex: number, feltRPE: string) => void;
   onUpdateSetRPE?: (exerciseIndex: number, setIndex: number, value: string | null) => void;
+  /** Décocher « par série » : le détail s'efface, la ligne repasse au global. */
+  onEffacerLesSeries?: (exerciseIndex: number) => void;
   /** Les reps et la charge de la série active (06/09). */
   onUpdateSetValue?: (exerciseIndex: number, setIndex: number,
                       champ: 'reps' | 'weight', value: string | null) => void;
@@ -145,7 +148,8 @@ function exerciseNumbers(exercises: { groupId?: string | null }[]): number[] {
 }
 
 export function SessionTable(props: SessionTableProps) {
-  const { session, mode = "athlete", canEditSelectedAthlete = false, onFeltRPEChange, onFeltRPEGlobal, onUpdateSetRPE, onUpdateSetValue, onUpdateField, onSetSessionKind, objectifsParMouvement, blockWeeks, storageScopeKey, shareBlock } = props;
+  const { session, mode = "athlete", canEditSelectedAthlete = false, onFeltRPEChange, onFeltRPEGlobal, onUpdateSetRPE, onUpdateSetValue, onEffacerLesSeries, onUpdateField, onSetSessionKind, objectifsParMouvement, blockWeeks, storageScopeKey, shareBlock } = props;
+  const confirm = useConfirm();
   const { t } = useTranslation();
   const [openNotes, setOpenNotes] = useState<Record<number, boolean>>({});
   /** DÉPLIER UN EXERCICE L'AMÈNE À L'ÉCRAN, EN ENTIER (16/09, remonté par les
@@ -631,7 +635,23 @@ export function SessionTable(props: SessionTableProps) {
                           {athleteEdit && setCount > 1 && (
                             <button
                               type="button"
-                              onClick={() => setParSerieParExercice((st) => ({ ...st, [exerciseKey]: !parSerie }))}
+                              onClick={async () => {
+                                // ⚠️ DÉCOCHER EFFACE LE DÉTAIL (William, 23/10). Replier
+                                // sans effacer laissait les séries notées dans la
+                                // donnée, et l'avertissement « 1/3 » avec elles :
+                                // aucun chemin ne ramenait à la saisie unique.
+                                const aDesSeries = [ex.feltRPEBySet, ex.repsDoneBySet, ex.weightDoneBySet]
+                                  .some(t => (t ?? []).some(v => (v ?? '').trim() !== ''));
+                                if (parSerie && aDesSeries) {
+                                  if (!await confirm({
+                                    title: t("session.effacerLesSeries"),
+                                    description: t("session.effacerLesSeries_detail"),
+                                    confirmLabel: t("session.effacer"),
+                                  })) return;
+                                  onEffacerLesSeries?.(i);
+                                }
+                                setParSerieParExercice((st) => ({ ...st, [exerciseKey]: !parSerie }));
+                              }}
                               aria-pressed={parSerie}
                               className={cn(
                                 "inline-flex h-7 items-center rounded-md border px-2 font-display text-[11px] uppercase tracking-[0.12em] transition-colors sm:h-6 sm:text-[10px]",
@@ -689,6 +709,33 @@ export function SessionTable(props: SessionTableProps) {
                                 })}
                               </div>
                             )}
+
+                            {/* COPIER SUR LES SÉRIES SUIVANTES (retour client, 23/10) :
+                                une série tapée une fois vaut souvent pour les autres.
+                                Seules les séries ENCORE VIDES la reçoivent : une série
+                                déjà notée est un fait, la copie ne l'écrase pas. */}
+                            {parSerieOuvert && effectiveSet < setCount && (() => {
+                              const source = {
+                                rpe: (rpeBySet[effectiveSet - 1] ?? '').trim(),
+                                reps: (repsBySet[effectiveSet - 1] ?? '').trim(),
+                                weight: (chargeBySet[effectiveSet - 1] ?? '').trim(),
+                              };
+                              if (!source.rpe && !source.reps && !source.weight) return null;
+                              const copier = () => {
+                                for (let s = effectiveSet + 1; s <= setCount; s++) {
+                                  if (source.rpe && !(rpeBySet[s - 1] ?? '').trim()) onUpdateSetRPE?.(i, s, source.rpe);
+                                  if (source.reps && !(repsBySet[s - 1] ?? '').trim()) onUpdateSetValue?.(i, s, "reps", source.reps);
+                                  if (source.weight && !(chargeBySet[s - 1] ?? '').trim()) onUpdateSetValue?.(i, s, "weight", source.weight);
+                                }
+                              };
+                              return (
+                                <button type="button" onClick={copier}
+                                        className="mb-2 inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 text-xs text-foreground hover:border-gold/35 sm:h-7">
+                                  <Copy className="h-3.5 w-3.5" aria-hidden />
+                                  {t("session.copierSurLesSuivantes", { n: effectiveSet })}
+                                </button>
+                              );
+                            })()}
 
                             {/* ⚠️ UN MENU DÉROULANT, PLUS UNE RÉGLETTE (William, 15/09 :
                                 « ça fera moins de choses à l'écran »). Treize pastilles

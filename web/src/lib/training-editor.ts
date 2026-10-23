@@ -174,6 +174,8 @@ export interface TrainingEditor {
    *  copies de cette règle divergeraient au premier correctif. */
   updateExerciseSetValue: (si: number, ei: number, setIndex: number,
                            champ: 'reps' | 'weight', value: string | null) => void;
+  /** Décocher « par série » : efface les trois tableaux et leurs moyennes. */
+  effacerLeDetailParSerie: (si: number, ei: number) => void;
   updateSessionForm: (si: number, value: number | null) => void;
   addExercise: (si: number) => void;
   /** Rend l'identité de la copie, ou `null` si rien n'a été copié. */
@@ -635,6 +637,25 @@ export function useTrainingEditor(
       id = ex.id;
     });
     if (patch) schedulePatch('exercises', id, patch);
+  }, [updateWeek, schedulePatch]);
+
+  /** DÉCOCHER « PAR SÉRIE » EFFACE LE DÉTAIL — les trois tableaux, et les
+   *  valeurs de ligne qui en étaient la moyenne. L'athlète ressaisit au global
+   *  (William, 23/10) : garder une valeur tirée des séries, c'était en choisir
+   *  une qu'il n'a pas forcément faite.
+   *
+   *  Les tableaux vides partent SEULS : le serveur vide alors aussi les
+   *  colonnes dérivées (`derivations`, « j'efface ma saisie »). */
+  const effacerLeDetailParSerie = useCallback((si: number, ei: number) => {
+    let id: string | undefined;
+    updateWeek(week => {
+      const ex = week.sessions?.[si]?.exercises[ei];
+      if (!ex) return;
+      ex.feltRPEBySet = []; ex.repsDoneBySet = []; ex.weightDoneBySet = [];
+      ex.feltRPE = ''; ex.repsDone = ''; ex.weightDone = '';
+      id = ex.id;
+    });
+    schedulePatch('exercises', id, { feltRPEBySet: [], repsDoneBySet: [], weightDoneBySet: [] });
   }, [updateWeek, schedulePatch]);
 
   const updateSessionForm = useCallback((si: number, value: number | null) => {
@@ -1323,6 +1344,7 @@ export function useTrainingEditor(
     updateExerciseSetRPE,
     updateExerciseFeltRPE,
     updateExerciseSetValue,
+    effacerLeDetailParSerie,
     updateSessionForm,
     addExercise,
     duplicateExercise,

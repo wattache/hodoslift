@@ -1499,7 +1499,11 @@
     "surNSeries_other": "on {{count}} sets",
     "auLieuDe": "{{fait}} instead of {{prevu}}",
     "rpeRessenti": "felt RPE {{rpe}}",
-    "conforme": "as prescribed"
+    "conforme": "as prescribed",
+    "copierSurLesSuivantes": "Copy set {{n}} to the next ones",
+    "effacerLesSeries": "Clear the logged sets?",
+    "effacerLesSeries_detail": "The line goes back to a single entry: RPE, reps and load will need to be entered again for all sets.",
+    "effacer": "Clear"
   },
   "share": {
     "bloc": "BLOCK",

@@ -602,6 +602,10 @@ export function TrainingView() {
                   const si = sessionIndexOf(id);
                   if (si >= 0) editor.updateExerciseSetValue(si, ei, setIndex, champ, value);
                 }}
+                onEffacerLesSeries={(id, ei) => {
+                  const si = sessionIndexOf(id);
+                  if (si >= 0) editor.effacerLeDetailParSerie(si, ei);
+                }}
                 onUpdateField={(id, ei, field, value) => {
                   const si = sessionIndexOf(id);
                   if (si >= 0) editor.updateExercise(si, ei, field as keyof import('@/api/types').Exercise, value);

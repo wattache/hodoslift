@@ -33,6 +33,7 @@ interface Props {
   onUpdateSetRPE?: (id: string, exerciseIndex: number, setIndex: number, value: string | null) => void;
   onUpdateSetValue?: (id: string, exerciseIndex: number, setIndex: number,
                       champ: 'reps' | 'weight', value: string | null) => void;
+  onEffacerLesSeries?: (id: string, exerciseIndex: number) => void;
   onUpdateForm?: (id: string, value: number | null) => void;
   onUpdateField?: (id: string, exerciseIndex: number, field: string, value: string | string[] | boolean | number | null) => void;
   onSetExerciseKind?: (id: string, exerciseIndex: number, kind: ExerciseKind) => void;
@@ -66,7 +67,7 @@ interface Props {
   shareBlock?: string;
 }
 
-export function WeekView({ week, sessionInitiale, mode = "athlete", allowCoachMode = false, canEditSelectedAthlete = false, storageScopeKey, athleteName, shareContext, shareBlock, onFeltRPEChange, onFeltRPEGlobal, onUpdateSetRPE, onUpdateSetValue, onUpdateForm, onUpdateField, onSetExerciseKind, onSetSessionKind, onAddExercise, onRemoveExercise, onDuplicateExercise, onMoveExercise, onMoveExerciseToSession, onToggleGroup, onSetGroupKind, onMoveSession, onRenameSession, onDeleteSession, nameOptions, objectifsParMouvement, variantOptions, assistanceOptions, tempoOptions, blockWeeks }: Props) {
+export function WeekView({ week, sessionInitiale, mode = "athlete", allowCoachMode = false, canEditSelectedAthlete = false, storageScopeKey, athleteName, shareContext, shareBlock, onFeltRPEChange, onFeltRPEGlobal, onUpdateSetRPE, onUpdateSetValue, onEffacerLesSeries, onUpdateForm, onUpdateField, onSetExerciseKind, onSetSessionKind, onAddExercise, onRemoveExercise, onDuplicateExercise, onMoveExercise, onMoveExerciseToSession, onToggleGroup, onSetGroupKind, onMoveSession, onRenameSession, onDeleteSession, nameOptions, objectifsParMouvement, variantOptions, assistanceOptions, tempoOptions, blockWeeks }: Props) {
   const { t } = useTranslation();
   // Athlète : accordéon (une seule séance ouverte). Coach : tout déplié par
   // défaut pour une vue d'ensemble (comme le legacy), chaque séance restant
@@ -262,6 +263,7 @@ export function WeekView({ week, sessionInitiale, mode = "athlete", allowCoachMo
               onFeltRPEGlobal={(idx, v) => { noterSeanceEnCours(week.id, s.id ?? ""); onFeltRPEGlobal?.(s.id ?? "", idx, v); }}
               onUpdateSetRPE={onUpdateSetRPE ? (idx, set, v) => { noterSeanceEnCours(week.id, s.id ?? ""); onUpdateSetRPE(s.id ?? "", idx, set, v); } : undefined}
               onUpdateSetValue={onUpdateSetValue ? (idx, set, champ, v) => { noterSeanceEnCours(week.id, s.id ?? ""); onUpdateSetValue(s.id ?? "", idx, set, champ, v); } : undefined}
+              onEffacerLesSeries={onEffacerLesSeries ? (idx) => onEffacerLesSeries(s.id ?? "", idx) : undefined}
               onUpdateForm={onUpdateForm ? (v) => onUpdateForm(s.id ?? "", v) : undefined}
               onUpdateField={(idx, field, value) => onUpdateField?.(s.id ?? "", idx, field, value)}
               onSetExerciseKind={onSetExerciseKind ? (idx, kind) => onSetExerciseKind(s.id ?? "", idx, kind) : undefined}
@@ -413,6 +415,7 @@ function SessionCard({
   onFeltRPEGlobal,
   onUpdateSetRPE,
   onUpdateSetValue,
+  onEffacerLesSeries,
   onUpdateForm,
   onUpdateField,
   onSetExerciseKind,
@@ -446,6 +449,7 @@ function SessionCard({
   onFeltRPEGlobal: (idx: number, v: string) => void;
   onUpdateSetRPE?: (idx: number, setIndex: number, value: string | null) => void;
   onUpdateSetValue?: (idx: number, setIndex: number, champ: 'reps' | 'weight', value: string | null) => void;
+  onEffacerLesSeries?: (idx: number) => void;
   onUpdateForm?: (v: number | null) => void;
   onUpdateField?: (idx: number, field: string, value: string | string[] | boolean | number | null) => void;
   onSetExerciseKind?: (idx: number, kind: ExerciseKind) => void;
@@ -721,6 +725,7 @@ function SessionCard({
             onFeltRPEGlobal={onFeltRPEGlobal}
             onUpdateSetRPE={onUpdateSetRPE}
             onUpdateSetValue={onUpdateSetValue}
+            onEffacerLesSeries={onEffacerLesSeries}
             onUpdateField={onUpdateField}
             onSetExerciseKind={onSetExerciseKind}
             onSetSessionKind={onSetSessionKind}
