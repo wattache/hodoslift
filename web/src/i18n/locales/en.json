@@ -1641,9 +1641,77 @@
       "charge": "Load & RPE",
       "bloc": "Block table",
       "series": "Sets per week",
-      "poids": "Weight by week"
+      "poids": "Weight by week",
+      "progression": "Progress"
     },
-    "revenirAAujourdhui": "back to today"
+    "revenirAAujourdhui": "back to today",
+    "progression": {
+      "semaines_one": "{{count}} week · {{du}} → {{au}}",
+      "semaines_other": "{{count}} weeks · {{du}} → {{au}}",
+      "rmEstime": "Estimated 1RM",
+      "rmEstimeLest": "Estimated 1RM (added load)",
+      "meilleurEstime": "best estimate · {{date}}",
+      "pasDestimation": "no estimate",
+      "depuisLe": "since {{date}}",
+      "enLest": " (added load)",
+      "raison": {
+        "variantes": "no competition-form set",
+        "sans_rpe": "no RPE on these sets",
+        "reps": "sets too long to estimate",
+        "sans_pesee": "no weigh-in: the total depends on bodyweight",
+        "sans_charge": "no load entered"
+      },
+      "tonnageParSemaine": "Tonnage / week",
+      "lourdesParSemaine": "Heavy sets / week",
+      "rpeMoyen": "Average RPE",
+      "vsPremieres_one": "{{delta}} vs the first",
+      "vsPremieres_other": "{{delta}} vs the first {{count}}",
+      "stableVsPremieres_one": "steady vs the first",
+      "stableVsPremieres_other": "steady vs the first {{count}}",
+      "chezToi_one": "{{debut}} at the start, {{fin}} over the last measured week.",
+      "chezToi_other": "{{debut}} at the start, {{fin}} over the last {{count}} measured weeks.",
+      "commentLeLire": "How to read it",
+      "cartes": {
+        "e1": {
+          "titre": "Estimated strength",
+          "quoi": "Best estimated 1RM{{lest}} of the week, competition form, derived from each set and its RPE.",
+          "lire": "A set of 5 kg × 3 @8 means the same max as a single at 10 kg @9: the RTS chart brings both back to a 1RM. The line breaks wherever no set allows an estimate — tempo, variant, too many reps, no RPE."
+        },
+        "intensite": {
+          "titre": "Intensity",
+          "quoi": "Average load of competition-form sets, as a % of the best estimated 1RM.",
+          "lire": "At 80 % you build; at 90 % you express. A block that climbs in intensity at equal RPE is strength gained — at rising RPE, it is fatigue."
+        },
+        "lourdes": {
+          "titre": "Heavy sets",
+          "quoi": "Sets at RPE 8 or more in the week.",
+          "lire": "This is where load is earned. Zero heavy sets is not a gap: it is a light week, intended or not."
+        },
+        "tonnage": {
+          "titre": "Tonnage",
+          "quoi": "Sets × reps × load, on completed sets.",
+          "lire": "Volume in kilos. On a weighted movement it is the added load only: a bodyweight week weighs nothing here — look at volume."
+        },
+        "volume": {
+          "titre": "Volume",
+          "quoi": "Reps done in the week, all forms together.",
+          "lire": "Volume in reps, which counts the bodyweight work that tonnage ignores."
+        },
+        "rpe": {
+          "titre": "Perceived effort",
+          "quoi": "Average RPE of the week.",
+          "lire": "Volume doubling at constant effort is progress. RPE rising at equal work is fatigue — or a session placed at the end of a block."
+        }
+      },
+      "refaits": {
+        "titre": "Same load, same format — does RPE drop?",
+        "sousTitre": "the same work done again; only the perceived effort changes",
+        "legende": "Left of the line, RPE dropped — progress that the max load does not show. Right of it, RPE rose: fatigue, or a session placed at the end of a block.",
+        "competition": "competition",
+        "deplier_one": "{{count}} repeated work",
+        "deplier_other": "{{count}} repeated works"
+      }
+    }
   },
   "training": {
     "allerALaBase": "Go to the template",

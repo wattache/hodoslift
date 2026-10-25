@@ -15,6 +15,7 @@ import { SeriesDeLAthlete, TrackingChart } from '@/components/dashboard/tracking
 import { useLocalStorageState } from '@/lib/storage';
 import { BlocEnTableau } from '@/components/tracker/bloc-en-tableau';
 import { PoidsParSemaine } from '@/components/tracker/poids-par-semaine';
+import { ProgressionDuMouvement } from '@/components/tracker/progression-du-mouvement';
 import { toastSaveError } from '@/lib/save-error';
 
 /** Vue Tracker — le QUOTIDIEN d'un athlète, puis sa progression.
@@ -97,7 +98,7 @@ function MetricInput({ value, step, max, onCommit }: {
   );
 }
 
-const SOUS_ONGLETS = ['poids', 'charge', 'bloc', 'series'] as const;
+const SOUS_ONGLETS = ['poids', 'charge', 'progression', 'bloc', 'series'] as const;
 type SousOnglet = (typeof SOUS_ONGLETS)[number];
 
 export function TrackerView() {
@@ -275,6 +276,9 @@ export function TrackerView() {
           </div>
           {onglet === 'poids' && <PoidsParSemaine athleteId={athleteId} peutPoser={sel.isSelf || sel.canManage} />}
           {onglet === 'charge' && <TrackingChart athleteId={athleteId} />}
+          {/* LA PROGRESSION (25/10) — fondue ici plutôt qu'un second écran : six
+              cartes sur la même réponse que Charge & RPE. */}
+          {onglet === 'progression' && <ProgressionDuMouvement athleteId={athleteId} />}
           {onglet === 'bloc' && <BlocEnTableau />}
           {onglet === 'series' && <SeriesDeLAthlete athleteId={athleteId} />}
         </section>

@@ -1641,9 +1641,77 @@
       "charge": "Charge & RPE",
       "bloc": "Bloc en tableau",
       "series": "Séries par semaine",
-      "poids": "Poids par semaine"
+      "poids": "Poids par semaine",
+      "progression": "Progression"
     },
-    "revenirAAujourdhui": "revenir à aujourd'hui"
+    "revenirAAujourdhui": "revenir à aujourd'hui",
+    "progression": {
+      "semaines_one": "{{count}} semaine · {{du}} → {{au}}",
+      "semaines_other": "{{count}} semaines · {{du}} → {{au}}",
+      "rmEstime": "1RM estimé",
+      "rmEstimeLest": "1RM estimé (lest)",
+      "meilleurEstime": "meilleur estimé · {{date}}",
+      "pasDestimation": "pas d'estimation",
+      "depuisLe": "depuis le {{date}}",
+      "enLest": " (lest)",
+      "raison": {
+        "variantes": "pas de série de compétition",
+        "sans_rpe": "pas de RPE sur ces séries",
+        "reps": "séries trop longues pour estimer",
+        "sans_pesee": "pas de pesée : le total dépend du poids du corps",
+        "sans_charge": "pas de charge saisie"
+      },
+      "tonnageParSemaine": "Tonnage / semaine",
+      "lourdesParSemaine": "Séries lourdes / sem.",
+      "rpeMoyen": "RPE moyen",
+      "vsPremieres_one": "{{delta}} vs la première",
+      "vsPremieres_other": "{{delta}} vs les {{count}} premières",
+      "stableVsPremieres_one": "stable vs la première",
+      "stableVsPremieres_other": "stable vs les {{count}} premières",
+      "chezToi_one": "{{debut}} au début, {{fin}} sur la dernière semaine mesurée.",
+      "chezToi_other": "{{debut}} au début, {{fin}} sur les {{count}} dernières semaines mesurées.",
+      "commentLeLire": "Comment le lire",
+      "cartes": {
+        "e1": {
+          "titre": "Force estimée",
+          "quoi": "Meilleur 1RM estimé{{lest}} de la semaine, forme de compétition, déduit de chaque série et de son RPE.",
+          "lire": "Une série à 5 kg × 3 @8 vaut le même maximum qu'un single à 10 kg @9 : la table RTS les ramène au 1RM. La courbe se coupe là où aucune série ne permet d'estimer — tempo, variante, reps trop longues, pas de RPE."
+        },
+        "intensite": {
+          "titre": "Intensité",
+          "quoi": "Charge moyenne des séries de compétition, en % du meilleur 1RM estimé.",
+          "lire": "À 80 %, on construit ; à 90 %, on exprime. Un bloc qui monte en intensité à RPE égal, c'est de la force gagnée — à RPE qui monte, c'est de la fatigue."
+        },
+        "lourdes": {
+          "titre": "Séries lourdes",
+          "quoi": "Séries à RPE 8 ou plus dans la semaine.",
+          "lire": "C'est là que la charge se gagne. Zéro série lourde n'est pas un trou : c'est une semaine légère, voulue ou non."
+        },
+        "tonnage": {
+          "titre": "Tonnage",
+          "quoi": "Séries × reps × charge, sur les séries tenues.",
+          "lire": "Le volume en kilos. Sur un mouvement lesté, c'est le lest seul : une semaine au poids du corps ne pèse rien ici — regarde le volume."
+        },
+        "volume": {
+          "titre": "Volume",
+          "quoi": "Répétitions faites dans la semaine, toutes formes confondues.",
+          "lire": "Le volume en répétitions, qui compte le travail au poids du corps que le tonnage ignore."
+        },
+        "rpe": {
+          "titre": "Effort ressenti",
+          "quoi": "RPE moyen de la semaine.",
+          "lire": "Un volume qui double à effort constant, c'est du progrès. Un RPE qui monte à travail égal, c'est de la fatigue — ou une séance placée en fin de bloc."
+        }
+      },
+      "refaits": {
+        "titre": "Même charge, même format — le RPE baisse-t-il ?",
+        "sousTitre": "un travail refait à l'identique ; seul l'effort ressenti change",
+        "legende": "À gauche du trait, le RPE a baissé — du progrès que la charge max ne montre pas. À droite, il a monté : fatigue, ou séance placée en fin de bloc.",
+        "competition": "compétition",
+        "deplier_one": "{{count}} travail refait",
+        "deplier_other": "{{count}} travaux refaits"
+      }
+    }
   },
   "training": {
     "allerALaBase": "Aller à la BASE",

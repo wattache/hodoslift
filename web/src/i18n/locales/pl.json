@@ -1762,9 +1762,87 @@
       "charge": "Obciążenie i RPE",
       "bloc": "Tabela bloku",
       "series": "Serie w tygodniu",
-      "poids": "Waga tygodniowo"
+      "poids": "Waga tygodniowo",
+      "progression": "Postępy"
     },
-    "revenirAAujourdhui": "wróć do dziś"
+    "revenirAAujourdhui": "wróć do dziś",
+    "progression": {
+      "semaines_one": "{{count}} tydzień · {{du}} → {{au}}",
+      "semaines_few": "{{count}} tygodnie · {{du}} → {{au}}",
+      "semaines_many": "{{count}} tygodni · {{du}} → {{au}}",
+      "semaines_other": "{{count}} tygodnia · {{du}} → {{au}}",
+      "rmEstime": "Szacowany 1RM",
+      "rmEstimeLest": "Szacowany 1RM (obciążenie dodatkowe)",
+      "meilleurEstime": "najlepszy szacunek · {{date}}",
+      "pasDestimation": "brak szacunku",
+      "depuisLe": "od {{date}}",
+      "enLest": " (obciążenie dodatkowe)",
+      "raison": {
+        "variantes": "brak serii w formie zawodniczej",
+        "sans_rpe": "brak RPE w tych seriach",
+        "reps": "serie zbyt długie, by szacować",
+        "sans_pesee": "brak ważenia: suma zależy od masy ciała",
+        "sans_charge": "nie wpisano obciążenia"
+      },
+      "tonnageParSemaine": "Tonaż / tydzień",
+      "lourdesParSemaine": "Ciężkie serie / tydz.",
+      "rpeMoyen": "Średnie RPE",
+      "vsPremieres_one": "{{delta}} wobec pierwszego",
+      "vsPremieres_few": "{{delta}} wobec pierwszych {{count}}",
+      "vsPremieres_many": "{{delta}} wobec pierwszych {{count}}",
+      "vsPremieres_other": "{{delta}} wobec pierwszych {{count}}",
+      "stableVsPremieres_one": "bez zmian wobec pierwszego",
+      "stableVsPremieres_few": "bez zmian wobec pierwszych {{count}}",
+      "stableVsPremieres_many": "bez zmian wobec pierwszych {{count}}",
+      "stableVsPremieres_other": "bez zmian wobec pierwszych {{count}}",
+      "chezToi_one": "{{debut}} na początku, {{fin}} w ostatnim zmierzonym tygodniu.",
+      "chezToi_few": "{{debut}} na początku, {{fin}} w ostatnich {{count}} zmierzonych tygodniach.",
+      "chezToi_many": "{{debut}} na początku, {{fin}} w ostatnich {{count}} zmierzonych tygodniach.",
+      "chezToi_other": "{{debut}} na początku, {{fin}} w ostatnich {{count}} zmierzonych tygodniach.",
+      "commentLeLire": "Jak to czytać",
+      "cartes": {
+        "e1": {
+          "titre": "Szacowana siła",
+          "quoi": "Najlepszy szacowany 1RM{{lest}} tygodnia, forma zawodnicza, wyliczony z każdej serii i jej RPE.",
+          "lire": "Seria 5 kg × 3 @8 oznacza ten sam maks co pojedyncze 10 kg @9: tabela RTS sprowadza obie do 1RM. Linia urywa się tam, gdzie żadna seria nie pozwala szacować — tempo, wariant, za dużo powtórzeń, brak RPE."
+        },
+        "intensite": {
+          "titre": "Intensywność",
+          "quoi": "Średnie obciążenie serii zawodniczych, w % najlepszego szacowanego 1RM.",
+          "lire": "Przy 80 % budujesz; przy 90 % wyrażasz. Blok, w którym intensywność rośnie przy tym samym RPE, to zyskana siła — przy rosnącym RPE to zmęczenie."
+        },
+        "lourdes": {
+          "titre": "Ciężkie serie",
+          "quoi": "Serie na RPE 8 lub więcej w tygodniu.",
+          "lire": "Tu zdobywa się obciążenie. Zero ciężkich serii to nie luka: to lekki tydzień, zamierzony lub nie."
+        },
+        "tonnage": {
+          "titre": "Tonaż",
+          "quoi": "Serie × powtórzenia × obciążenie, w ukończonych seriach.",
+          "lire": "Objętość w kilogramach. Przy ruchu z obciążeniem to tylko obciążenie dodatkowe: tydzień na masie ciała nic tu nie waży — spójrz na objętość."
+        },
+        "volume": {
+          "titre": "Objętość",
+          "quoi": "Powtórzenia wykonane w tygodniu, wszystkie formy razem.",
+          "lire": "Objętość w powtórzeniach, która liczy pracę na masie ciała pomijaną przez tonaż."
+        },
+        "rpe": {
+          "titre": "Odczuwany wysiłek",
+          "quoi": "Średnie RPE tygodnia.",
+          "lire": "Podwojona objętość przy stałym wysiłku to postęp. RPE rosnące przy tej samej pracy to zmęczenie — albo trening na końcu bloku."
+        }
+      },
+      "refaits": {
+        "titre": "To samo obciążenie, ten sam format — czy RPE spada?",
+        "sousTitre": "ta sama praca wykonana ponownie; zmienia się tylko odczuwany wysiłek",
+        "legende": "Na lewo od kreski RPE spadło — postęp, którego maksymalne obciążenie nie pokazuje. Na prawo wzrosło: zmęczenie albo trening na końcu bloku.",
+        "competition": "zawodnicza",
+        "deplier_one": "{{count}} powtórzona praca",
+        "deplier_few": "{{count}} powtórzone prace",
+        "deplier_many": "{{count}} powtórzonych prac",
+        "deplier_other": "{{count}} powtórzonej pracy"
+      }
+    }
   },
   "training": {
     "allerALaBase": "Przejdź do szablonu",

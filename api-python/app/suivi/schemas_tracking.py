@@ -205,6 +205,9 @@ class SuiviLu(BaseModel):
     # Les travaux refaits du mouvement choisi, du plus grand progrès au plus
     # grand recul (25/10). Dépend de `exercise`, comme `weeks`.
     refaits: list[TravailRefait]
+    # Le mouvement se charge en LEST (muscle up, dips…) : `e1Kg` et `oneRmKg`
+    # s'écrivent alors « lest », pas « charge ». Décidé ici, une fois.
+    auPoidsDuCorps: bool
 
 
 class PointDeForme(BaseModel):

@@ -137,7 +137,7 @@ def test_aucune_donnee_reponse_vide(auth_as, sql):
     body = auth_as(uid="coach-1").get("/athletes/a1/tracking", headers=_AUTH).json()
     assert body == {"exercise": None, "exercises": [], "weeks": [], "courbes": [], "athleteWeeks": [],
                     "rpeBlocks": [], "lastSessionDate": None, "oneRmKg": None,
-                    "setsByMovement": [], "refaits": []}
+                    "setsByMovement": [], "refaits": [], "auPoidsDuCorps": False}
 
 
 def _seance(conn, exercise, semaine, **c):
@@ -216,7 +216,7 @@ def test_UNE_REPONSE_PEUPLEE_porte_TOUS_ses_champs(auth_as, sql):
 
     assert set(body) == {"exercise", "exercises", "lastSessionDate", "oneRmKg",
                          "rpeBlocks", "athleteWeeks", "weeks", "courbes", "setsByMovement",
-                         "refaits"}
+                         "refaits", "auPoidsDuCorps"}
     assert set(body["courbes"][0]) == {"variant", "tempo", "format", "series", "weeks"}
     assert set(body["courbes"][0]["weeks"][0]) == {
         "week", "chargeMaxKg", "topSetFormat", "tonnageTotalKg", "sessions", "fails"}

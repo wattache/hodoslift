@@ -18,7 +18,7 @@ from app.socle.authz import AthleteAccess, require_athlete_access
 from app.socle.db import get_session
 from app.entrainement.records import lire_records
 from app.suivi.schemas_tracking import PalmaresLu, PointDeForme, RecordLu, SuiviLu
-from app.suivi import metier_palmares, metier_tracking as metier, progression
+from app.suivi import metier_palmares, metier_tracking as metier, progression, rm_estime
 
 router = APIRouter(prefix="/athletes/{athlete_id}/tracking", tags=["tracking"])
 
@@ -49,7 +49,7 @@ def get_tracking(
         if selected is None:
             return {"exercise": None, "exercises": [], "weeks": [], "courbes": [], "athleteWeeks": [],
                     "rpeBlocks": [], "lastSessionDate": None, "oneRmKg": None,
-                    "setsByMovement": [], "refaits": []}
+                    "setsByMovement": [], "refaits": [], "auPoidsDuCorps": False}
 
         rows = metier.weeks(session, legacy=legacy, exercise=selected)
         # La progression (25/10) : ligne à ligne, parce qu'un 1RM s'estime par
@@ -119,6 +119,7 @@ def get_tracking(
         # RPE se lisent toujours sur lui.
         "courbes": courbes,
         "refaits": refaits,
+        "auPoidsDuCorps": rm_estime.au_poids_du_corps(selected),
         "weeks": [
             {
                 "week": r.semaine.isoformat(),

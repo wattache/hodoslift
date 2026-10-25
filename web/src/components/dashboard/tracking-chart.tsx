@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { aireEntreCourbes, cheminAdouci } from "@/lib/courbe";
+import { bandesDeBloc, libelleDeBande } from "@/lib/bandes-de-bloc";
+import { COULEURS_DE_SUIVI } from "@/lib/progression-tracker";
 import { cn } from "@/lib/utils";
 import { useTracking } from "@/api/hooks/use-tracking";
 import type { TrackingResponse, TrackingWeek } from "@/api/types";
@@ -25,10 +27,10 @@ import i18n from "@/i18n";
  * mention de fraîcheur sous le graphe.
  * ============================================================ */
 
-const C_MAX = "#F5B841";      // gold — charge max (ligne)
-const C_AT_MAX = "#3B82F6";   // bleu — tonnage au top set (barre)
-const C_TOTAL = "#64748B";    // ardoise — volume total (barre)
-const C_RPE = "#A855F7";      // violet — RPE ressenti (bandeau)
+const C_MAX = COULEURS_DE_SUIVI.intensite;  // gold — charge max (ligne)
+const C_AT_MAX = COULEURS_DE_SUIVI.lourd;   // bleu — tonnage au top set (barre)
+const C_TOTAL = COULEURS_DE_SUIVI.volume;   // ardoise — volume total (barre)
+const C_RPE = COULEURS_DE_SUIVI.rpe;        // violet — RPE ressenti (bandeau)
 const C_FAIL = "#EF4444";     // rouge — série échouée (« FAIL »)
 
 /** UNE COURBE PAR COMBINAISON (FRE-182) — la palette catégorielle VALIDÉE
@@ -79,21 +81,6 @@ function fmtWeek(iso: string): string {
 function fmtKg(v: number | null): string {
   if (v == null) return "—";
   return v >= 1000 ? `${(v / 1000).toFixed(1)} t` : `${Math.round(v)} kg`;
-}
-
-/** Tranches contiguës de semaines partageant le même (macro, bloc). Générique :
- *  sert au graphe par mouvement ET au bandeau RPE (timelines différentes). */
-function phaseBands(weeks: { macroNumber: number | null; blockNumber: number | null }[]) {
-  const bands: { from: number; to: number; macro: number | null; block: number | null }[] = [];
-  weeks.forEach((w, i) => {
-    const last = bands[bands.length - 1];
-    if (last && last.macro === w.macroNumber && last.block === w.blockNumber) {
-      last.to = i;
-    } else {
-      bands.push({ from: i, to: i, macro: w.macroNumber, block: w.blockNumber });
-    }
-  });
-  return bands;
 }
 
 /** Infobulle : toutes les valeurs de la semaine survolée. En HTML (pas en SVG)
@@ -241,7 +228,8 @@ function Chart({ weeks, volumeMode, hover, onHover, oneRmKg, courbes }: {
   // Un libellé sur k pour que les dates ne se chevauchent jamais (~46 px chacune).
   const labelEvery = Math.max(1, Math.ceil(46 / (innerW / Math.max(n, 1))));
   const hoverIdx = hover == null ? -1 : weeks.findIndex((w) => w.week === hover);
-  const bands = phaseBands(weeks);
+  // Les MÊMES bandes que les cartes de progression (`lib/bandes-de-bloc`).
+  const bands = bandesDeBloc(weeks);
   const linePts = cheminAdouci(
     weeks.flatMap((w, i) =>
       w.chargeMaxKg == null ? [] : [{ x: xCenter(i), y: yCharge(w.chargeMaxKg) }]),
@@ -269,7 +257,7 @@ function Chart({ weeks, volumeMode, hover, onHover, oneRmKg, courbes }: {
         {bands.map((b, i) => {
           const x = PAD_L + slot * b.from;
           const w = slot * (b.to - b.from + 1);
-          const label = b.macro != null ? `M${b.macro}${b.block != null ? `B${b.block}` : ""}` : "";
+          const label = libelleDeBande(b);
           return (
             <g key={`${b.from}-${b.macro}-${b.block}`}>
               <rect
@@ -496,7 +484,7 @@ function RpeStrip({ weeks, hover, onHover }: {
     paired.map((d) => ({ x: xCenter(d.i), y: y(d.felt) })),
     paired.map((d) => ({ x: xCenter(d.i), y: y(d.aimed) })),
   );
-  const rpeBands = phaseBands(weeks);
+  const rpeBands = bandesDeBloc(weeks);
   const avgGap = paired.length
     ? paired.reduce((acc, d) => acc + (d.felt - d.aimed), 0) / paired.length
     : null;

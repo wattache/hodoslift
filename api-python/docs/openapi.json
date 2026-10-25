@@ -21134,6 +21134,10 @@
             },
             "type": "array",
             "title": "Refaits"
+          },
+          "auPoidsDuCorps": {
+            "type": "boolean",
+            "title": "Aupoidsducorps"
           }
         },
         "additionalProperties": false,
@@ -21148,7 +21152,8 @@
           "weeks",
           "courbes",
           "setsByMovement",
-          "refaits"
+          "refaits",
+          "auPoidsDuCorps"
         ],
         "title": "SuiviLu",
         "description": "La réponse entière du suivi.\n\nLes séries ne se déduisent pas l'une de l'autre : `weeks` porte le mouvement\nchoisi ENTIER, `courbes` le même mouvement découpé par combinaison (FRE-182),\n`athleteWeeks` le RPE global, `rpeBlocks` le calibrage par bloc, et\n`setsByMovement` les séries de TOUS les lifts de compétition.\n\n⚠️ Seules `weeks` et `courbes` dépendent de `exercise`. `setsByMovement` pose\nla question inverse de `weeks` : comparer tous les lifts sur une seule\nmétrique, plutôt que creuser un mouvement sur toutes."

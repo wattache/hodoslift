@@ -6078,6 +6078,8 @@ export interface components {
             setsByMovement: components["schemas"]["SeriesDeMouvement"][];
             /** Refaits */
             refaits: components["schemas"]["TravailRefait"][];
+            /** Aupoidsducorps */
+            auPoidsDuCorps: boolean;
         };
         /** TestCree */
         TestCree: {

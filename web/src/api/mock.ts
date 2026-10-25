@@ -880,14 +880,23 @@ export const mockTracking: TrackingResponse = {
     failsAtMax: i === 10 ? 1 : 0,
     macroNumber: 1,
     blockNumber: i < 8 ? 1 : 2,
-    // Les mesures de progression (25/10) : neutres ici, le mock ne les dessine pas.
-    lourdes: 0,
-    e1Kg: null,
-    intensite: null,
-    e1Raison: null,
+    // LA PROGRESSION (25/10) : un trou INTÉRIEUR (semaine 5, pas de RPE) et
+    // une FIN sans estimation (quatre semaines sans forme de compétition) —
+    // la courbe se coupe, la fenêtre tiretée et la pastille le disent.
+    lourdes: i % 3,
+    e1Kg: i === 5 || i >= 12 ? null : 14 + i * 0.4,
+    intensite: i === 5 || i >= 12 ? null : 78 + (i % 4) * 3,
+    e1Raison: i === 5 ? 'sans_rpe' : i >= 12 ? 'variantes' : null,
   })),
-  // Les travaux refaits (25/10) : vides ici, le mock ne les montre pas.
-  refaits: [],
+  refaits: [
+    { competition: true, variant: [], tempo: null, format: null, sets: 3, reps: 3, lestKg: 5,
+      points: [{ date: iso(-98), rpe: 10 }, { date: iso(-21), rpe: 7.5 }], delta: -2.5 },
+    { competition: false, variant: [], tempo: 'DS', format: null, sets: 4, reps: 3, lestKg: 5,
+      points: [{ date: iso(-35), rpe: 8.5 }, { date: iso(-14), rpe: 7 }], delta: -1.5 },
+    { competition: false, variant: ['NO DIPS'], tempo: null, format: 'EMOM', sets: 6, reps: 2, lestKg: 2.5,
+      points: [{ date: iso(-70), rpe: 7 }, { date: iso(-42), rpe: 7.5 }], delta: 0.5 },
+  ],
+  auPoidsDuCorps: true,
   // UNE COURBE PAR COMBINAISON (FRE-182) — quatre, pour que la légende en montre
   // une ÉTEINTE par défaut (seules les trois plus travaillées s'allument), et
   // qu'une combinaison « sans variante » soit une courbe comme une autre.
