@@ -16,8 +16,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-from app.socle.auth import verify_token
-from app.main import app
+from tests.conftest import client_de
 
 _A1 = "11111111-1111-1111-1111-111111111111"
 _A2 = "22222222-2222-2222-2222-222222222222"
@@ -40,8 +39,7 @@ def monde(pg):
 
 
 def _client(uid: str) -> TestClient:
-    app.dependency_overrides[verify_token] = lambda: {"uid": uid}
-    return TestClient(app)
+    return client_de(uid)
 
 
 def _declarer(uid="ath-1", legacy="leg-1", **corps):

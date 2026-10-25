@@ -11,6 +11,7 @@ smoke Neon).
 
 import pytest
 from sqlalchemy import text
+from tests.conftest import AUTH
 
 
 # Un VRAI uuid : `athletes.id` est de type uuid en production, pas du texte —
@@ -70,7 +71,7 @@ def _seed_event(conn, legacy="e1", **overrides):
     )
 
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 
 
 # --------------------------------------------------------------------------- #

@@ -18,8 +18,9 @@ réelles (`eitri/e2e-reel/disponibilites.spec.ts`).
 
 import pytest
 from sqlalchemy import text
+from tests.conftest import AUTH
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 
 
 # `competitions.id` est un uuid en production, pas un entier de séquence.

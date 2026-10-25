@@ -25,8 +25,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import text
 
 from app.main import app
+from tests.conftest import AUTH
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 _PNG = b"\x89PNG\r\n\x1a\n" + b"le-reste-du-fichier"
 
 

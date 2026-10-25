@@ -21,8 +21,9 @@ import json
 
 import pytest
 from sqlalchemy import text
+from tests.conftest import AUTH
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 
 # Les tests désignent les athlètes par des noms lisibles ; `athletes.id` est un
 # vrai uuid en Postgres (le stub acceptait la chaîne 'uuid-a1'). On traduit ici

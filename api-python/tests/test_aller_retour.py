@@ -31,8 +31,9 @@ from app.socle.perimetre import CHAMPS_REALISE
 from app.main import app
 from tests.chargeur_arbre import Arbre, load
 from tests.fixtures_training import arbre_de_test
+from tests.conftest import AUTH
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 
 
 @pytest.fixture

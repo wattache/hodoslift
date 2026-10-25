@@ -23,8 +23,9 @@ from sqlalchemy import text
 from app.socle.auth import verify_token
 from app.main import app
 from app.entrainement.records import lire_records
+from tests.conftest import AUTH
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 
 
 @pytest.fixture

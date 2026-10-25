@@ -15,8 +15,9 @@ décisions qui ne se devinent pas :
 
 import pytest
 from sqlalchemy import text
+from tests.conftest import AUTH
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 _A1 = "aaaaaaaa-1111-1111-1111-111111111111"
 _A2 = "aaaaaaaa-2222-2222-2222-222222222222"
 

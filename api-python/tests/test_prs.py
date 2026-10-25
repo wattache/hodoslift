@@ -11,6 +11,7 @@ Neon, dont le schéma est appliqué DEPUIS ce fichier.
 
 import pytest
 from sqlalchemy import text
+from tests.conftest import AUTH
 
 
 # Bibliothèque : deux lifts de compétition + un renforcement (competition=false).
@@ -64,7 +65,7 @@ def sql(pg):
     return pg
 
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 
 
 def _seed_pr(conn, athlete=A1, movement="SQUAT", reps=1, weight=100.0,

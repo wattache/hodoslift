@@ -19,6 +19,7 @@ une habitude.
 
 import pytest
 from sqlalchemy import text
+from tests.conftest import AUTH
 
 _A1 = "aaaaaaaa-1111-1111-1111-111111111111"
 _A2 = "aaaaaaaa-2222-2222-2222-222222222222"
@@ -42,7 +43,7 @@ def sql(pg):
     return pg
 
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 
 
 def _seed_exercise(conn, exercise: str, n: int = 1):

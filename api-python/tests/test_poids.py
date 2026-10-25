@@ -15,9 +15,9 @@ from datetime import date, timedelta
 from sqlalchemy import text
 
 from app.suivi.metier_poids import semaines, theorique_le
-from tests.conftest import A1 as _A1
+from tests.conftest import A1 as _A1, AUTH
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 AUJOURDHUI = date.today()
 
 

@@ -18,12 +18,11 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-from app.socle.auth import verify_token
 from app.socle.erreurs import CODES, Erreur
 from app.main import app
-from tests.conftest import semer_un_membre
+from tests.conftest import AUTH, client_de, semer_un_membre
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 _FORME = {"code", "detail", "status"}
 
 
@@ -38,11 +37,7 @@ class _Explosif:
 
 
 def _client(uid: str | None = None) -> TestClient:
-    if uid:
-        app.dependency_overrides[verify_token] = lambda: {"uid": uid}
-    else:
-        app.dependency_overrides.pop(verify_token, None)
-    return TestClient(app)
+    return client_de(uid)
 
 
 def test_une_route_inconnue_rend_la_forme_unique():

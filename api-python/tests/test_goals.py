@@ -11,6 +11,7 @@ Neon, dont le schéma est appliqué DEPUIS ce fichier.
 
 import pytest
 from sqlalchemy import text
+from tests.conftest import AUTH
 
 
 # Un VRAI uuid : `athletes.id` est de type uuid en production, pas du texte —
@@ -30,7 +31,7 @@ def sql(pg):
     return pg
 
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 
 
 def _seed_goal(conn, legacy, exercise="Squat", created="2026-01-10", achieved=None, **cols):

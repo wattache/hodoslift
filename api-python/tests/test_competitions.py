@@ -14,7 +14,7 @@ inaperçu jusqu'à ce qu'un coach édite.
 import pytest
 from sqlalchemy import text
 
-from tests.conftest import semer_un_membre
+from tests.conftest import AUTH, semer_un_membre
 
 
 _COMP_LIFTS = ["SQUAT", "MUSCLE UP", "PULL UP", "DIPS"]  # competition=true
@@ -56,7 +56,7 @@ def sql(pg):
     return pg
 
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 
 
 def _count(conn, table):

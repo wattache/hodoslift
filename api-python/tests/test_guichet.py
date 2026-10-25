@@ -26,14 +26,12 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import event, text
 
-from app.socle.auth import verify_token
-from app.main import app
 from app.entrainement.relecture import MISE_EN_SERVICE
 from tests.chargeur_arbre import Arbre, load
-from tests.conftest import semer_un_membre
+from tests.conftest import AUTH, client_de, semer_un_membre
 from tests.fixtures_training import arbre_de_test
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 A1 = "11111111-1111-1111-1111-111111111111"
 LEGACY = "ath-legacy-1"
 
@@ -65,8 +63,7 @@ def monde(pg):
 
 
 def _client(uid: str) -> TestClient:
-    app.dependency_overrides[verify_token] = lambda: {"uid": uid}
-    return TestClient(app)
+    return client_de(uid)
 
 
 def _guichet(uid: str) -> dict:

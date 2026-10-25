@@ -12,10 +12,11 @@ l'ETL et dans `lib/forme-du-jour.ts`, donc dans deux langages.
 
 import pytest
 from sqlalchemy import text
+from tests.conftest import AUTH
 
 pytestmark = pytest.mark.usefixtures("pg")
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 
 
 @pytest.fixture

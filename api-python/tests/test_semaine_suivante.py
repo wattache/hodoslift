@@ -20,11 +20,10 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-from app.socle.auth import verify_token
-from app.main import app
 from app.entrainement.semaine_suivante import granularite, resoudre_increment, semaine_suivante
+from tests.conftest import client_de, AUTH
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 
 
 def ligne(**over):
@@ -341,8 +340,7 @@ def monde(pg):
 
 
 def _client(uid: str = "coach-1") -> TestClient:
-    app.dependency_overrides[verify_token] = lambda: {"uid": uid}
-    return TestClient(app)
+    return client_de(uid)
 
 
 def test_la_semaine_ecrite_n_a_pas_de_nom_et_prend_le_numero_libre(monde):

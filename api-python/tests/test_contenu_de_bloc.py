@@ -17,10 +17,11 @@ oublier, parce qu'elle protège d'un défaut qui n'a aucun symptôme immédiat.
 
 import pytest
 from sqlalchemy import text
+from tests.conftest import AUTH
 
 pytestmark = pytest.mark.usefixtures("pg")
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 
 
 @pytest.fixture

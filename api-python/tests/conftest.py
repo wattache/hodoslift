@@ -59,6 +59,26 @@ from app.socle.auth import verify_token  # noqa: E402
 from app.main import app  # noqa: E402
 
 
+#: L'en-tête d'un appel authentifié : `verify_token` est surchargé, le jeton ne
+#: compte pas — seul l'en-tête doit exister.
+AUTH = {"Authorization": "Bearer x"}
+
+
+def client_de(uid: str | None, **claims) -> TestClient:
+    """Un client authentifié comme `uid` ; `None` = sans faux jeton.
+
+    ⚠️ SANS EMAIL, sauf s'il est passé dans `claims` : le serveur lit l'email
+    pour lier un compte à une fiche, et `auth_as` en ajoute un d'office. Les
+    fichiers qui posaient leur propre `_client` ne le faisaient pas — le leur
+    imposer changerait ce qu'ils éprouvent. La surcharge est retirée après chaque
+    test (`_overrides_propres`)."""
+    if uid is None:
+        app.dependency_overrides.pop(verify_token, None)
+    else:
+        app.dependency_overrides[verify_token] = lambda: {"uid": uid, **claims}
+    return TestClient(app)
+
+
 @pytest.fixture
 def auth_as():
     def _factory(uid: str = "uid-1", email: str = "a@b.c", **extra_claims) -> TestClient:

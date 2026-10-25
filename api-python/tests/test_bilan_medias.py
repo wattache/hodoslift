@@ -20,10 +20,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import text
 
 from app.kine import mediatheque
-from app.socle.auth import verify_token
-from app.main import app
+from tests.conftest import client_de, AUTH
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 _PNG = b"\x89PNG\r\n\x1a\n" + b"0" * 64
 _JPEG = b"\xff\xd8\xff" + b"0" * 64
 
@@ -50,8 +49,7 @@ def stockage(monkeypatch):
 
 
 def _client(uid: str) -> TestClient:
-    app.dependency_overrides[verify_token] = lambda: {"uid": uid}
-    return TestClient(app)
+    return client_de(uid)
 
 
 def _envoyer(client, contenu: bytes, nom: str = "photo.png"):

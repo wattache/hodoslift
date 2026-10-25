@@ -1,9 +1,9 @@
 """Le palmarès : les meilleurs singles, les compétitions, et le 1RM de la table."""
 from sqlalchemy import text
 
-from tests.conftest import A1
+from tests.conftest import A1, AUTH
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 
 
 def _essais(*essais):

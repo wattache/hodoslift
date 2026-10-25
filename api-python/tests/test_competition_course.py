@@ -21,8 +21,9 @@ import app.socle.db as db_mod
 from app.competitions import metier_competitions as metier
 from app.main import app
 from app.socle.auth import verify_token
+from tests.conftest import AUTH
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 _LIFTS = ["MUSCLE UP", "PULL UP", "DIPS", "SQUAT"]
 _COACH = "course-coach"
 _COMP = "course-c1"

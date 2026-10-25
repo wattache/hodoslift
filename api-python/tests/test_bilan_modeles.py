@@ -15,8 +15,9 @@
 
 import pytest
 from sqlalchemy import text
+from tests.conftest import AUTH
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 
 
 @pytest.fixture

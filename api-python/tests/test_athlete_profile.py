@@ -16,7 +16,7 @@ import json
 import pytest
 from sqlalchemy import text
 
-from tests.conftest import semer_un_membre
+from tests.conftest import AUTH, semer_un_membre
 
 
 @pytest.fixture
@@ -29,7 +29,7 @@ def sql(pg):
     return pg
 
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 
 
 def _seed_authz():

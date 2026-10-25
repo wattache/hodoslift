@@ -14,20 +14,18 @@ from fastapi.testclient import TestClient
 from pywebpush import WebPushException
 from sqlalchemy import text
 
-from app.main import app
 from app.notifications import metier_push
-from app.socle.auth import verify_token
 from app.socle.config import settings
 from tests.test_generation_semaine import _base, _generer, _poser_la_base, _principe
+from tests.conftest import client_de, AUTH
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 _ENDPOINT = "https://push.example.test/abonnement/1"
 _ABONNEMENT = {"endpoint": _ENDPOINT, "keys": {"p256dh": "clef-p256dh", "auth": "clef-auth"}}
 
 
 def _client(uid: str) -> TestClient:
-    app.dependency_overrides[verify_token] = lambda: {"uid": uid, "email": f"{uid}@x.fr"}
-    return TestClient(app)
+    return client_de(uid, email=f"{uid}@x.fr")
 
 
 def _abonnements(pg, uid: str) -> list[str]:

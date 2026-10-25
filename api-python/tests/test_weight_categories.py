@@ -16,7 +16,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from tests.conftest import semer_un_membre
+from tests.conftest import AUTH, semer_un_membre
 
 
 @pytest.fixture
@@ -30,7 +30,7 @@ def sql(pg):
     return pg
 
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 
 
 def test_contenu_et_ordre_logique(auth_as, sql):

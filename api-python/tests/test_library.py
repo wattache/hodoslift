@@ -15,7 +15,7 @@ appliqué depuis le fichier de référence.
 import pytest
 from sqlalchemy import text
 
-from tests.conftest import semer_un_membre
+from tests.conftest import AUTH, semer_un_membre
 
 
 @pytest.fixture
@@ -23,7 +23,7 @@ def sql(pg):
     return pg
 
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 
 
 def _coach(conn, uid="coach-1"):

@@ -18,8 +18,9 @@ import pytest
 from sqlalchemy import text
 
 from app.socle.authz import PERSONNE, compte
+from tests.conftest import AUTH
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 # uuid fixe : `athletes.id` est un vrai uuid, plus un INTEGER de stub.
 _A1 = "aaaaaaaa-1111-1111-1111-111111111111"
 

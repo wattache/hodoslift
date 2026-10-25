@@ -14,10 +14,9 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-from app.socle.auth import verify_token
-from app.main import app
+from tests.conftest import client_de, AUTH
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 _ATHLETE = "11111111-1111-1111-1111-111111111111"
 
 
@@ -41,8 +40,7 @@ def monde(pg):
 
 
 def _client(uid: str) -> TestClient:
-    app.dependency_overrides[verify_token] = lambda: {"uid": uid}
-    return TestClient(app)
+    return client_de(uid)
 
 
 def _url(suffixe: str = "") -> str:

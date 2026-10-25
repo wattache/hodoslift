@@ -14,8 +14,9 @@ Le monde est celui de la production, réduit à ses cas :
 
 import pytest
 from sqlalchemy import text
+from tests.conftest import AUTH
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 
 # ⚠️ `auth_as` REMPLACE LE JETON POUR TOUTE L'APP, pas pour le client rendu : un
 # client gardé dans une variable agit sous le DERNIER compte créé. D'où un client

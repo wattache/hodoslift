@@ -16,10 +16,9 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-from app.socle.auth import verify_token
-from app.main import app
 from tests.chargeur_arbre import Arbre, load
 from tests.fixtures_training import arbre_de_test
+from tests.conftest import client_de
 
 
 @pytest.fixture
@@ -47,8 +46,7 @@ def monde(pg):
 
 
 def _client(uid: str) -> TestClient:
-    app.dependency_overrides[verify_token] = lambda: {"uid": uid}
-    return TestClient(app)
+    return client_de(uid)
 
 
 def _un_exercice(conn, program_id: str, nom: str = "SQUAT") -> str:

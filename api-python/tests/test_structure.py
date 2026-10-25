@@ -16,10 +16,11 @@ ce qui NE DOIT PAS y être (les séances, les lignes, la BASE).
 
 import pytest
 from sqlalchemy import text
+from tests.conftest import AUTH
 
 pytestmark = pytest.mark.usefixtures("pg")
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 
 
 @pytest.fixture

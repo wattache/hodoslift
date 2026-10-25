@@ -17,7 +17,7 @@ maintenant de `docs/postgres-schema.sql`, donc sa dérive rougit ici.
 
 from sqlalchemy import text
 
-from tests.conftest import A1 as _A1
+from tests.conftest import A1 as _A1, AUTH
 
 
 def _row(conn, date="2026-01-15"):
@@ -28,7 +28,7 @@ def _row(conn, date="2026-01-15"):
     ).first()
 
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 
 
 # --------------------------------------------------------------------------- #

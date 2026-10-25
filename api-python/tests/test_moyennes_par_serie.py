@@ -17,9 +17,9 @@ import pathlib
 import pytest
 from sqlalchemy import text
 
-from tests.conftest import semer_un_membre
+from tests.conftest import AUTH, semer_un_membre
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 
 
 # ⚠️ UNE SEULE TABLE POUR LES DEUX SUITES (`docs/moyennes-par-serie.json`).

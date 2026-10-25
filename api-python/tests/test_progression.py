@@ -12,6 +12,7 @@ import pytest
 from sqlalchemy import text
 
 from app.suivi import progression, rm_estime
+from tests.conftest import AUTH
 
 
 # --------------------------------------------------------------------------- #
@@ -171,7 +172,7 @@ def test_refait_exige_un_rpe_a_chaque_fois():
 # Par la route, sur le vrai Postgres : les séries lourdes et les pesées
 # --------------------------------------------------------------------------- #
 
-_AUTH = {"Authorization": "Bearer x"}
+_AUTH = AUTH
 
 
 @pytest.fixture
