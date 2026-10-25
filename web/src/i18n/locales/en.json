@@ -1784,7 +1784,11 @@
     "nSemaines_one": "{{count}} week",
     "nSemaines_other": "{{count}} weeks",
     "nJours_one": "{{count}} day",
-    "nJours_other": "{{count}} days"
+    "nJours_other": "{{count}} days",
+    "sansChargeSurLeBloc": "no load in this block",
+    "vise": "targeted",
+    "reposEcart": "rest {{prescrit}} → {{reel}}",
+    "creneau": "Slot"
   },
   "views": {
     "admin": "Admin",

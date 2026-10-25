@@ -29,12 +29,6 @@ interface Props {
   titre?: string;
 }
 
-/** ⚠️ LE CONTEXTE D'USAGE, PAS LA TAILLE DE L'ÉCRAN (FRE-167). En vue SEMAINE
- *  la carte vit dans le pli ; dans la BASE elle sert de matériau de référence,
- *  une seule dépliée à la fois sous un mouvement. Une requête média se serait
- *  trompée de question : ce n'est pas l'écran qui change, c'est ce qu'on vient y
- *  faire. */
-export type ContexteProgression = 'semaine' | 'base';
 
 /** « 7,5 → 15 kg  +7,5 kg » — la réponse d'un créneau en une ligne. En tête de la
  *  carte dans le pli, sur la ligne repliée de l'historique de la BASE : une seule
@@ -65,7 +59,6 @@ export function ExerciseProgressionCard({
   subtitle,
   className,
   action,
-  contexte = 'semaine',
   semaineCourante,
   rendu = 'courbe',
   onChoisirRendu,
@@ -76,10 +69,8 @@ export function ExerciseProgressionCard({
   className?: string;
   /** Rendu à droite de l'en-tête (bouton de partage). */
   action?: ReactNode;
-  /** Cf. `ContexteProgression`. La vue semaine ne passe rien et ne bouge pas. */
-  contexte?: ContexteProgression;
   /** Le `label` de la semaine en cours (« S3 ») — en or en tête de sa colonne.
-   *  Absent en contexte `base`, où aucune semaine n'est « en cours ». */
+   *  Absent : aucune semaine n'est mise en avant. */
   semaineCourante?: string;
   /** Le rendu choisi par la personne qui regarde ; `courbe` sans préférence. */
   rendu?: RenduProgression;
@@ -89,7 +80,6 @@ export function ExerciseProgressionCard({
   const { t } = useTranslation();
   const resolvedTitle = title ?? t("training.progressionSurLeBloc");
   if (points.length === 0) return null;
-  const enBase = contexte === 'base';
 
   const courante = semaineCourante === undefined ? -1 : points.findIndex(p => p.label === semaineCourante);
   const selecteur = onChoisirRendu ? <SelecteurDeRendu rendu={rendu} onChoisir={onChoisirRendu} /> : null;
@@ -100,9 +90,6 @@ export function ExerciseProgressionCard({
      `ProgressionBloc`. */
   return (
     <div className={className}>
-      {/* ⚠️ L'EN-TÊTE NE SERT PLUS EN BASE : titre et trajectoire vivent dans la
-          ligne repliée juste au-dessus. Seul le sélecteur y reste. */}
-      {enBase ? (selecteur && <div className="mb-1 flex justify-end">{selecteur}</div>) : (
       // Le titre ne se tronque pas pour laisser la place au sélecteur : sur une
       // colonne étroite (le pli), la droite de l'en-tête passe à la ligne.
       <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
@@ -116,7 +103,6 @@ export function ExerciseProgressionCard({
           {action}
         </div>
       </div>
-      )}
       <div className="flex flex-col gap-2.5 rounded-md border border-border bg-card px-2.5 py-2">
         <ProgressionBloc points={points} rendu={rendu} courante={courante} />
 

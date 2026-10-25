@@ -183,3 +183,19 @@ export function talonDuGroupe(
   return [i18n.t("session.finDuTour"), repos ? `${i18n.t("session.repos")} ${repos}` : "", sets ? `×${sets}` : ""]
     .filter(Boolean).join(" · ");
 }
+
+/** Un format MINUTÉ (EMOM, E1'30MOM, AMRAP) prend le bleu `--metric`, les autres
+ *  l'or — la règle de `session-table` et `week-overview` : le bleu dit le temps,
+ *  pas « un format ». */
+export function formatMinute(format: string | null | undefined): boolean {
+  const f = (format ?? "").trim().toUpperCase();
+  return f === "AMRAP" || /^E.*MOM$/.test(f);
+}
+
+/** Le format avec ses options, comme sur une ligne de séance : « EMOM 10' - 60" ». */
+export function formatEcrit(ex: { format?: string | null; clusterMode?: string | null; clusterRest?: string | null; sets?: string | null }): string {
+  const f = (ex.format ?? "").trim();
+  if (!f) return "";
+  return (f + formatBadgeSuffix({ format: f, clusterMode: ex.clusterMode ?? null, clusterRest: ex.clusterRest ?? null,
+                                   sets: ex.sets ?? null })).trim();
+}

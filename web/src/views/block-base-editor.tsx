@@ -17,7 +17,6 @@ import { naviguerAuClavier } from '@/lib/navigation-clavier';
 import { WeekOverview } from '@/components/training/week-overview';
 import { MovementHistory } from '@/components/training/movement-history';
 import { useLocalStorageState } from '@/lib/storage';
-import { usePreferenceProgression } from '@/lib/preference-progression';
 import { cn } from '@/lib/utils';
 import { dupliquerAccessoire, dupliquerPrincipe } from '@/lib/dupliquer-base';
 import { memeLien, objectifDepuisLaLigne } from '@/lib/objectif-depuis-ligne';
@@ -211,8 +210,6 @@ export function BlockBaseEditor({ blockLabel, programId, blockId, base, lib, can
     const index = objectifs.findIndex(o => memeLien(o, depuis));
     setObjectifDepuisEtat(index >= 0 && onModifierObjectif ? { o: objectifs[index], index } : { o: depuis, index: null });
   };
-  // L'historique dessine le rendu de la personne qui regarde (27/09).
-  const progression = usePreferenceProgression();
   const { t } = useTranslation();
   // ⚠️ TROIS SUPPRESSIONS DE CET ÉCRAN NE DEMANDAIENT RIEN. Une ligne de principe
   // ou d'accessoire porte toute la prescription d'un mouvement — séries, reps,
@@ -1076,7 +1073,7 @@ export function BlockBaseEditor({ blockLabel, programId, blockId, base, lib, can
                   <Plus className="h-3 w-3" /> {t('base.principe')}
                 </button>
               </div>
-              {showHistory && <MovementHistory movement={movement} pastBlocks={pastBlocks} rendu={progression.rendu} onChoisirRendu={progression.choisir} />}
+              {showHistory && <MovementHistory movement={movement} pastBlocks={pastBlocks} />}
               {rows.length === 0 ? (
                 <p className="px-3 py-3 text-[11px] italic text-muted-foreground">{t("base.aucunPrincipeAjouteEn")}</p>
               ) : (

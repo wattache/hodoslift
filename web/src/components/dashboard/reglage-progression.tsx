@@ -48,7 +48,7 @@ const EXEMPLE: ProgressionPoint[] = [60, 62.5, 65, 67.5].map((kg, i) => ({
   label: `S${i + 1}`, sets: '3', reps: '2', repsDone: i === 2 ? '1' : '', repsUnit: 'count',
   kg, kgDone: i === 2 ? 62.5 : null, kgEffective: i === 2 ? 62.5 : kg, assistance: '',
   rest: '', restActual: '', variante: '', tempo: '',
-  rpe: i < 3 ? (i === 2 ? 9 : 8) : null, rpeRaw: i < 3 ? (i === 2 ? '9' : '8') : '', aimedRpeRaw: '8', feedback: '',
+  rpe: i < 3 ? (i === 2 ? 9 : 8) : null, rpeRaw: i < 3 ? (i === 2 ? '9' : '8') : '', aimedRpeRaw: '8', feedback: '', formatEcrit: '',
 }));
 
 export function ReglageProgression() {

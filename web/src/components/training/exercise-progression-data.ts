@@ -2,6 +2,7 @@ import type { SessionEditing, WeekEditing, ExerciseEditing } from "@/api/types";
 import { rpeToNumber, verdictDesSemainesRPE, type VerdictRPE } from "@/lib/rpe";
 import { afficherVariantes, cleVariantes } from "@/lib/variantes";
 import { chargeSaisie, parseWeight } from "@/lib/weight";
+import { formatEcrit } from "./format";
 
 /** La charge prescrite d'une semaine : `null` sans saisie, ou à `0` avec une bande. */
 function prescrit(ex: { weight?: string | null; assistance?: string | null } | undefined): number | null {
@@ -46,6 +47,8 @@ export interface ProgressionPoint {
   rpeRaw: string;        // RPE réel (feltRPE) — libellé original (ex. "Sub5")
   aimedRpeRaw: string;   // RPE cible (aimedRPE) de la semaine, si précisé
   feedback: string;      // retour athlète de la semaine (pour afficher le plus récent)
+  /** Le format et ses options, écrit comme sur la ligne (« EMOM 8' - 60" ») ; `''` sans format. */
+  formatEcrit: string;
 }
 
 /** Le verdict RPE d'un créneau (FRE-167) — la règle vit dans `@/lib/rpe`, que le
@@ -109,6 +112,7 @@ export function buildExerciseProgressionPoints(session: SessionEditing, exercise
       restActual: ex?.restActual ?? "",
       variante: afficherVariantes(ex?.variant),
       tempo: (ex?.tempo ?? "").trim(),
+      formatEcrit: ex ? formatEcrit(ex) : "",
       rpe: rpeToNumber(ex?.feltRPE ?? ""),
       rpeRaw: ex?.feltRPE ?? "",
       aimedRpeRaw: ex?.aimedRPE ?? "",

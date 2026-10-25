@@ -67,9 +67,12 @@ test('le réglage tient dans le profil : des vignettes, un aperçu, et le choix 
   await expect(rendu(page)).toHaveAttribute('data-rendu', 'chiffres');
 });
 
-test('la BASE aussi : l’historique d’un mouvement dessine le rendu choisi, et son sélecteur écrit la même préférence', async ({ page }) => {
-  // Le bloc Intensification a MUSCLE UP dans sa trame, et le bloc Accumulation
-  // l'a fait : l'historique existe. Repliés par défaut, on ouvre le bloc.
+test('la BASE dessine l’historique en TABLEAU, sans sélecteur de rendu (brief du 25/10)', async ({ page }) => {
+  /** L'historique d'un mouvement n'empile plus la carte de la vue semaine : une
+   *  ligne par créneau, une colonne par semaine. Le choix de rendu reste en vue
+   *  semaine (spec ci-dessus) ; six sélecteurs pour un même mouvement n'avaient
+   *  pas de sens.
+   *  MUTATION QUI ROUGIT : rendre `ExerciseProgressionCard` dans le pli. */
   await page.goto('/training');
   await page.getByRole('button', { name: 'Coach', exact: true }).click();
   await page.getByRole('button', { name: 'Intensification', exact: true }).click();
@@ -77,13 +80,8 @@ test('la BASE aussi : l’historique d’un mouvement dessine le rendu choisi, e
   const historique = page.getByRole('button', { name: /^Bloc 1/ }).first();
   await historique.click();
   await expect(historique).toHaveAttribute('aria-expanded', 'true');
-  await expect(rendu(page)).toHaveAttribute('data-rendu', 'courbe');
-
-  await choisirSurLaCarte(page, 'Chiffres');
-  await expect(rendu(page)).toHaveAttribute('data-rendu', 'chiffres');
-  await expect(rendu(page).locator('[data-ecart]').first()).toBeVisible();
-
-  // Même préférence partout : le pli de l'athlète a suivi.
-  await ouvrirLePli(page);
-  await expect(rendu(page)).toHaveAttribute('data-rendu', 'chiffres');
+  const tableau = page.locator('table[id^="historique-"]').first();
+  await expect(tableau.getByRole('columnheader', { name: 'S1' })).toBeVisible();
+  await expect(rendu(page)).toHaveCount(0);
+  await expect(page.getByRole('radio', { name: 'Chiffres' })).toHaveCount(0);
 });

@@ -3,7 +3,7 @@ import { Check, ChevronDown, ChevronRight, ChevronUp, Eye, Pencil, Target } from
 
 import type { BlockObjective } from "@/api/types";
 import { ObjectifDialog } from "./objectif-dialog";
-import { formatBadgeSuffix } from "./format";
+import { formatEcrit, formatMinute } from "./format";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { formatShort } from "@/lib/dates-ui";
 import { cn } from "@/lib/utils";
@@ -65,9 +65,7 @@ function charge(o: BlockObjective): string {
 
 /** Le format avec ses options, écrit comme sur une ligne de séance : « EMOM 10' - 60" ». */
 export function formatComplet(o: BlockObjective): string {
-  if (!o.format) return "";
-  return (o.format + formatBadgeSuffix({ format: o.format, clusterMode: o.clusterMode ?? null,
-                                         clusterRest: o.clusterRest ?? null, sets: o.sets ?? null })).trim();
+  return formatEcrit(o);
 }
 
 /** L'objectif en une phrase — ce que la fiche d'édition relit sous les champs.
@@ -89,13 +87,6 @@ export function phrase(o: BlockObjective): string {
 }
 
 const nombre = (n: number) => n.toLocaleString("fr-FR", { maximumFractionDigits: 2 });
-
-/** Un format MINUTÉ prend le bleu `--metric`, les autres l'or — la règle de
- *  `session-table` et `week-overview` : le bleu dit le temps, pas « un format ». */
-function formatMinute(format: string | null | undefined): boolean {
-  const f = (format ?? "").toUpperCase();
-  return f === "AMRAP" || /^E.*MOM$/.test(f);
-}
 
 /** LA TUILE — une par objectif, la même pour le coach, l'athlète et le tableau
  *  de bord (FRE-254).

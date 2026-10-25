@@ -2,11 +2,12 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronRight } from "lucide-react";
 
-import type { BlockEditing, RenduProgression, SessionEditing } from "@/api/types";
+import type { BlockEditing, SessionEditing } from "@/api/types";
 import { cn } from "@/lib/utils";
 import i18n from "@/i18n";
-import { ExerciseProgressionCard, TrajectoireDeCharge } from "./exercise-progression";
+import { formatMinute } from "./format";
 import { buildExerciseProgressionPoints, verdictRPE, type ProgressionPoint } from "./exercise-progression-data";
+import { bornesDeCharge, chargeEcrite, kg, lireRepos, pasEncoreFaite, rpeEcrit, trajectoireEnMots, volumeEcrit } from "./progression/socle";
 
 /** L'HISTORIQUE D'UN MOUVEMENT SUR LES BLOCS PRÉCÉDENTS, dans la BASE (FRE-167).
  *
@@ -32,15 +33,19 @@ import { buildExerciseProgressionPoints, verdictRPE, type ProgressionPoint } fro
  *  le vendredi du même bloc donnait deux lignes de même titre à se suivre :
  *  l'unité que le coach lit est le bloc. Mesuré en production le 11/09 sur les
  *  3 079 couples (macro, bloc, mouvement) : 73,5 % n'ont qu'un créneau, 11 %
- *  en ont deux, 26,5 % en ont plusieurs. */
+ *  en ont deux, 26,5 % en ont plusieurs.
+ *
+ *  ⚠️ DÉPLIÉ, C'EST UN TABLEAU, PLUS UN EMPILEMENT DE CARTES (brief du 25/10).
+ *  La carte de la vue semaine coûtait 230 à 250 px par créneau : six créneaux
+ *  faisaient 1 500 px, et deux créneaux à comparer ne tenaient plus ensemble.
+ *  Une ligne = un créneau, une colonne = une semaine ; chaque case écrit la
+ *  charge, puis séries × reps · RPE, avec les écritures de `progression/socle`
+ *  — rien n'est recalculé ici. L'or dit seulement que le réel a quitté le
+ *  prescrit ; un contour tireté, qu'aucune trace de réalisation n'existe. */
 
 interface Props {
   movement: string;
   pastBlocks: BlockEditing[];
-  /** Le rendu de la personne qui regarde, et le geste qui l'écrit. Sans les deux, la carte dessine le défaut, sans
-   *  sélecteur. */
-  rendu?: RenduProgression;
-  onChoisirRendu?: (rendu: RenduProgression) => void;
 }
 
 interface HistoryCard {
@@ -104,6 +109,90 @@ function descriptionCreneau(carte: HistoryCard): string {
   ].filter(Boolean).join(" · ");
 }
 
+/** Le FORMAT du créneau, au même titre que la variante et le tempo : un 5×1 en
+ *  EMOM 60″ et un 5×1 classique ne sont pas le même exercice. Un format qui
+ *  change dans le bloc s'écrit « EMOM / — », jamais l'un des deux seulement. */
+function formatDuCreneau(carte: HistoryCard): string {
+  const formats = [...new Set(carte.points.map(p => p.formatEcrit))];
+  if (formats.length === 1) return formats[0];
+  return formats.map(f => f || "—").join(" / ");
+}
+
+/** Le badge de format : bleu s'il est minuté, or sinon (`formatMinute`). */
+function BadgeFormat({ carte }: { carte: HistoryCard }) {
+  const texte = formatDuCreneau(carte);
+  if (!texte) return null;
+  const minute = carte.points.every(p => !p.formatEcrit || formatMinute(p.formatEcrit.split(" ")[0]));
+  return (
+    <span className={cn("ml-1.5 inline-block whitespace-nowrap rounded border px-1 font-mono text-[10px] leading-4 align-middle",
+                        minute ? "border-metric/40 text-metric" : "border-gold/40 text-gold")}>
+      {texte}
+    </span>
+  );
+}
+
+/** La trajectoire d'un créneau : la charge, sinon l'aide, sinon rien d'inventé. */
+function TrajectoireDuCreneau({ points }: { points: ProgressionPoint[] }) {
+  const { t } = useTranslation();
+  const { premiere, derniere, delta } = bornesDeCharge(points);
+  if (premiere !== null && derniere !== null) {
+    return (
+      <span className="font-mono text-[12px] tabular-nums text-muted-foreground">
+        {kg(premiere)} → {kg(derniere)} kg
+        {delta !== null && delta !== 0 && (
+          <span className={cn("ml-1.5 font-semibold", delta > 0 ? "text-success" : "text-destructive")}>
+            {delta > 0 ? "+" : "−"}{kg(Math.abs(delta))} kg
+          </span>
+        )}
+      </span>
+    );
+  }
+  const aides = points.map(p => p.assistance.trim()).filter(Boolean);
+  if (aides.length) {
+    const [a, b] = [aides[0], aides[aides.length - 1]];
+    return <span className="font-mono text-[12px] text-muted-foreground">{a === b ? a : `${a} → ${b}`}</span>;
+  }
+  return <span className="font-mono text-[12px] text-muted-foreground">{t("training.sansChargeSurLeBloc")}</span>;
+}
+
+/** Ni consigne ni trace cette semaine-là : la case reste vide. « visé » est
+ *  réservé à une consigne qui existe sans trace de réalisation. */
+const semaineVide = (p: ProgressionPoint): boolean =>
+  !p.sets.trim() && !p.reps.trim() && p.kg === null && !p.assistance.trim() && pasEncoreFaite(p);
+
+/** UNE SEMAINE D'UN CRÉNEAU — la charge, puis séries × reps · RPE, et le repos
+ *  seulement quand le réel l'a quitté. */
+function CaseSemaine({ p }: { p: ProgressionPoint }) {
+  const { t } = useTranslation();
+  const charge = chargeEcrite(p);
+  const aide = p.assistance.trim();
+  const rpe = rpeEcrit(p, t);
+  const vide = pasEncoreFaite(p);
+  const volume = volumeEcrit(p);
+  const repos = lireRepos(p);
+  return (
+    <div className={cn("mx-auto inline-flex min-w-[72px] flex-col items-center rounded px-1.5 py-1 leading-tight",
+                       vide && "border border-dashed border-border text-muted-foreground")}>
+      <span className={cn("font-mono text-[14.5px] font-semibold tabular-nums",
+                          charge.ecart ? "text-gold" : vide ? "text-muted-foreground" : "text-foreground")}>
+        {charge.texte || aide || "—"}
+      </span>
+      <span className="whitespace-nowrap font-mono text-[10.5px] tabular-nums">
+        <span className={volume.includes("→") ? "text-gold" : "text-muted-foreground"}>{volume}</span>
+        {" · "}
+        {vide
+          ? <span className="text-muted-foreground">{t("training.vise")}</span>
+          : <span style={rpe.couleur ? { color: rpe.couleur } : undefined}>{rpe.texte}</span>}
+      </span>
+      {repos.prescrit && (
+        <span className="whitespace-nowrap font-mono text-[10px] text-gold">
+          {t("training.reposEcart", { prescrit: String(repos.prescrit), reel: String(repos.reel) })}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function libelleCreneau(carte: HistoryCard, duMemeBloc: HistoryCard[]): string {
   const base = descriptionCreneau(carte);
   // Deux créneaux que la description ne sépare pas — même jour, même variante,
@@ -133,7 +222,7 @@ function PastilleRPE({ points }: { points: ProgressionPoint[] }) {
   );
 }
 
-export function MovementHistory({ movement, pastBlocks, rendu, onChoisirRendu }: Props) {
+export function MovementHistory({ movement, pastBlocks }: Props) {
   const { t } = useTranslation();
   const target = movement.trim().toUpperCase();
   const [ouverts, setOuverts] = useState<ReadonlySet<string>>(new Set());
@@ -179,6 +268,9 @@ export function MovementHistory({ movement, pastBlocks, rendu, onChoisirRendu }:
   if (blocs.length === 0) return null;
 
   const nbCreneaux = blocs.reduce((n, b) => n + b.creneaux.length, 0);
+  // TOUS LES BLOCS PARTAGENT LE NOMBRE DE COLONNES DU PLUS LONG : sans cela, S2
+  // d'un bloc à 3 semaines tomberait sous S3 d'un bloc à 4.
+  const colonnes = Math.max(...blocs.flatMap(b => b.creneaux.map(c => c.points.length)));
   const tousOuverts = ouverts.size === blocs.length;
   const basculerTout = () =>
     setOuverts(tousOuverts ? new Set() : new Set(blocs.map(b => b.key)));
@@ -209,7 +301,7 @@ export function MovementHistory({ movement, pastBlocks, rendu, onChoisirRendu }:
       <div className="flex flex-col gap-[7px]">
         {blocs.map((bloc) => (
           <LigneDeBloc
-            rendu={rendu} onChoisirRendu={onChoisirRendu}
+            colonnes={colonnes}
             key={bloc.key}
             bloc={bloc}
             ouverte={ouverts.has(bloc.key)}
@@ -225,9 +317,8 @@ export function MovementHistory({ movement, pastBlocks, rendu, onChoisirRendu }:
   );
 }
 
-function LigneDeBloc({ bloc, ouverte, basculer, rendu, onChoisirRendu }: {
-  bloc: BlocHistorique; ouverte: boolean; basculer: () => void;
-  rendu?: RenduProgression; onChoisirRendu?: (rendu: RenduProgression) => void;
+function LigneDeBloc({ bloc, ouverte, basculer, colonnes }: {
+  bloc: BlocHistorique; ouverte: boolean; basculer: () => void; colonnes: number;
 }) {
   const { t } = useTranslation();
   const idContenu = `historique-${bloc.key}`;
@@ -272,7 +363,7 @@ function LigneDeBloc({ bloc, ouverte, basculer, rendu, onChoisirRendu }: {
             pli. Le verdict RPE, lui, s'agrège sans mentir : il compte des
             dépassements, et le bloc entier en est le sujet. */}
         {seul
-          ? <TrajectoireDeCharge points={seul.points} />
+          ? <TrajectoireDuCreneau points={seul.points} />
           : <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
               {t('training.creneaux', { count: bloc.creneaux.length })}
             </span>}
@@ -281,23 +372,56 @@ function LigneDeBloc({ bloc, ouverte, basculer, rendu, onChoisirRendu }: {
       </button>
 
       {ouverte && (
-        <div id={idContenu} className="flex flex-col gap-2 border-t border-border/60 px-2.5 py-2">
-          {bloc.creneaux.map((creneau) => (
-            <div key={creneau.key}>
-              {/* Le sous-en-tête n'existe que là où il y a plusieurs créneaux à
-                  distinguer — sinon il répéterait la ligne juste au-dessus. */}
-              {!seul && (
-                <div className="mb-1 flex items-center gap-3 px-0.5">
-                  <span className="min-w-0 grow truncate text-[11px] font-medium text-muted-foreground">
-                    {libelleCreneau(creneau, bloc.creneaux)}
-                  </span>
-                  <TrajectoireDeCharge points={creneau.points} />
-                </div>
-              )}
-              <ExerciseProgressionCard points={creneau.points} contexte="base" rendu={rendu} onChoisirRendu={onChoisirRendu} />
-            </div>
-          ))}
-        </div>
+        /* UN VRAI TABLEAU : une ligne par créneau, une colonne par semaine. Au
+           téléphone, la même grammaire pliée — le libellé sur une ligne, puis
+           les cases, chacune coiffée de sa semaine ; rien ne défile en largeur. */
+        <table id={idContenu} className="block w-full border-t border-border/60 sm:table">
+          <thead className="hidden sm:table-header-group">
+            <tr>
+              <th scope="col" className="w-[236px]" aria-label={t("training.creneau")} />
+              {Array.from({ length: colonnes }, (_, k) => (
+                <th key={k} scope="col" className="py-1 text-center font-mono text-[10px] font-normal text-muted-foreground">
+                  S{k + 1}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="block sm:table-row-group">
+            {bloc.creneaux.map((creneau) => {
+              const retour = [...creneau.points].reverse().find(p => p.feedback.trim());
+              return (
+                <tr key={creneau.key} aria-label={trajectoireEnMots(creneau.points, t)}
+                    className="grid grid-cols-4 gap-y-1 border-t border-border/40 px-2.5 py-2 first:border-t-0 sm:table-row">
+                  <th scope="row" className="col-span-4 py-1 pr-3 text-left align-top font-normal sm:w-[236px] sm:py-2">
+                    {/* Créneau unique : jour, variante, tempo et trajectoire sont
+                        déjà sur la ligne repliée — on ne les répète pas. */}
+                    <div className="text-[12.5px] font-medium">
+                      {!seul && libelleCreneau(creneau, bloc.creneaux)}
+                      <BadgeFormat carte={creneau} />
+                    </div>
+                    {!seul && <TrajectoireDuCreneau points={creneau.points} />}
+                    {retour && (
+                      <div className="mt-1 border-l-2 border-gold/70 pl-1.5 text-[11px] text-muted-foreground">
+                        <span className="mr-1 font-mono text-gold">{retour.label}</span>{retour.feedback}
+                      </div>
+                    )}
+                  </th>
+                  {Array.from({ length: colonnes }, (_, k) => {
+                    const p = creneau.points[k];
+                    return (
+                      <td key={k} className="py-1 text-center align-top sm:py-2">
+                        {p && !semaineVide(p) && <>
+                          <span className="block font-mono text-[10px] text-muted-foreground sm:hidden">{p.label}</span>
+                          <CaseSemaine p={p} />
+                        </>}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       )}
     </div>
   );

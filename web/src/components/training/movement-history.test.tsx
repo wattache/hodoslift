@@ -74,14 +74,48 @@ describe('MovementHistory', () => {
     expect(screen.queryByText('Volume')).toBeNull();
   });
 
-  it('déplie au clic, et le détail apparaît', () => {
+  it('déplie en TABLEAU : une colonne par semaine, une case par semaine', () => {
+    /** Brief du 25/10 : plus d'empilement de cartes de progression.
+     *  MUTATION QUI ROUGIT : rendre la carte de la vue semaine dans le pli. */
     monter([bloc(3, 'Force', troisSemaines)]);
     const ligne = screen.getByRole('button', { name: /Force/ });
     fireEvent.click(ligne);
     expect(ligne.getAttribute('aria-expanded')).toBe('true');
-    expect(screen.getByText('Volume')).toBeTruthy();
-    // L'en-tête de la carte ne se répète pas : le titre vit dans la ligne.
-    expect(screen.queryByText('Progression sur le bloc')).toBeNull();
+    const tableau = screen.getByRole('table');
+    expect(within(tableau).getAllByRole('columnheader').map(c => c.textContent)).toEqual(['', 'S1', 'S2', 'S3']);
+    expect(tableau.textContent).toContain('5×3 · 8');
+    expect(screen.queryByText('Volume')).toBeNull();
+  });
+
+  it('écrit le FORMAT du créneau, avec ses options, dans un badge', () => {
+    /** « Ici on voit pas que c'est EMOM » (William). MUTATION QUI ROUGIT : oublier le badge. */
+    monter([bloc(3, 'Force', troisSemaines.map(x => ({ ...x, format: 'EMOM', clusterMode: '60', sets: '8' })))]);
+    fireEvent.click(screen.getByRole('button', { name: /Force/ }));
+    expect(screen.getByRole('table').textContent).toMatch(/EMOM 8' - 60"/);
+  });
+
+  it('une semaine sans trace de réalisation dit « visé », jamais un RPE', () => {
+    monter([bloc(3, 'Force', [{ weight: '100', aimedRPE: '8', feltRPE: '8' }, { weight: '110', aimedRPE: '8' }])]);
+    fireEvent.click(screen.getByRole('button', { name: /Force/ }));
+    const cases = screen.getAllByRole('cell');
+    expect(cases[1].textContent).toContain('visé');
+    expect(cases[0].textContent).not.toContain('visé');
+  });
+
+  it('une semaine sans consigne ni trace reste vide, sans « visé »', () => {
+    /** MUTATION QUI ROUGIT : rendre la case tiretée « — · visé » pour une semaine vide. */
+    monter([bloc(3, 'Force', [{ weight: '100', aimedRPE: '8', feltRPE: '8' }, { sets: '', reps: '' }])]);
+    fireEvent.click(screen.getByRole('button', { name: /Force/ }));
+    expect(screen.getAllByRole('cell')[1].textContent).toBe('');
+  });
+
+  it('aligne les colonnes de tous les blocs sur le plus long', () => {
+    /** Un bloc de 2 semaines sous un bloc de 3 : sa troisième case est vide. */
+    monter([bloc(2, 'Volume', troisSemaines.slice(0, 2)), bloc(3, 'Force', troisSemaines)]);
+    fireEvent.click(screen.getByRole('button', { name: 'Tout déplier' }));
+    for (const tableau of screen.getAllByRole('table')) {
+      expect(within(tableau).getAllByRole('columnheader')).toHaveLength(4);
+    }
   });
 
   it('« Tout déplier » ouvre tous les blocs d\'un geste', () => {

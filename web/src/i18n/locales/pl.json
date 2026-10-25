@@ -1931,7 +1931,11 @@
     "nJours_one": "{{count}} dzień",
     "nJours_few": "{{count}} dni",
     "nJours_many": "{{count}} dni",
-    "nJours_other": "{{count}} dni"
+    "nJours_other": "{{count}} dni",
+    "sansChargeSurLeBloc": "bez ciężaru w tym bloku",
+    "vise": "planowane",
+    "reposEcart": "przerwa {{prescrit}} → {{reel}}",
+    "creneau": "Slot"
   },
   "views": {
     "admin": "Admin",

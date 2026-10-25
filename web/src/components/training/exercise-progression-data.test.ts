@@ -15,7 +15,7 @@ const point = (aimedRPE: string, feltRPE: string): ProgressionPoint => ({
   label: "S1", sets: "", reps: "", repsDone: "", repsUnit: "count",
   kg: null, kgDone: null, kgEffective: null, assistance: "",
   rest: "", restActual: "", variante: "", tempo: "",
-  rpe: rpeToNumber(feltRPE), rpeRaw: feltRPE, aimedRpeRaw: aimedRPE, feedback: "",
+  rpe: rpeToNumber(feltRPE), rpeRaw: feltRPE, aimedRpeRaw: aimedRPE, feedback: "", formatEcrit: "",
 });
 
 describe("verdictRPE", () => {

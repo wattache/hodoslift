@@ -17,7 +17,7 @@ const point = (i: number, p: Partial<ProgressionPoint> = {}): ProgressionPoint =
   label: `S${i + 1}`, sets: '1', reps: '10', repsDone: '', repsUnit: 'count',
   kg: 7.5 + i * 2.5, kgDone: null, kgEffective: 7.5 + i * 2.5, assistance: '',
   rest: '', restActual: '', variante: '', tempo: '', rpe: 6 + i, rpeRaw: String(6 + i),
-  aimedRpeRaw: '', feedback: '', ...p,
+  aimedRpeRaw: '', feedback: '', formatEcrit: '', ...p,
 });
 const semaines = (n: number) => Array.from({ length: n }, (_, i) => point(i));
 
@@ -31,14 +31,6 @@ const textes = (c: HTMLElement, sel: string) => tous(c, sel).map(e => e.textCont
 const couleur = (c: string) => { const s = document.createElement('span'); s.style.color = c; return s.style.color; };
 
 describe('la carte de progression', () => {
-  it('est la MÊME dans le pli et dans la BASE', () => {
-    const pli = render(<ExerciseProgressionCard points={semaines(3)} />);
-    const structure = [...corps(pli.container).children].map(e => e.children.length);
-    pli.unmount();
-    const base = render(<ExerciseProgressionCard points={semaines(3)} contexte="base" />);
-    expect([...corps(base.container).children].map(e => e.children.length)).toEqual(structure);
-  });
-
   it('sa hauteur ne dépend pas du nombre de semaines : une semaine est une colonne', () => {
     /** MUTATION QUI ROUGIT : une rangée par semaine (les barres de 2b). */
     const deux = render(<ExerciseProgressionCard points={semaines(2)} />);

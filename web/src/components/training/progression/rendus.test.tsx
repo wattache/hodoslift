@@ -20,7 +20,7 @@ import { ecartsDeCharge, trajectoireEnMots } from './socle';
 const point = (label: string, p: Partial<ProgressionPoint> = {}): ProgressionPoint => ({
   label, sets: '3', reps: '2', repsDone: '', repsUnit: 'count',
   kg: null, kgDone: null, kgEffective: null, assistance: '',
-  rest: '', restActual: '', variante: '', tempo: '', rpe: null, rpeRaw: '', aimedRpeRaw: '8', feedback: '', ...p,
+  rest: '', restActual: '', variante: '', tempo: '', rpe: null, rpeRaw: '', aimedRpeRaw: '8', feedback: '', formatEcrit: '', ...p,
 });
 
 /** Le bloc du brief. S3 est la semaine de l'écart, S4 celle à venir. */
