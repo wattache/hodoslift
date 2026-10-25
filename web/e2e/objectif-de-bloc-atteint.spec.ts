@@ -139,7 +139,7 @@ test('la carte se replie, et son en-tête ne VOLE pas le nom du bloc', async ({ 
   await expect(carteOuverte(page)).toHaveCount(0);
   // ⚠️ LE COMPTE SURVIT AU REPLI, et c'est ce qui rend le repli acceptable :
   // replié, l'en-tête dit encore où l'on en est.
-  await expect(page.getByText(/\d+\/\d+ atteints/)).toBeVisible();
+  await expect(page.getByText(/\d+ atteints? · \d+ en route/)).toBeVisible();
 
   await replier.click();
   await expect(carteOuverte(page)).toBeVisible();
@@ -157,7 +157,7 @@ test('les objectifs du bloc s’ouvrent REPLIÉS, et la ligne dit encore où l�
   await page.getByRole('button', { name: 'Accumulation', exact: true }).click();
   await expect(page.getByRole('button', { name: /^Objectifs du bloc$/ })).toHaveAttribute('aria-expanded', 'false');
   await expect(carteOuverte(page)).toHaveCount(0);
-  await expect(page.getByText(/\d+\/\d+ atteints/)).toBeVisible();
+  await expect(page.getByText(/\d+ atteints? · \d+ en route/)).toBeVisible();
 
   await page.getByRole('button', { name: 'Coach', exact: true }).click();
   await expect(page.getByRole('button', { name: /^Objectifs du bloc$/ })).toHaveAttribute('aria-expanded', 'false');

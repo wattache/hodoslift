@@ -2990,6 +2990,32 @@ export interface components {
             optimistic: number;
         };
         /**
+         * AvancementObjectif
+         * @description Où en est l'athlète sur un objectif de bloc, calculé par brokkr (FRE-254).
+         *
+         *     `fait` : meilleure charge réalisée sur le bloc par une ligne du même geste au
+         *     schéma au moins égal ; `semaine` : celle de cette charge ; `depart` : la
+         *     charge de la première semaine mesurée ; `reste` : jusqu'à la borne basse ;
+         *     `jauge` : le chemin fait, de 0 à 1. Tous `null` quand rien ne se mesure.
+         */
+        AvancementObjectif: {
+            /**
+             * Etat
+             * @enum {string}
+             */
+            etat: "atteint" | "dans_la_cible" | "en_route" | "sans_mesure" | "sans_cible";
+            /** Fait */
+            fait: number | null;
+            /** Semaine */
+            semaine: number | null;
+            /** Depart */
+            depart: number | null;
+            /** Reste */
+            reste: number | null;
+            /** Jauge */
+            jauge: number | null;
+        };
+        /**
          * BaseContent
          * @description La trame elle-même.
          */
@@ -4946,6 +4972,7 @@ export interface components {
             assistance: string | null;
             /** Atteintle */
             atteintLe?: string | null;
+            avancement?: components["schemas"]["AvancementObjectif"] | null;
         };
         /**
          * ObjectifEcrit

@@ -187,6 +187,24 @@ class BaseDuBloc(BaseModel):
     s1EndDate: str | None
 
 
+class AvancementObjectif(BaseModel):
+    """Où en est l'athlète sur un objectif de bloc, calculé par brokkr (FRE-254).
+
+    `fait` : meilleure charge réalisée sur le bloc par une ligne du même geste au
+    schéma au moins égal ; `semaine` : celle de cette charge ; `depart` : la
+    charge de la première semaine mesurée ; `reste` : jusqu'à la borne basse ;
+    `jauge` : le chemin fait, de 0 à 1. Tous `null` quand rien ne se mesure."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    etat: Literal["atteint", "dans_la_cible", "en_route", "sans_mesure", "sans_cible"]
+    fait: float | None
+    semaine: int | None
+    depart: float | None
+    reste: float | None
+    jauge: float | None
+
+
 class ObjectifDeBloc(BaseModel):
     """Un objectif chiffré, affiché sur le tableau de bord de l'athlète.
 
@@ -212,6 +230,8 @@ class ObjectifDeBloc(BaseModel):
     # saisie. Celui-ci n'est pas saisi : c'est une coche, et « pas atteint » n'a
     # pas de date.
     atteintLe: str | None = None
+    # Servi, jamais écrit : l'écriture (`ObjectiveIn`) le refuse.
+    avancement: AvancementObjectif | None = None
 
 
 class AthleteDeLaSemaine(BaseModel):

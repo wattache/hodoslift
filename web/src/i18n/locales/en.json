@@ -1033,7 +1033,21 @@
     "tempo": "Tempo",
     "chargeMin": "Low load",
     "chargeMax": "High load",
-    "modifierLObjectif": "Edit the goal {{nom}}"
+    "modifierLObjectif": "Edit the goal {{nom}}",
+    "faitEnSemaine": "{{charge}} kg in W{{semaine}}",
+    "vise": "{{charge}} targeted",
+    "pasDeChargeVisee": "no target load",
+    "resteKg": "{{reste}} kg to go",
+    "aCocher": "tick it",
+    "rienDeComparable": "nothing comparable in this block",
+    "dansLaCible": "on target",
+    "nAtteints_one": "{{count}} reached",
+    "nAtteints_other": "{{count}} reached",
+    "nEnRoute_one": "{{count}} on the way",
+    "nEnRoute_other": "{{count}} on the way",
+    "nSansCible_one": "{{count}} without a number",
+    "nSansCible_other": "{{count}} without a number",
+    "pasDeMesure": "no measure"
   },
   "periodization": {
     "aucun": "None",

@@ -11906,6 +11906,88 @@
         ],
         "title": "AttemptWeights"
       },
+      "AvancementObjectif": {
+        "properties": {
+          "etat": {
+            "type": "string",
+            "enum": [
+              "atteint",
+              "dans_la_cible",
+              "en_route",
+              "sans_mesure",
+              "sans_cible"
+            ],
+            "title": "Etat"
+          },
+          "fait": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fait"
+          },
+          "semaine": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Semaine"
+          },
+          "depart": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Depart"
+          },
+          "reste": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reste"
+          },
+          "jauge": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Jauge"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "etat",
+          "fait",
+          "semaine",
+          "depart",
+          "reste",
+          "jauge"
+        ],
+        "title": "AvancementObjectif",
+        "description": "Où en est l'athlète sur un objectif de bloc, calculé par brokkr (FRE-254).\n\n`fait` : meilleure charge réalisée sur le bloc par une ligne du même geste au\nschéma au moins égal ; `semaine` : celle de cette charge ; `depart` : la\ncharge de la première semaine mesurée ; `reste` : jusqu'à la borne basse ;\n`jauge` : le chemin fait, de 0 à 1. Tous `null` quand rien ne se mesure."
+      },
       "BaseContent": {
         "properties": {
           "daySplit": {
@@ -17655,6 +17737,16 @@
               }
             ],
             "title": "Atteintle"
+          },
+          "avancement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AvancementObjectif"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,

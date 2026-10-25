@@ -342,7 +342,6 @@ function CycleCard({
   const dateLabel = startDate && endDate
     ? `${formatLong(startDate)} → ${formatLong(endDate)}`
     : t('dashboard.noDates');
-  const atteints = objectives.filter(o => o.atteintLe).length;
 
   return (
     <section className="rounded-xl border border-border/80 bg-card/95 p-5 shadow-[0_14px_36px_rgba(0,0,0,0.16)] ring-1 ring-gold/10">
@@ -398,7 +397,7 @@ function CycleCard({
           <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
             {t('objectives.title')}
           </span>
-          <CompteurAtteints atteints={atteints} total={objectives.length} />
+          <CompteurAtteints objectives={objectives} />
         </div>
         {objectives.length > 0 ? (
           /* ⚠️ LA MÊME CARTE QUE LA VUE ENTRAÎNEMENT, importée et non recopiée.
@@ -411,7 +410,7 @@ function CycleCard({
              séries sur le même mouvement. En pastilles plates ça ressemblait à un
              bug ; en cartes, le schéma se lit et la question ne se pose plus. */
           <>
-            <ul className="mt-3 grid grid-cols-1 gap-1.5 lg:grid-cols-3">
+            <ul className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-3">
               {objectives.map((o, i) => (
                 /* ⚠️ LA COUPURE EST EN CSS, PAS EN JAVASCRIPT. Sur bureau les
                    trois colonnes les montrent tous ; sur téléphone, une colonne
@@ -420,14 +419,14 @@ function CycleCard({
                    d'un état qui ne survit pas au premier redimensionnement — ici
                    c'est la feuille de style qui tranche, et le compte au-dessus
                    dit de toute façon combien il y en a. */
-                <Cadre key={i} atteint={!!o.atteintLe} className={i >= 3 ? 'hidden lg:block' : undefined}>
+                <Cadre key={i} atteint={!!o.atteintLe} className={i >= 4 ? 'hidden lg:block' : undefined}>
                   <CarteObjectif o={o} peutEcrire={false} />
                 </Cadre>
               ))}
             </ul>
-            {objectives.length > 3 && (
+            {objectives.length > 4 && (
               <p className="mt-1.5 px-1 font-mono text-[10px] text-muted-foreground lg:hidden">
-                {t('views.nAutres', { count: objectives.length - 3 })}
+                {t('views.nAutres', { count: objectives.length - 4 })}
               </p>
             )}
           </>

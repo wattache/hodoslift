@@ -90,12 +90,25 @@ export function phrase(o: BlockObjective): string {
   return morceaux.join(" ");
 }
 
-/** LA CARTE — une par objectif, la même pour le coach et pour l'athlète.
+const nombre = (n: number) => n.toLocaleString("fr-FR", { maximumFractionDigits: 2 });
+
+/** Un format MINUTÉ prend le bleu `--metric`, les autres l'or — la règle de
+ *  `session-table` et `week-overview` : le bleu dit le temps, pas « un format ». */
+function formatMinute(format: string | null | undefined): boolean {
+  const f = (format ?? "").toUpperCase();
+  return f === "AMRAP" || /^E.*MOM$/.test(f);
+}
+
+/** LA TUILE — une par objectif, la même pour le coach, l'athlète et le tableau
+ *  de bord (FRE-254).
  *
- *  ⚠️ UN OBJECTIF EST UNE PHRASE, PAS UNE LIGNE DE CELLULES. Le mouvement porte
- *  la typographie d'affichage, la charge est en doré parce que c'est la donnée
- *  qu'on cherche des yeux, et le reste s'efface derrière. En cellules de même
- *  poids, il fallait lire les neuf pour retrouver laquelle comptait. */
+ *  ⚠️ UN OBJECTIF EST UNE CIBLE ET UNE DISTANCE, PAS UNE CASE. La liste à cocher
+ *  portait un bit par ligne ; la tuile porte la cible (le plus gros chiffre, en
+ *  or), le chemin fait depuis le début du bloc, et où en est l'athlète. La coche
+ *  reste — « une satisfaction, c'est pédagogique » (William, 02/09) —, en coin.
+ *
+ *  ⚠️ RIEN N'EST INVENTÉ : l'avancement vient de brokkr (`avancement`). Sans
+ *  mesure, un rail tireté et on l'écrit ; jamais une jauge à zéro. */
 export function CarteObjectif({ o, peutEcrire, onBasculerAtteint }: {
   o: BlockObjective;
   peutEcrire: boolean;
@@ -104,83 +117,84 @@ export function CarteObjectif({ o, peutEcrire, onBasculerAtteint }: {
   const { t } = useTranslation();
   const atteint = !!o.atteintLe;
   const kg = charge(o);
-  return (
-    /* ⚠️ UNE SEULE LIGNE, ET LA MARQUE À GAUCHE. Trois formes se sont succédé ici,
-       et chacune a été mesurée à l'écran : la ligne de neuf cellules (illisible),
-       la carte de quatre lignes à 100 px (« c'est un peu gros, ça écrase tout le
-       reste » — William, 12/09), puis celle-ci. L'état se lit AVANT le mouvement,
-       comme dans toute liste à cocher ; les chiffres s'alignent à droite, où
-       l'œil les compare d'une carte à l'autre.
+  const av = o.avancement;
+  const etat = atteint ? "atteint" : (av?.etat ?? (kg ? "sans_mesure" : "sans_cible"));
+  const sousTitre = [o.variant, o.tempo, o.assistance].filter(v => (v ?? "").trim()).join(" · ");
+  const ou = av?.fait != null && av.semaine != null
+    ? t("objectives.faitEnSemaine", { charge: nombre(av.fait), semaine: av.semaine }) : "";
+  const jauge = etat === "atteint" || etat === "dans_la_cible" ? 1 : etat === "en_route" ? (av?.jauge ?? 0) : null;
+  const libelle = [o.exercise, sousTitre, o.sets && o.reps ? `${o.sets}×${o.reps}` : "",
+    kg ? t("objectives.vise", { charge: kg }) : t("objectives.pasDeChargeVisee"), ou,
+    etat === "en_route" && av?.reste != null ? t("objectives.resteKg", { reste: nombre(av.reste) }) : ""]
+    .filter(Boolean).join(", ");
 
-       ⚠️ LE MOUVEMENT ET LA CHARGE SONT LES DEUX SEULS ÉLÉMENTS QUI PORTENT DU
-       POIDS. Variante, format, assistance et date d'atteinte s'effacent derrière
-       — ce sont des précisions, pas le sujet. */
-    <div className="flex min-w-0 flex-1 items-center gap-2.5">
-      {/* ⚠️ LE GESTE LE PLUS CHARGÉ DE SENS ÉTAIT LE PLUS PETIT ÉLÉMENT DE
-          L'ÉCRAN : une case de 16 px au bout de neuf cellules. Décision de
-          William, 02/09 — « c'est une satisfaction, c'est pédagogique ; pas pour
-          du tracking, le tableau des PR le fait ». Il garde ses 44 px au doigt
-          (le plancher tactile de `index.css`), et se resserre au pointeur fin. */}
-      {peutEcrire ? (
-        <button
-          type="button"
-          onClick={onBasculerAtteint}
-          aria-pressed={atteint}
-          title={t(atteint ? "objectives.rouvrir" : "objectives.marquerAtteint")}
-          className={cn(
-            "flex h-11 w-11 shrink-0 items-center justify-center rounded border transition-colors sm:h-6 sm:w-6",
-            atteint
-              ? "border-transparent bg-gold text-gold-foreground"
-              : "border-border text-muted-foreground hover:border-gold/40 hover:text-foreground",
-          )}
-        >
-          <Check className="h-3.5 w-3.5" />
-        </button>
-      ) : (
-        /* Côté athlète, une marque STATIQUE — et la case vide reste un carré
-           dessiné : « pas encore » doit se voir autant que « fait ». */
-        <span aria-hidden
-              className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded border",
-                            atteint ? "border-transparent bg-gold text-gold-foreground" : "border-border/70 text-transparent")}>
-          <Check className="h-3 w-3" />
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5" aria-label={libelle}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+            <span className={cn("font-display text-[15px] font-bold uppercase leading-tight tracking-[0.01em]", atteint && "text-gold")}>
+              {o.exercise || "—"}
+            </span>
+            {o.format && (
+              <span className={cn("rounded border px-1 font-mono text-[9px] uppercase leading-4",
+                                  formatMinute(o.format) ? "border-metric/40 text-metric" : "border-gold/40 text-gold")}>
+                {formatComplet(o)}
+              </span>
+            )}
+          </div>
+          {sousTitre && <div className="truncate font-mono text-[10px] uppercase text-muted-foreground">{sousTitre}</div>}
+        </div>
+        {/* La coche garde ses 44 px au doigt par la zone cliquable, pas par le
+            carré dessiné. */}
+        {peutEcrire ? (
+          <button type="button" onClick={onBasculerAtteint} aria-pressed={atteint}
+                  title={t(atteint ? "objectives.rouvrir" : "objectives.marquerAtteint")}
+                  className="-m-2.5 flex h-11 w-11 shrink-0 items-center justify-center sm:-m-1.5 sm:h-8 sm:w-8">
+            <span className={cn("flex h-[22px] w-[22px] items-center justify-center rounded border transition-colors",
+                                atteint ? "border-transparent bg-gold text-gold-foreground" : "border-border text-transparent hover:border-gold/50")}>
+              <Check className="h-3.5 w-3.5" />
+            </span>
+          </button>
+        ) : (
+          <span aria-hidden className={cn("flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded border",
+                                          atteint ? "border-transparent bg-gold text-gold-foreground" : "border-border/70 text-transparent")}>
+            <Check className="h-3.5 w-3.5" />
+          </span>
+        )}
+      </div>
+
+      <div className="flex items-baseline justify-between gap-2 font-mono tabular-nums">
+        <span className="text-[11px] text-muted-foreground">{o.sets && o.reps ? `${o.sets}×${o.reps}` : ""}</span>
+        <span className={cn("text-[17px] font-semibold", kg ? "text-gold" : "text-muted-foreground")}>{kg || "—"}</span>
+      </div>
+
+      {jauge != null ? (
+        <span aria-hidden className="block h-1.5 overflow-hidden rounded-full bg-muted">
+          <span className={cn("block h-full rounded-full", jauge >= 1 ? "bg-gold" : "bg-gold/45")}
+                style={{ width: `${Math.round(Math.min(Math.max(jauge, 0), 1) * 100)}%` }} />
         </span>
+      ) : (
+        <span aria-hidden className="block h-1.5 rounded-full border border-dashed border-border" />
       )}
 
-      <span className="min-w-0 flex-1 truncate">
-        <span className={cn("font-display text-[15px] font-bold uppercase tracking-[0.01em]",
-                            atteint && "text-gold")}>
-          {o.exercise || "—"}
-        </span>
-        {o.variant && (
-          <span className="ml-1.5 font-mono text-[10px] text-muted-foreground">{o.variant}</span>
+      <div className="flex min-h-4 items-baseline justify-between gap-2 font-mono text-[10.5px] tabular-nums">
+        {etat === "atteint" ? (
+          <span className="text-gold">{t("objectives.atteintLe", { date: formatShort(o.atteintLe!) })}</span>
+        ) : etat === "sans_cible" ? (
+          /* Au téléphone, le geste seul : une phrase tronquée ne dit plus rien. */
+          <><span className="hidden truncate text-muted-foreground sm:inline">{t("objectives.pasDeChargeVisee")}</span>
+            <span className="ml-auto shrink-0 text-muted-foreground">{t("objectives.aCocher")}</span></>
+        ) : etat === "sans_mesure" ? (
+          <><span className="hidden truncate text-muted-foreground sm:inline">{t("objectives.rienDeComparable")}</span>
+            <span className="truncate text-muted-foreground sm:hidden">{t("objectives.pasDeMesure")}</span></>
+        ) : (
+          <><span className="truncate text-muted-foreground">{ou}</span>
+            <span className="shrink-0 font-semibold text-gold">
+              {etat === "dans_la_cible" ? t("objectives.dansLaCible") : `+${nombre(av?.reste ?? 0)}`}
+            </span></>
         )}
-        {/* Le format prend la pastille bleue `--metric`, comme partout ailleurs
-            dans le produit : c'est une nature d'exercice, pas une mesure. */}
-        {o.format && (
-          <span className="ml-1.5 rounded px-1 font-display text-[9px] uppercase tracking-wider text-metric"
-                style={{ backgroundColor: 'color-mix(in oklab, var(--metric) 15%, transparent)' }}>
-            {formatComplet(o)}
-          </span>
-        )}
-        {o.tempo && (
-          <span className="ml-1.5 font-mono text-[10px] text-muted-foreground">{o.tempo}</span>
-        )}
-        {o.assistance && (
-          <span className="ml-1.5 text-[10px] text-muted-foreground">{o.assistance}</span>
-        )}
-        {atteint && (
-          <span className="ml-1.5 font-mono text-[10px] text-muted-foreground">
-            {t("objectives.atteintLe", { date: formatShort(o.atteintLe!) })}
-          </span>
-        )}
-      </span>
-
-      <span className="flex shrink-0 items-baseline gap-2 font-mono text-[11px] tabular-nums">
-        {o.sets && o.reps && (
-          <span className="text-muted-foreground">{o.sets}×{o.reps}</span>
-        )}
-        {kg && <span className="font-bold text-gold">{kg}</span>}
-      </span>
+      </div>
     </div>
   );
 }
@@ -195,8 +209,8 @@ export function CarteObjectif({ o, peutEcrire, onBasculerAtteint }: {
  *  qui rend le repli acceptable ici, là où replier une liste de séances ne
  *  laisserait qu'un titre au-dessus du vide. Le chevron est la seule chose qui
  *  ANNONCE le geste — `aria-expanded` ne le dit qu'aux lecteurs d'écran. */
-function EnTete({ blockLabel, atteints, total, action, deplie, onBasculer }: {
-  blockLabel: string; atteints: number; total: number; action?: React.ReactNode;
+function EnTete({ blockLabel, objectives, action, deplie, onBasculer }: {
+  blockLabel: string; objectives: BlockObjective[]; action?: React.ReactNode;
   deplie: boolean; onBasculer: () => void;
 }) {
   const { t } = useTranslation();
@@ -224,7 +238,7 @@ function EnTete({ blockLabel, atteints, total, action, deplie, onBasculer }: {
         <Target className="h-3.5 w-3.5 shrink-0 text-gold" />
         <h3 className="shrink-0 text-sm font-semibold">{t("objectives.objectifsDuBloc")}</h3>
         <span className="min-w-0 truncate text-[11px] text-muted-foreground">· {blockLabel}</span>
-        <CompteurAtteints atteints={atteints} total={total} />
+        <CompteurAtteints objectives={objectives} />
       </button>
       {action}
     </div>
@@ -235,19 +249,19 @@ function EnTete({ blockLabel, atteints, total, action, deplie, onBasculer }: {
  *  cette liste — la vue entraînement et le tableau de bord. `goals-list` affiche
  *  `n/total` depuis toujours ; ici, aucun total n'existait, ni d'un côté ni de
  *  l'autre. */
-export function CompteurAtteints({ atteints, total }: { atteints: number; total: number }) {
+export function CompteurAtteints({ objectives }: { objectives: BlockObjective[] }) {
   const { t } = useTranslation();
-  if (total === 0) return null;
+  if (objectives.length === 0) return null;
+  const etat = (o: BlockObjective) => (o.atteintLe ? "atteint" : o.avancement?.etat);
+  const atteints = objectives.filter(o => etat(o) === "atteint").length;
+  const enRoute = objectives.filter(o => etat(o) === "en_route" || etat(o) === "dans_la_cible").length;
+  const sansCible = objectives.filter(o => etat(o) === "sans_cible").length;
   return (
-    <div className="flex shrink-0 items-center gap-2">
-      <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
-        {t("objectives.atteintsSur", { n: atteints, total })}
-      </span>
-      <span className="h-1 w-[78px] overflow-hidden rounded-full bg-muted">
-        <span className="block h-full rounded-full bg-gold"
-              style={{ width: `${Math.round((atteints / total) * 100)}%` }} />
-      </span>
-    </div>
+    <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
+      {[t("objectives.nAtteints", { count: atteints }),
+        enRoute ? t("objectives.nEnRoute", { count: enRoute }) : "",
+        sansCible ? t("objectives.nSansCible", { count: sansCible }) : ""].filter(Boolean).join(" · ")}
+    </span>
   );
 }
 
@@ -262,8 +276,8 @@ export function Cadre({ atteint, className, children }: {
   atteint: boolean; className?: string; children: React.ReactNode;
 }) {
   return (
-    <li className={cn("rounded-md border bg-card/60 px-3 py-2",
-                      atteint ? "border-gold/45" : "border-border/70", className)}
+    <li className={cn("rounded-lg border px-3 py-2.5",
+                      atteint ? "border-gold/45 bg-gold/[0.07]" : "border-border/70 bg-card/60", className)}
         style={atteint ? { boxShadow: "inset 2px 0 0 var(--gold)" } : undefined}>
       {children}
     </li>
@@ -281,15 +295,14 @@ export function BlockObjectivesList({ objectives, blockLabel }: { objectives: Bl
      est. */
   const [deplie, setDeplie] = useState(false);
   if (objectives.length === 0) return null;
-  const atteints = objectives.filter(o => o.atteintLe).length;
   return (
     // ⚠️ SANS CADRE PROPRE (1b, 13/09) : le groupe d'objectifs sous l'en-tête
     // du programme le porte (`training.tsx`), avec le filet entre les deux.
     <section>
-      <EnTete blockLabel={blockLabel} atteints={atteints} total={objectives.length}
+      <EnTete blockLabel={blockLabel} objectives={objectives}
               deplie={deplie} onBasculer={() => setDeplie(d => !d)} />
       {deplie && (
-        <ul className="flex flex-col gap-1.5 px-3.5 pb-3.5">
+        <ul className="grid grid-cols-2 gap-2 px-3.5 pb-3.5 lg:grid-cols-3">
           {objectives.map((o, i) => (
             <Cadre key={i} atteint={!!o.atteintLe}>
               <CarteObjectif o={o} peutEcrire={false} />
@@ -317,7 +330,6 @@ export function BlockObjectivesEditor({
   const [fenetre, setFenetre] = useState<{ index: number | null; o: BlockObjective } | null>(null);
   // Replié par défaut, comme la lecture de l'athlète (voir `BlockObjectivesList`).
   const [deplie, setDeplie] = useState(false);
-  const atteints = objectives.filter(o => o.atteintLe).length;
 
   const basculerAtteint = (i: number, o: BlockObjective) =>
     /* ⚠️ LA DATE EST POSÉE PAR L'ÉCRAN, PAS SAISIE. Le serveur stocke un jour
@@ -333,8 +345,7 @@ export function BlockObjectivesEditor({
     <section>
       <EnTete
         blockLabel={blockLabel}
-        atteints={atteints}
-        total={objectives.length}
+        objectives={objectives}
         deplie={deplie}
         onBasculer={() => setDeplie(d => !d)}
         action={deplie && (
@@ -362,7 +373,7 @@ export function BlockObjectivesEditor({
       {objectives.length === 0 ? (
         <p className="mb-3 text-xs text-muted-foreground">{t('objectives.empty')}</p>
       ) : (
-        <ul className="mb-3 flex flex-col gap-1.5">
+        <ul className="mb-3 grid grid-cols-2 gap-2 lg:grid-cols-3">
           {objectives.map((o, i) => {
             return (
               <Cadre key={i} atteint={!!o.atteintLe}>

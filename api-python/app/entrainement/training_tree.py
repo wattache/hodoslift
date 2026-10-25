@@ -18,6 +18,7 @@ from sqlalchemy import text
 from app.socle.empreinte import empreinte
 from app.entrainement.arbre_creation import est_un_uuid
 from app.entrainement.prescription import COLONNES_LIGNE, COLONNES_PAR_TABLE, NATURE_PAR_DEFAUT
+from app.entrainement.avancement_objectifs import avancement, lignes_realisees
 from app.entrainement.records import travail_note_sans_ressenti
 
 
@@ -294,7 +295,7 @@ def version_des_objectifs(lignes) -> str:
     return empreinte(tuple(o[c] for c in COLONNES_EMPREINTE_OBJECTIFS) for o in lignes)
 
 
-def _sortie_objectif(o) -> dict:
+def _sortie_objectif(o, lignes_du_bloc: list[dict] | None = None) -> dict:
     """Rend un objectif de bloc dans la forme du contrat.
 
     ⚠️ Une seule définition, partagée par `read_tree` et `read_structure`
@@ -311,6 +312,9 @@ def _sortie_objectif(o) -> dict:
         # ÉDITABLE, où un `null` casserait la saisie ; celui-ci n'est pas une
         # case de texte, c'est une coche.
         "atteintLe": o["atteint_le"].isoformat() if o["atteint_le"] else None,
+        # Où en est l'athlète (FRE-254) : calculé ICI, lu tel quel par les trois
+        # écrans qui montrent les objectifs.
+        "avancement": avancement(o, lignes_du_bloc or []),
     }
 
 
@@ -391,6 +395,7 @@ def read_structure(conn, program_id: str, voit_les_masquees: bool = True) -> dic
     blocs = _grouper(conn.execute(_BLOCS, p).mappings().all(), "macro_id")
     semaines = _grouper(conn.execute(_SEMAINES, p).mappings().all(), "block_id")
     objectifs = _grouper(conn.execute(_OBJECTIFS, p).mappings().all(), "bloc_uuid")
+    realisees = lignes_realisees(conn, program_id=program_id) if objectifs else {}
 
     return {"macros": [{
         "id": str(m["id"]),
@@ -403,7 +408,8 @@ def read_structure(conn, program_id: str, voit_les_masquees: bool = True) -> dic
             "blockNumber": b["number"],
             "name": b["name"],
             **_bornes(b),
-            "objectives": [_sortie_objectif(o) for o in objectifs.get(str(b["id"]), [])],
+            "objectives": [_sortie_objectif(o, realisees.get(str(b["id"])))
+                           for o in objectifs.get(str(b["id"]), [])],
             "objectivesVersion": version_des_objectifs(objectifs.get(str(b["id"]), [])),
             "hasBase": b["a_une_base"],
             "weeks": [_sortie_semaine(w, identite)
@@ -470,7 +476,8 @@ def read_tree(conn, program_id: str, voit_les_masquees: bool = True) -> dict:
     accessoires = _grouper(conn.execute(_ACCESSOIRES, p).mappings().all(), "block_id")
     objectifs = _grouper(conn.execute(_OBJECTIFS, p).mappings().all(), "bloc_uuid")
 
-    lu = _Lu(identite, seances, exercices, principes, accessoires, objectifs)
+    realisees = lignes_realisees(conn, program_id=program_id) if objectifs else {}
+    lu = _Lu(identite, seances, exercices, principes, accessoires, objectifs, realisees)
     return {"macros": [{
         "id": str(m["id"]),
         "macroNumber": m["number"],
@@ -492,6 +499,7 @@ class _Lu(NamedTuple):
     principes: dict
     accessoires: dict
     objectifs: dict
+    realisees: dict
 
 
 def _sortie_semaine(w, identite: dict, sessions: list | None = None) -> dict:
@@ -536,7 +544,7 @@ def _sortie_bloc(b, semaines: list, lu: _Lu, voit_les_masquees: bool) -> dict:
         **_bornes(b),
         "base": _sortie_base(b, lu.principes.get(bid, []), lu.accessoires.get(bid, [])),
         # Jamais absent, même vide : le front lit la clé sans la tester.
-        "objectives": [_sortie_objectif(o) for o in lu.objectifs.get(bid, [])],
+        "objectives": [_sortie_objectif(o, lu.realisees.get(bid)) for o in lu.objectifs.get(bid, [])],
         "objectivesVersion": version_des_objectifs(lu.objectifs.get(bid, [])),
         "weeks": [_sortie_semaine(w, lu.identite,
                                   [_sortie_seance(s, lu.exercices) for s in lu.seances.get(str(w["id"]), [])])
@@ -566,5 +574,6 @@ def read_block(conn, program_id: str, block_id: str) -> dict | None:
         _grouper(conn.execute(_PRINCIPES_DU_BLOC, p).mappings().all(), "block_id"),
         _grouper(conn.execute(_ACCESSOIRES_DU_BLOC, p).mappings().all(), "block_id"),
         _grouper(conn.execute(_OBJECTIFS_DU_BLOC, p).mappings().all(), "bloc_uuid"),
+        lignes_realisees(conn, block_id=block_id),
     )
     return _sortie_bloc(bloc, semaines, lu, voit_les_masquees=True)

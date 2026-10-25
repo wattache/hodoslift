@@ -1033,7 +1033,21 @@
     "tempo": "Tempo",
     "chargeMin": "Charge basse",
     "chargeMax": "Charge haute",
-    "modifierLObjectif": "Modifier l'objectif {{nom}}"
+    "modifierLObjectif": "Modifier l'objectif {{nom}}",
+    "faitEnSemaine": "{{charge}} kg en S{{semaine}}",
+    "vise": "{{charge}} visés",
+    "pasDeChargeVisee": "pas de charge visée",
+    "resteKg": "il reste {{reste}} kg",
+    "aCocher": "à cocher",
+    "rienDeComparable": "rien de comparable sur ce bloc",
+    "dansLaCible": "dans la cible",
+    "nAtteints_one": "{{count}} atteint",
+    "nAtteints_other": "{{count}} atteints",
+    "nEnRoute_one": "{{count}} en route",
+    "nEnRoute_other": "{{count}} en route",
+    "nSansCible_one": "{{count}} sans cible chiffrée",
+    "nSansCible_other": "{{count}} sans cible chiffrée",
+    "pasDeMesure": "pas de mesure"
   },
   "periodization": {
     "aucun": "Aucun",

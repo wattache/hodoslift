@@ -418,7 +418,8 @@ def test_un_objectif_de_bloc_porte_TOUS_ses_champs(monde):
     assert len(objectifs) == 1
     assert set(objectifs[0]) == {"id", "exercise", "variant", "format", "sets",
                                  "reps", "weightMin", "weightMax", "assistance",
-                                 "atteintLe", "clusterMode", "clusterRest", "tempo"}
+                                 "atteintLe", "clusterMode", "clusterRest", "tempo",
+                                 "avancement"}
     # ⚠️ `None` ET NON `''` POUR CELUI-LÀ, seul du modèle. Les autres sortent en
     # chaîne vide parce qu'ils alimentent un tableau ÉDITABLE ; celui-ci est une
     # COCHE, et « pas atteint » est une absence de date, pas une date vide.

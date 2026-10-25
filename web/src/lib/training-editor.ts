@@ -1164,8 +1164,10 @@ export function useTrainingEditor(
     commit(next);
 
     if (isMock || !programId) return;
+    // `id` et `avancement` sont SERVIS, jamais écrits : brokkr refuse le second
+    // (FRE-254, `extra="forbid"`), et l'identifiant ne désigne rien dans un PUT complet.
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const objectives = deepClone(block.objectives).map(({ id: _id, ...rest }) => rest);
+    const objectives = deepClone(block.objectives).map(({ id: _id, avancement: _av, ...rest }) => rest);
     const blocId = block.id;
     /** Le bloc tel qu'il est MAINTENANT dans l'arbre — pas celui de la frappe. */
     const trouver = (arbre: MacrocycleEditing[]) =>

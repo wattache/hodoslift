@@ -167,7 +167,9 @@ def test_objectifs_du_bloc(client, vide):
                json={"objectives": [{"exercise": "SQUAT"}], "version": bloc["objectivesVersion"]})
     relu = _arbre(client)["blocks"][0]
     _echo(client, "put", f"/blocks/{bloc['id']}/objectives",
-          {"objectives": [{k: v for k, v in o.items() if k != "id"} for o in relu["objectives"]],
+          # `avancement` est SERVI, jamais écrit (FRE-254) : le front le retire
+          # comme l'identifiant, et l'écriture le refuserait (`extra="forbid"`).
+          {"objectives": [{k: v for k, v in o.items() if k not in ("id", "avancement")} for o in relu["objectives"]],
            "version": relu["objectivesVersion"]})
 
 
