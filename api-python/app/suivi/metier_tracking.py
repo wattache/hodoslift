@@ -116,6 +116,9 @@ WEEKS_SQL = text(
                FILTER (WHERE reps_unit IS DISTINCT FROM 'sec') AS reps_prevu_total,
            avg(felt_rpe) AS felt_rpe,
            avg(aimed_rpe) AS aimed_rpe,
+           -- Les séries LOURDES : RPE ressenti 8 ou plus, séries tenues. Zéro est
+           -- un fait (aucune série lourde), pas une absence.
+           coalesce(round(sum(sets) FILTER (WHERE felt_rpe >= 8)), 0)::int AS lourdes,
            count(DISTINCT (week_number, session_index)) AS sessions,
            -- ÉCHECS : saisis en toutes lettres dans le RPE ressenti (« FAIL »),
            -- donc invisibles dans la moyenne numérique. Ceux qui tombent SUR la
@@ -319,6 +322,50 @@ SERIES_PAR_LIFT_SQL = text(
     """
 )
 
+# LES LIGNES D'UN MOUVEMENT, une à une, pour ce que l'agrégat ne sait pas
+# faire : estimer un 1RM par série (table RTS, `app/suivi/rm_estime.py`) et
+# reconnaître un travail refait à l'identique (`app/suivi/progression.py`).
+# Mêmes filtres que `WEEKS_SQL`, même normalisation des combinaisons que
+# `COURBES_SQL` : variantes triées, `''` et NULL confondus en « rien ».
+LIGNES_SQL = text(
+    """
+    SELECT session_date, macro_number, block_number,
+           (SELECT coalesce(array_agg(v ORDER BY v), '{}')
+              FROM unnest(coalesce(variant, '{}')) v
+             WHERE btrim(v) <> '') AS variantes,
+           coalesce(nullif(btrim(tempo), ''), '') AS tempo_cle,
+           coalesce(nullif(btrim(format), ''), '') AS format_cle,
+           sets, coalesce(reps_done, reps) AS reps,
+           coalesce(weight_done_kg, weight_kg) AS charge_kg,
+           bodyweight, felt_rpe
+    FROM series_de_travail
+    WHERE athlete_id = :legacy AND exercise = :exercise
+      AND session_date IS NOT NULL
+    ORDER BY session_date, session_index, exercise_index
+    """
+)
+
+# LES PESÉES de l'athlète, datées : le journal (`daily_logs`) et le poids posé
+# sur une semaine d'entraînement. Un mouvement au poids du corps s'estime en
+# charge TOTALE, et le total dépend du poids ce jour-là.
+PESEES_SQL = text(
+    """
+    SELECT d.log_date AS jour, d.weight_kg AS kg
+    FROM daily_logs d JOIN athletes a ON a.id = d.athlete_id
+    WHERE a.legacy_id = :legacy AND d.weight_kg IS NOT NULL
+    UNION ALL
+    SELECT w.start_date, w.athlete_weight_kg
+    FROM training_weeks w
+    JOIN training_blocks b ON b.id = w.block_id
+    JOIN training_macros m ON m.id = b.macro_id
+    JOIN programs p ON p.id = m.program_id
+    JOIN athletes a ON a.id = p.athlete_id
+    WHERE a.legacy_id = :legacy AND w.athlete_weight_kg IS NOT NULL
+      AND w.start_date IS NOT NULL
+    ORDER BY 1
+    """
+)
+
 LAST_SESSION_SQL = text(
     "SELECT max(session_date) FROM series_realisees WHERE athlete_id = :legacy"
 )
@@ -430,6 +477,14 @@ def weeks(session, *, legacy, exercise):
 
 def last_session(session, *, legacy):
     return session.execute(LAST_SESSION_SQL, {"legacy": legacy}).scalar()
+
+
+def lignes(session, *, legacy, exercise):
+    return session.execute(LIGNES_SQL, {"legacy": legacy, "exercise": exercise}).all()
+
+
+def pesees(session, *, legacy) -> list[tuple]:
+    return [(r.jour, float(r.kg)) for r in session.execute(PESEES_SQL, {"legacy": legacy}).all()]
 
 
 def athlete_weeks(session, *, legacy):

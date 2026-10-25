@@ -12,21 +12,16 @@ const ouvrirLaBaseDu = async (page: Page, bloc: string) => {
   await page.getByRole('button', { name: /^(Objectifs du bloc|Block objectives)$/ }).click();
 };
 
-test('depuis une ligne de BASE : la fenêtre arrive pré-remplie, et l’objectif rejoint la liste', async ({ page }) => {
+test('une ligne qui a déjà son objectif le ROUVRE, au lieu d’en poser un doublon (FRE-255)', async ({ page }) => {
+  /** Le muscle-up d'« Accumulation » porte déjà un objectif lié (5–8 kg).
+   *  MUTATION QUI ROUGIT : ouvrir une fenêtre neuve sans chercher l'existant. */
   await ouvrirLaBaseDu(page, 'Accumulation');
-
-  // MUTATION QUI ROUGIT : le bouton absent des lignes (prop non branchée).
   await page.getByRole('button', { name: /^Poser un objectif depuis la ligne / }).first().click();
   const fenetre = page.getByRole('dialog');
-  await expect(fenetre).toContainText('Nouvel objectif');
-  // La ligne d'origine est affichée, et son identité n'est plus un champ.
-  // MUTATION QUI ROUGIT : la fenêtre qui laisse modifier le mouvement.
+  await expect(fenetre).toContainText("Modifier l'objectif");
   await expect(fenetre.locator('[data-ligne-de-l-objectif]')).toContainText('MUSCLE UP');
   await expect(fenetre.locator('label', { hasText: /^Mouvement$/ })).toBeHidden();
-
-  await fenetre.getByRole('button', { name: 'Ajouter', exact: true }).click();
-  await expect(fenetre).toHaveCount(0);
-  await expect(page.getByText(/Objectif ajouté à/)).toBeVisible();
+  await expect(fenetre.getByLabel('Charge basse')).toHaveValue('5');
 });
 
 test('plus d’ajout à vide : la liste renvoie au bouton cible de la BASE', async ({ page }) => {

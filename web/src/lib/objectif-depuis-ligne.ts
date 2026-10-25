@@ -29,3 +29,18 @@ export function objectifDepuisLaLigne(l: Principle | BaseAccessory, source: 'pri
     tier: source === 'principe' ? ((l as Principle).tier ?? null) : null,
   };
 }
+
+const cle = (v: string | null | undefined) => (v ?? '').trim().toLowerCase();
+const variantes = (v: string | null | undefined) =>
+  (v ?? '').split('+').map(cle).filter(Boolean).sort().join('+');
+
+/** Deux objectifs tiennent-ils à la MÊME ligne de BASE (FRE-255) ? Source, tier,
+ *  mouvement, variantes, format, tempo — la clé que brokkr garde (`cle_du_lien`)
+ *  et qui lui fait refuser le second. Ici pour ROUVRIR l'existant au lieu d'en
+ *  poser un doublon. Un objectif non lié ne tient à aucune ligne. */
+export function memeLien(a: BlockObjective, b: BlockObjective): boolean {
+  if (!a.source || a.source !== b.source) return false;
+  return (a.source !== 'principe' || (a.tier ?? null) === (b.tier ?? null))
+    && cle(a.exercise) === cle(b.exercise) && variantes(a.variant) === variantes(b.variant)
+    && cle(a.format) === cle(b.format) && cle(a.tempo) === cle(b.tempo);
+}

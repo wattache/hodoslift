@@ -49,6 +49,43 @@ class SemaineDeSuivi(BaseModel):
     failsAtMax: int
     macroNumber: int | None
     blockNumber: int | None
+    # LA PROGRESSION (25/10) : les séries lourdes (RPE ≥ 8, zéro est un fait),
+    # le meilleur 1RM ESTIMÉ de la semaine en LEST (table RTS, forme de
+    # compétition seule) et l'intensité en % du meilleur de la période. `null`
+    # quand rien ne s'estime — jamais 0 — et `e1Raison` dit pourquoi : la courbe
+    # se coupe, et l'écran écrit la raison plutôt que « arrêtée ».
+    lourdes: int
+    e1Kg: float | None
+    intensite: float | None
+    e1Raison: Literal["variantes", "sans_rpe", "reps", "sans_pesee", "sans_charge"] | None
+
+
+class PointDeRpe(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    date: str
+    rpe: float
+
+
+class TravailRefait(BaseModel):
+    """Un travail refait à l'identique où seul le RPE a changé (25/10).
+
+    Même forme (`competition`, ou variantes + tempo + format), mêmes séries, reps
+    et lest ; `points` dans l'ordre des dates, `delta` = dernier − premier :
+    négatif, c'est du progrès que la charge max ne montre pas.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    competition: bool
+    variant: list[str]
+    tempo: str | None
+    format: str | None
+    sets: float
+    reps: float
+    lestKg: float
+    points: list[PointDeRpe]
+    delta: float
 
 
 class SemaineDeCourbe(BaseModel):
@@ -165,6 +202,9 @@ class SuiviLu(BaseModel):
     weeks: list[SemaineDeSuivi]
     courbes: list[CourbeDeCombinaison]
     setsByMovement: list[SeriesDeMouvement]
+    # Les travaux refaits du mouvement choisi, du plus grand progrès au plus
+    # grand recul (25/10). Dépend de `exercise`, comme `weeks`.
+    refaits: list[TravailRefait]
 
 
 class PointDeForme(BaseModel):

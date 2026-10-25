@@ -18,7 +18,7 @@ from app.socle.authz import AthleteAccess, require_athlete_access
 from app.socle.db import get_session
 from app.entrainement.records import lire_records
 from app.suivi.schemas_tracking import PalmaresLu, PointDeForme, RecordLu, SuiviLu
-from app.suivi import metier_palmares, metier_tracking as metier
+from app.suivi import metier_palmares, metier_tracking as metier, progression
 
 router = APIRouter(prefix="/athletes/{athlete_id}/tracking", tags=["tracking"])
 
@@ -49,9 +49,15 @@ def get_tracking(
         if selected is None:
             return {"exercise": None, "exercises": [], "weeks": [], "courbes": [], "athleteWeeks": [],
                     "rpeBlocks": [], "lastSessionDate": None, "oneRmKg": None,
-                    "setsByMovement": []}
+                    "setsByMovement": [], "refaits": []}
 
         rows = metier.weeks(session, legacy=legacy, exercise=selected)
+        # La progression (25/10) : ligne à ligne, parce qu'un 1RM s'estime par
+        # série et qu'un travail refait se reconnaît à sa forme exacte.
+        lignes = metier.lignes(session, legacy=legacy, exercise=selected)
+        estimations = progression.semaines(
+            lignes, pesees=metier.pesees(session, legacy=legacy), exercise=selected)
+        refaits = progression.refaits(lignes, exercise=selected)
         courbes = metier.courbes_par_combinaison(metier.courbes(session, legacy=legacy, exercise=selected))
         last = metier.last_session(session, legacy=legacy)
         # 1RM du mouvement, si c'en est un qui en a un. 0 = non renseigné → None.
@@ -112,9 +118,12 @@ def get_tracking(
         # (FRE-182). `weeks` reste le mouvement ENTIER : le volume, le 1RM et le
         # RPE se lisent toujours sur lui.
         "courbes": courbes,
+        "refaits": refaits,
         "weeks": [
             {
                 "week": r.semaine.isoformat(),
+                "lourdes": r.lourdes,
+                **estimations.get(r.semaine, {"e1Kg": None, "intensite": None, "e1Raison": None}),
                 "chargeMaxKg": metier.num(r.charge_max_kg),
                 "tonnageAtMaxKg": metier.num(r.tonnage_at_max_kg),
                 "topSetFormat": r.top_set_format,

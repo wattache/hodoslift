@@ -68,6 +68,18 @@ def _nombre(v) -> float | None:
     return n
 
 
+def cle_du_lien(objectif: dict) -> tuple | None:
+    """La ligne de BASE à laquelle l'objectif tient — `None` s'il n'est pas lié.
+
+    Deux objectifs d'un même bloc ne peuvent pas tenir à la même ligne : le
+    second serait un doublon (`replace_objectives` le refuse)."""
+    if objectif.get("source") not in ("principe", "renfo"):
+        return None
+    return (objectif.get("source"), objectif.get("tier") if objectif.get("source") == "principe" else None,
+            _cle(objectif.get("exercise")), _variantes(objectif.get("variant")),
+            _cle(objectif.get("format")), _cle(objectif.get("tempo")))
+
+
 def avancement(objectif: dict, lignes: list[dict]) -> dict:
     """L'avancement d'UN objectif, contre les lignes réalisées de SON bloc.
 

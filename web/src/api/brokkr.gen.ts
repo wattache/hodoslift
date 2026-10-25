@@ -1828,7 +1828,8 @@ export interface paths {
          *
          *     Raises:
          *         ErreurMetier: `objectifs_perimes` (409), la version reçue n'est plus
-         *             celle de la base (FRE-163).
+         *             celle de la base (FRE-163) ; `objectif_en_double` (422), deux
+         *             objectifs tiennent à la même ligne de BASE (FRE-255).
          */
         put: operations["replace_objectives_programs__program_id__blocks__block_id__objectives_put"];
         post?: never;
@@ -3992,7 +3993,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "erreur_interne" | "route_introuvable" | "methode_non_autorisee" | "token_invalide" | "email_non_verifie" | "reserve_aux_coachs" | "reserve_aux_admins" | "reserve_au_staff" | "reserve_aux_kines" | "reserve_aux_membres" | "athlete_hors_perimetre" | "programme_hors_perimetre" | "champs_reserves_au_staff" | "prescription_reservee_au_staff" | "athlete_introuvable" | "programme_introuvable" | "utilisateur_introuvable" | "structure_inconnue" | "profil_introuvable" | "profil_requis_avant_photo" | "competition_introuvable" | "evenement_introuvable" | "bilan_introuvable" | "douleur_introuvable" | "modele_introuvable" | "note_introuvable" | "rubrique_introuvable" | "test_introuvable" | "resultat_introuvable" | "entree_introuvable" | "record_introuvable" | "seance_introuvable" | "signalement_introuvable" | "exercice_introuvable" | "objet_arbre_introuvable" | "identifiant_pris" | "objectif_introuvable" | "coach_encore_reference" | "kine_a_des_athletes" | "douleur_deja_suivie" | "bilan_deja_finalise" | "bilan_incomplet" | "mouvement_inconnu" | "test_non_bilateral" | "test_sans_mesure" | "modele_vide" | "modele_utilise" | "rubrique_non_vide" | "test_utilise" | "email_fige_par_le_compte" | "slug_deja_pris" | "slug_immuable" | "entree_deja_existante" | "dernier_bloc" | "semaine_deja_remplie" | "base_sans_dates" | "essais_perdus" | "slug_requis" | "pas_un_kine" | "identifiant_invalide" | "pas_un_lift_de_competition" | "jour_hors_competition" | "categorie_exige_le_genre" | "categorie_invalide" | "motif_exige_un_echec" | "verdict_sans_charge" | "annonce_en_baisse" | "categorie_dans_deux_flights" | "flight_en_double" | "fin_avant_debut" | "date_invalide" | "date_future" | "intervalle_inverse" | "competition_hors_exercices" | "reordonnancement_incoherent" | "seance_d_une_autre_semaine" | "objectifs_perimes" | "competition_perimee" | "coach_inconnu" | "coach_d_une_autre_structure" | "photo_trop_lourde" | "media_trop_lourd" | "media_format_refuse" | "photo_pas_png" | "base_injoignable" | "corps_invalide";
+            code: "erreur_interne" | "route_introuvable" | "methode_non_autorisee" | "token_invalide" | "email_non_verifie" | "reserve_aux_coachs" | "reserve_aux_admins" | "reserve_au_staff" | "reserve_aux_kines" | "reserve_aux_membres" | "athlete_hors_perimetre" | "programme_hors_perimetre" | "champs_reserves_au_staff" | "prescription_reservee_au_staff" | "athlete_introuvable" | "programme_introuvable" | "utilisateur_introuvable" | "structure_inconnue" | "profil_introuvable" | "profil_requis_avant_photo" | "competition_introuvable" | "evenement_introuvable" | "bilan_introuvable" | "douleur_introuvable" | "modele_introuvable" | "note_introuvable" | "rubrique_introuvable" | "test_introuvable" | "resultat_introuvable" | "entree_introuvable" | "record_introuvable" | "seance_introuvable" | "signalement_introuvable" | "exercice_introuvable" | "objet_arbre_introuvable" | "identifiant_pris" | "objectif_introuvable" | "coach_encore_reference" | "kine_a_des_athletes" | "douleur_deja_suivie" | "bilan_deja_finalise" | "bilan_incomplet" | "mouvement_inconnu" | "test_non_bilateral" | "test_sans_mesure" | "modele_vide" | "modele_utilise" | "rubrique_non_vide" | "test_utilise" | "email_fige_par_le_compte" | "slug_deja_pris" | "slug_immuable" | "entree_deja_existante" | "dernier_bloc" | "semaine_deja_remplie" | "base_sans_dates" | "essais_perdus" | "slug_requis" | "pas_un_kine" | "identifiant_invalide" | "pas_un_lift_de_competition" | "jour_hors_competition" | "categorie_exige_le_genre" | "categorie_invalide" | "motif_exige_un_echec" | "verdict_sans_charge" | "annonce_en_baisse" | "categorie_dans_deux_flights" | "flight_en_double" | "fin_avant_debut" | "date_invalide" | "date_future" | "intervalle_inverse" | "competition_hors_exercices" | "reordonnancement_incoherent" | "seance_d_une_autre_semaine" | "objectifs_perimes" | "objectif_en_double" | "competition_perimee" | "coach_inconnu" | "coach_d_une_autre_structure" | "photo_trop_lourde" | "media_trop_lourd" | "media_format_refuse" | "photo_pas_png" | "base_injoignable" | "corps_invalide";
             /** Detail */
             detail: string;
             /** Status */
@@ -5386,6 +5387,13 @@ export interface components {
             /** Form */
             form: number;
         };
+        /** PointDeRpe */
+        PointDeRpe: {
+            /** Date */
+            date: string;
+            /** Rpe */
+            rpe: number;
+        };
         /** PrCreate */
         PrCreate: {
             /** Movement */
@@ -5840,6 +5848,14 @@ export interface components {
             macroNumber: number | null;
             /** Blocknumber */
             blockNumber: number | null;
+            /** Lourdes */
+            lourdes: number;
+            /** E1Kg */
+            e1Kg: number | null;
+            /** Intensite */
+            intensite: number | null;
+            /** E1Raison */
+            e1Raison: ("variantes" | "sans_rpe" | "reps" | "sans_pesee" | "sans_charge") | null;
         };
         /** SemaineLue */
         SemaineLue: {
@@ -6060,6 +6076,8 @@ export interface components {
             courbes: components["schemas"]["CourbeDeCombinaison"][];
             /** Setsbymovement */
             setsByMovement: components["schemas"]["SeriesDeMouvement"][];
+            /** Refaits */
+            refaits: components["schemas"]["TravailRefait"][];
         };
         /** TestCree */
         TestCree: {
@@ -6141,6 +6159,34 @@ export interface components {
             retire?: boolean | null;
             /** Mediaids */
             mediaIds?: string[] | null;
+        };
+        /**
+         * TravailRefait
+         * @description Un travail refait à l'identique où seul le RPE a changé (25/10).
+         *
+         *     Même forme (`competition`, ou variantes + tempo + format), mêmes séries, reps
+         *     et lest ; `points` dans l'ordre des dates, `delta` = dernier − premier :
+         *     négatif, c'est du progrès que la charge max ne montre pas.
+         */
+        TravailRefait: {
+            /** Competition */
+            competition: boolean;
+            /** Variant */
+            variant: string[];
+            /** Tempo */
+            tempo: string | null;
+            /** Format */
+            format: string | null;
+            /** Sets */
+            sets: number;
+            /** Reps */
+            reps: number;
+            /** Lestkg */
+            lestKg: number;
+            /** Points */
+            points: components["schemas"]["PointDeRpe"][];
+            /** Delta */
+            delta: number;
         };
         /**
          * TroisCharges

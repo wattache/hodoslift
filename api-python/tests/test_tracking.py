@@ -137,7 +137,7 @@ def test_aucune_donnee_reponse_vide(auth_as, sql):
     body = auth_as(uid="coach-1").get("/athletes/a1/tracking", headers=_AUTH).json()
     assert body == {"exercise": None, "exercises": [], "weeks": [], "courbes": [], "athleteWeeks": [],
                     "rpeBlocks": [], "lastSessionDate": None, "oneRmKg": None,
-                    "setsByMovement": []}
+                    "setsByMovement": [], "refaits": []}
 
 
 def _seance(conn, exercise, semaine, **c):
@@ -215,7 +215,8 @@ def test_UNE_REPONSE_PEUPLEE_porte_TOUS_ses_champs(auth_as, sql):
     body = auth_as(uid="coach-1").get("/athletes/a1/tracking", headers=_AUTH).json()
 
     assert set(body) == {"exercise", "exercises", "lastSessionDate", "oneRmKg",
-                         "rpeBlocks", "athleteWeeks", "weeks", "courbes", "setsByMovement"}
+                         "rpeBlocks", "athleteWeeks", "weeks", "courbes", "setsByMovement",
+                         "refaits"}
     assert set(body["courbes"][0]) == {"variant", "tempo", "format", "series", "weeks"}
     assert set(body["courbes"][0]["weeks"][0]) == {
         "week", "chargeMaxKg", "topSetFormat", "tonnageTotalKg", "sessions", "fails"}
@@ -225,7 +226,7 @@ def test_UNE_REPONSE_PEUPLEE_porte_TOUS_ses_champs(auth_as, sql):
         "week", "chargeMaxKg", "tonnageAtMaxKg", "topSetFormat", "tonnageTotalKg",
         "tonnagePrevuTotalKg", "repsPrevuTotal",
         "repsTotal", "feltRpe", "aimedRpe", "sessions", "fails", "failsAtMax",
-        "macroNumber", "blockNumber"}
+        "macroNumber", "blockNumber", "lourdes", "e1Kg", "intensite", "e1Raison"}
     assert set(body["athleteWeeks"][0]) == {
         "week", "feltRpe", "aimedRpe", "sessions", "macroNumber", "blockNumber"}
     assert set(body["rpeBlocks"][0]) == {

@@ -6707,7 +6707,7 @@
           "training"
         ],
         "summary": "Replace Objectives",
-        "description": "Remplace la liste d'objectifs d'un bloc, si elle n'a pas bougé depuis sa lecture.\n\nLe bloc est désigné par son uuid : `block_objectives` porte une vraie clé\nétrangère (FRE-12).\n\nRaises:\n    ErreurMetier: `objectifs_perimes` (409), la version reçue n'est plus\n        celle de la base (FRE-163).",
+        "description": "Remplace la liste d'objectifs d'un bloc, si elle n'a pas bougé depuis sa lecture.\n\nLe bloc est désigné par son uuid : `block_objectives` porte une vraie clé\nétrangère (FRE-12).\n\nRaises:\n    ErreurMetier: `objectifs_perimes` (409), la version reçue n'est plus\n        celle de la base (FRE-163) ; `objectif_en_double` (422), deux\n        objectifs tiennent à la même ligne de BASE (FRE-255).",
         "operationId": "replace_objectives_programs__program_id__blocks__block_id__objectives_put",
         "security": [
           {
@@ -14481,6 +14481,7 @@
               "reordonnancement_incoherent",
               "seance_d_une_autre_semaine",
               "objectifs_perimes",
+              "objectif_en_double",
               "competition_perimee",
               "coach_inconnu",
               "coach_d_une_autre_structure",
@@ -18986,6 +18987,25 @@
         "title": "PointDeForme",
         "description": "Une forme du jour, datée (FRE-119).\n\n⚠️ Elle n'est PAS dans `daily_logs` : elle est portée par la SÉANCE\n(`form_of_the_day`, 1 à 5, saisie au lancement)."
       },
+      "PointDeRpe": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "rpe": {
+            "type": "number",
+            "title": "Rpe"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "date",
+          "rpe"
+        ],
+        "title": "PointDeRpe"
+      },
       "PrCreate": {
         "properties": {
           "movement": {
@@ -20467,6 +20487,50 @@
               }
             ],
             "title": "Blocknumber"
+          },
+          "lourdes": {
+            "type": "integer",
+            "title": "Lourdes"
+          },
+          "e1Kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "E1Kg"
+          },
+          "intensite": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intensite"
+          },
+          "e1Raison": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "variantes",
+                  "sans_rpe",
+                  "reps",
+                  "sans_pesee",
+                  "sans_charge"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "E1Raison"
           }
         },
         "additionalProperties": false,
@@ -20486,7 +20550,11 @@
           "fails",
           "failsAtMax",
           "macroNumber",
-          "blockNumber"
+          "blockNumber",
+          "lourdes",
+          "e1Kg",
+          "intensite",
+          "e1Raison"
         ],
         "title": "SemaineDeSuivi",
         "description": "Une semaine POUR LE MOUVEMENT choisi : charge max, tonnage, RPE, échecs."
@@ -21059,6 +21127,13 @@
             },
             "type": "array",
             "title": "Setsbymovement"
+          },
+          "refaits": {
+            "items": {
+              "$ref": "#/components/schemas/TravailRefait"
+            },
+            "type": "array",
+            "title": "Refaits"
           }
         },
         "additionalProperties": false,
@@ -21072,7 +21147,8 @@
           "athleteWeeks",
           "weeks",
           "courbes",
-          "setsByMovement"
+          "setsByMovement",
+          "refaits"
         ],
         "title": "SuiviLu",
         "description": "La réponse entière du suivi.\n\nLes séries ne se déduisent pas l'une de l'autre : `weeks` porte le mouvement\nchoisi ENTIER, `courbes` le même mouvement découpé par combinaison (FRE-182),\n`athleteWeeks` le RPE global, `rpeBlocks` le calibrage par bloc, et\n`setsByMovement` les séries de TOUS les lifts de compétition.\n\n⚠️ Seules `weeks` et `courbes` dépendent de `exercise`. `setsByMovement` pose\nla question inverse de `weeks` : comparer tous les lifts sur une seule\nmétrique, plutôt que creuser un mouvement sur toutes."
@@ -21422,6 +21498,81 @@
         "additionalProperties": false,
         "type": "object",
         "title": "TestPatch"
+      },
+      "TravailRefait": {
+        "properties": {
+          "competition": {
+            "type": "boolean",
+            "title": "Competition"
+          },
+          "variant": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Variant"
+          },
+          "tempo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tempo"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format"
+          },
+          "sets": {
+            "type": "number",
+            "title": "Sets"
+          },
+          "reps": {
+            "type": "number",
+            "title": "Reps"
+          },
+          "lestKg": {
+            "type": "number",
+            "title": "Lestkg"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/PointDeRpe"
+            },
+            "type": "array",
+            "title": "Points"
+          },
+          "delta": {
+            "type": "number",
+            "title": "Delta"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "competition",
+          "variant",
+          "tempo",
+          "format",
+          "sets",
+          "reps",
+          "lestKg",
+          "points",
+          "delta"
+        ],
+        "title": "TravailRefait",
+        "description": "Un travail refait à l'identique où seul le RPE a changé (25/10).\n\nMême forme (`competition`, ou variantes + tempo + format), mêmes séries, reps\net lest ; `points` dans l'ordre des dates, `delta` = dernier − premier :\nnégatif, c'est du progrès que la charge max ne montre pas."
       },
       "TroisCharges": {
         "properties": {

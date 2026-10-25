@@ -20,7 +20,7 @@ import { useLocalStorageState } from '@/lib/storage';
 import { usePreferenceProgression } from '@/lib/preference-progression';
 import { cn } from '@/lib/utils';
 import { dupliquerAccessoire, dupliquerPrincipe } from '@/lib/dupliquer-base';
-import { objectifDepuisLaLigne } from '@/lib/objectif-depuis-ligne';
+import { memeLien, objectifDepuisLaLigne } from '@/lib/objectif-depuis-ligne';
 import { ObjectifDialog } from '@/components/training/objectif-dialog';
 import { phrase as phraseDeLObjectif } from '@/components/training/block-objectives-editor';
 import { toast } from 'sonner';
@@ -72,6 +72,10 @@ interface Props {
   /** Pose un objectif de bloc, pré-rempli depuis une ligne (FRE-252). Absent :
    *  pas de bouton — l'écran ne propose que ce qu'on peut écrire. */
   onAjouterObjectif?: (o: BlockObjective) => void;
+  /** Les objectifs du bloc, et la modification de l'un d'eux : une ligne qui a
+   *  déjà son objectif le rouvre au lieu d'en poser un doublon (FRE-255). */
+  objectifs?: BlockObjective[];
+  onModifierObjectif?: (index: number, o: BlockObjective) => void;
   /** Blocs précédents du macro — pour l'historique de progression par mouvement. */
   pastBlocks?: BlockEditing[];
 }
@@ -199,8 +203,14 @@ function dureeDuCycle(split: DayTiers[]): number {
   return joursDuCycle(Math.max(split.length, dernier)).length;
 }
 
-export function BlockBaseEditor({ blockLabel, programId, blockId, base, lib, canGenerate, onChange, onGenerate, hasPendingWrites, pastBlocks = [], onAjouterObjectif }: Props) {
-  const [objectifDepuis, setObjectifDepuis] = useState<BlockObjective | null>(null);
+export function BlockBaseEditor({ blockLabel, programId, blockId, base, lib, canGenerate, onChange, onGenerate, hasPendingWrites, pastBlocks = [], onAjouterObjectif, objectifs = [], onModifierObjectif }: Props) {
+  /* `index` : l'objectif existant que la ligne rouvre ; `null`, un nouveau. */
+  const [objectifDepuis, setObjectifDepuisEtat] = useState<{ o: BlockObjective; index: number | null } | null>(null);
+  const setObjectifDepuis = (depuis: BlockObjective | null) => {
+    if (!depuis) { setObjectifDepuisEtat(null); return; }
+    const index = objectifs.findIndex(o => memeLien(o, depuis));
+    setObjectifDepuisEtat(index >= 0 && onModifierObjectif ? { o: objectifs[index], index } : { o: depuis, index: null });
+  };
   // L'historique dessine le rendu de la personne qui regarde (27/09).
   const progression = usePreferenceProgression();
   const { t } = useTranslation();
@@ -1293,17 +1303,21 @@ export function BlockBaseEditor({ blockLabel, programId, blockId, base, lib, can
           des objectifs, pré-remplie ; on corrige ce qu'on veut, puis on pose. */}
       {objectifDepuis && onAjouterObjectif && (
         <ObjectifDialog
-          initial={objectifDepuis}
-          nouveau
+          initial={objectifDepuis.o}
+          nouveau={objectifDepuis.index === null}
           exerciseOptions={[...new Set([...lib.principaux, ...lib.renforcement])]}
           variantOptions={lib.variantes}
           assistanceOptions={lib.assistances}
           phrase={phraseDeLObjectif}
           onClose={() => setObjectifDepuis(null)}
           onSave={o => {
-            onAjouterObjectif(o);
+            if (objectifDepuis.index === null) {
+              onAjouterObjectif(o);
+              toast.success(t("base.objectifAjoute", { bloc: blockLabel }));
+            } else {
+              onModifierObjectif?.(objectifDepuis.index, o);
+            }
             setObjectifDepuis(null);
-            toast.success(t("base.objectifAjoute", { bloc: blockLabel }));
           }}
         />
       )}

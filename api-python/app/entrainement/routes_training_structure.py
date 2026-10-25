@@ -36,6 +36,7 @@ from app.entrainement.arbre_creation import (
 )
 from app.entrainement.generation_semaine import generer_semaine
 from app.entrainement.semaine_suivante import semaine_suivante
+from app.entrainement.avancement_objectifs import cle_du_lien
 from app.entrainement.training_tree import objectifs_du_bloc, version_des_objectifs
 from app.entrainement.schemas_training_lecture import SemaineLue
 from app.entrainement import metier_training_structure as metier
@@ -205,10 +206,17 @@ def replace_objectives(program_id: str, block_id: str, payload: ObjectivesReplac
 
     Raises:
         ErreurMetier: `objectifs_perimes` (409), la version reçue n'est plus
-            celle de la base (FRE-163)."""
+            celle de la base (FRE-163) ; `objectif_en_double` (422), deux
+            objectifs tiennent à la même ligne de BASE (FRE-255)."""
     # ⚠️ Les bornes et les champs refusés sont ceux du MODÈLE (`ObjectivesReplace`,
     # FRE-124) : pas de seconde borne écrite à la main ici.
     objectifs = [o.model_dump() for o in payload.objectives]
+    # UNE LIGNE DE BASE, UN OBJECTIF (FRE-255) : le doublon est rendu impossible,
+    # pas seulement évité à l'écran.
+    liens = [k for k in (cle_du_lien(o) for o in objectifs) if k is not None]
+    if len(liens) != len(set(liens)):
+        raise ErreurMetier("objectif_en_double", status.HTTP_422_UNPROCESSABLE_CONTENT,
+                           "deux objectifs tiennent à la même ligne de la BASE")
     with get_session() as conn:
         metier.verifier(conn, "bloc", program_id, block_id)
         # ⚠️ La version se relit DANS la transaction d'écriture (FRE-163) : lue

@@ -188,6 +188,24 @@ def test_un_objectif_garde_les_options_de_son_format_et_son_tempo(client, vide):
     assert (o["format"], o["clusterMode"], o["clusterRest"], o["tempo"]) == ("CLUSTER", "1/1/1", "15s", "DS")
 
 
+def test_deux_objectifs_sur_la_meme_ligne_de_base_sont_refuses(client, vide):
+    """Une ligne de BASE, un objectif (FRE-255) : le second serait un doublon.
+    Deux objectifs du même mouvement sur deux lignes différentes (tiers 1 et 2)
+    restent permis, comme ceux d'avant la règle, non liés.
+
+    MUTATION QUI ROUGIT : retirer la garde de `replace_objectives`."""
+    bloc = _arbre(client)["blocks"][0]
+    meme = {"exercise": "PULL UP", "format": "EMOM", "sets": "10", "reps": "1", "source": "principe", "tier": 1}
+    r = client.put(f"/programs/p1/blocks/{bloc['id']}/objectives", headers=_AUTH,
+                   json={"objectives": [meme, {**meme, "weightMin": "7,5"}], "version": bloc["objectivesVersion"]})
+    assert r.status_code == 422, r.text
+    assert r.json()["code"] == "objectif_en_double"
+    r = client.put(f"/programs/p1/blocks/{bloc['id']}/objectives", headers=_AUTH,
+                   json={"objectives": [meme, {**meme, "tier": 2}, {"exercise": "PULL UP"}, {"exercise": "PULL UP"}],
+                         "version": bloc["objectivesVersion"]})
+    assert r.status_code == 200, r.text
+
+
 def test_contenu_d_une_semaine(client, vide):
     """L'écho du contenu : séances et lignes telles que la lecture les rend.
 

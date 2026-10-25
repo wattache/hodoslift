@@ -556,6 +556,8 @@ export function TrainingView() {
                 onChange={base => { if (blockIndex >= 0) void editor.updateBlockBase(blockIndex, base); }}
                 onGenerate={() => { if (blockIndex >= 0) { void editor.generateWeekOneFromBase(blockIndex); setShowBase(false); } }}
                 onAjouterObjectif={o => editor.addObjective(o)}
+                objectifs={block.objectives ?? []}
+                onModifierObjectif={(i, o) => editor.replaceObjective(i, o)}
               />
             </>
           ) : brancheSemaine && week ? (

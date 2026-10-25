@@ -371,6 +371,7 @@ CODES: dict[str, str] = {
     # y écrivent (`owner_or_staff`) : sans version, le premier à avoir chargé la
     # page efface l'ajout de l'autre.
     "objectifs_perimes": "La liste d'objectifs a changé depuis sa lecture : recharger avant d'enregistrer.",
+    "objectif_en_double": "Deux objectifs du bloc tiennent à la même ligne de la BASE.",
     # ⚠️ Même garde sur la compétition (FRE-162) : le PATCH d'un plateau renvoie
     # la liste ENTIÈRE des participants et de leurs essais. Le conflit est rendu
     # visible ; la saisie concurrente n'est pas ouverte.
