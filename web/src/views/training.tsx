@@ -509,7 +509,6 @@ export function TrainingView() {
                 exerciseOptions={[...new Set([...coachLib.principaux, ...coachLib.renforcement])]}
                 variantOptions={coachLib.variantes}
                 assistanceOptions={coachLib.assistances}
-                onAdd={o => editor.addObjective(o)}
                 onReplace={(i, o) => editor.replaceObjective(i, o)}
                 onUpdate={(i, field, value) => editor.updateObjective(i, field, value)}
                 onRemove={i => editor.removeObjective(i)}

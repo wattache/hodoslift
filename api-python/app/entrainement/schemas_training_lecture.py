@@ -197,7 +197,7 @@ class AvancementObjectif(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    etat: Literal["atteint", "dans_la_cible", "en_route", "sans_mesure", "sans_cible"]
+    etat: Literal["atteint", "dans_la_cible", "en_route", "sans_ligne", "sans_mesure", "sans_cible"]
     fait: float | None
     semaine: int | None
     depart: float | None
@@ -220,6 +220,8 @@ class ObjectifDeBloc(BaseModel):
     clusterMode: str | None = None
     clusterRest: str | None = None
     tempo: str | None = None
+    source: Literal["principe", "renfo"] | None = None
+    tier: int | None = None
     sets: str | None
     reps: str | None
     weightMin: str | None

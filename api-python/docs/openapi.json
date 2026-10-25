@@ -11914,6 +11914,7 @@
               "atteint",
               "dans_la_cible",
               "en_route",
+              "sans_ligne",
               "sans_mesure",
               "sans_cible"
             ],
@@ -17672,6 +17673,32 @@
             ],
             "title": "Tempo"
           },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "principe",
+                  "renfo"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "tier": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tier"
+          },
           "sets": {
             "anyOf": [
               {
@@ -17836,6 +17863,28 @@
               }
             ],
             "title": "Tempo"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "tier": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tier"
           },
           "sets": {
             "anyOf": [
@@ -18208,6 +18257,34 @@
               }
             ],
             "title": "Tempo"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "principe",
+                  "renfo"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "tier": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 3.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tier"
           },
           "sets": {
             "anyOf": [

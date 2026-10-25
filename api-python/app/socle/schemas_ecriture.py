@@ -260,6 +260,8 @@ class ObjectifEcrit(BaseModel):
     clusterMode: str | None = None
     clusterRest: str | None = None
     tempo: str | None = None
+    source: str | None = None
+    tier: int | None = None
     sets: str | None
     reps: str | None
     weightMin: str | None

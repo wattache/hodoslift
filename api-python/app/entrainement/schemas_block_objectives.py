@@ -9,7 +9,7 @@ Validation légère, comme les contrats voisins : chaînes libres bornées, list
 bornée (garde-fous anti-dégénérescence).
 """
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
@@ -35,6 +35,10 @@ class ObjectiveIn(BaseModel):
     clusterMode: str | None = Field(default=None, max_length=_STR_MAX)
     clusterRest: str | None = Field(default=None, max_length=_STR_MAX)
     tempo: str | None = Field(default=None, max_length=_STR_MAX)
+    # La ligne de BASE dont l'objectif vient (FRE-254) : un principe et son tier,
+    # ou un renfo. Absente : un objectif d'avant la règle, non lié.
+    source: Literal["principe", "renfo"] | None = None
+    tier: int | None = Field(default=None, ge=1, le=3)
     sets: str | None = Field(default=None, max_length=_STR_MAX)
     reps: str | None = Field(default=None, max_length=_STR_MAX)
     weightMin: str | None = Field(default=None, max_length=_STR_MAX)

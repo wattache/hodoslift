@@ -2,14 +2,14 @@
 from app.entrainement.avancement_objectifs import avancement
 
 
-def ligne(semaine, charge, series=4, reps=4, name="SQUAT", variant=None, format=None, tempo=None):
-    return {"semaine": semaine, "charge": charge, "series": series, "reps": reps, "name": name,
+def ligne(semaine, charge, name="SQUAT", tier=1, variant=None, format=None, tempo=None):
+    return {"semaine": semaine, "charge": charge, "name": name, "tier": tier,
             "variant": variant or [], "format": format, "tempo": tempo}
 
 
 def objectif(**k):
     base = {"exercise": "SQUAT", "variant": "", "format": "", "tempo": "", "sets": "4", "reps": "4",
-            "weight_min": "90", "weight_max": "", "atteint_le": None}
+            "weight_min": "90", "weight_max": "", "atteint_le": None, "source": "principe", "tier": 1}
     return {**base, **k}
 
 
@@ -20,29 +20,30 @@ def test_en_route_depuis_la_premiere_semaine_mesuree():
     assert a == {"etat": "en_route", "fait": 85.0, "semaine": 2, "depart": 80.0, "reste": 5.0, "jauge": 0.5}
 
 
-def test_le_schema_doit_couvrir_celui_de_l_objectif():
-    """Un 4×2 lourd ne dit rien d'un 4×4. MUTATION QUI ROUGIT : ignorer les reps."""
-    a = avancement(objectif(), [ligne(1, 80), ligne(2, 100, reps=2)])
-    assert a["fait"] == 80.0
+def test_seul_le_principe_de_l_objectif_compte_son_tier_et_sa_forme():
+    """Mouvement, variantes, format, tempo, TIER : un squat tier 2 ou en tempo 310
+    n'est pas le principe de l'objectif. Séries et reps n'y entrent pas : elles
+    progressent. MUTATIONS QUI ROUGISSENT : ignorer le tier ; ignorer le tempo."""
+    lignes = [ligne(1, 80), ligne(2, 100, tier=2), ligne(2, 95, tempo="310"), ligne(3, 87.5)]
+    assert avancement(objectif(), lignes)["fait"] == 87.5
 
 
-def test_la_variante_et_le_format_distinguent_deux_objectifs_du_meme_mouvement():
-    o = objectif(exercise="PULL UP", variant="", format="CLUSTER", sets="3", reps="2", weight_min="10")
-    lignes = [ligne(1, 7.5, 3, 2, "PULL UP", format="CLUSTER"), ligne(2, 12, 3, 2, "PULL UP", ["NEUTRAL"], "CLUSTER"),
-              ligne(2, 15, 3, 2, "PULL UP")]
-    assert avancement(o, lignes)["fait"] == 7.5
+def test_un_renfo_n_a_pas_de_tier():
+    o = objectif(exercise="HIP THRUST", source="renfo", tier=None, weight_min="120")
+    lignes = [ligne(1, 100, "HIP THRUST", tier=None), ligne(1, 140, "HIP THRUST", tier=1)]
+    assert avancement(o, lignes)["fait"] == 100.0
 
 
 def test_une_fourchette_se_rejoint_par_sa_borne_basse():
-    """1,25 fait pour 1,25–2,5 : dans la cible. Sous la borne basse : en route."""
-    o = objectif(exercise="CHIN UP", sets="3", reps="3", weight_min="1,25", weight_max="2,5")
-    assert avancement(o, [ligne(1, 1.25, 3, 3, "CHIN UP")])["etat"] == "dans_la_cible"
-    assert avancement(o, [ligne(1, 0, 3, 3, "CHIN UP")])["etat"] == "en_route"
+    o = objectif(exercise="CHIN UP", weight_min="1,25", weight_max="2,5")
+    assert avancement(o, [ligne(1, 1.25, "CHIN UP")])["etat"] == "dans_la_cible"
+    assert avancement(o, [ligne(1, 0, "CHIN UP")])["etat"] == "en_route"
 
 
 def test_rien_n_est_invente():
-    """Sans ligne comparable : sans mesure, aucune jauge. Sans charge visée : sans cible.
-    La coche prime sur tout."""
+    """Non lié : sans ligne. Lié sans série faite : sans mesure. Sans charge
+    visée : sans cible. La coche prime sur tout."""
+    assert avancement(objectif(source=None, tier=None), [ligne(1, 85)])["etat"] == "sans_ligne"
     assert avancement(objectif(), []) == {"etat": "sans_mesure", "fait": None, "semaine": None,
                                          "depart": None, "reste": None, "jauge": None}
     assert avancement(objectif(weight_min="", weight_max=""), [ligne(1, 80)])["etat"] == "sans_cible"

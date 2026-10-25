@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, ChevronDown, ChevronRight, ChevronUp, Eye, Pencil, Plus, Target } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, ChevronUp, Eye, Pencil, Target } from "lucide-react";
 
 import type { BlockObjective } from "@/api/types";
 import { ObjectifDialog } from "./objectif-dialog";
@@ -46,8 +46,6 @@ interface Props {
   exerciseOptions: string[];
   variantOptions: string[];
   assistanceOptions: string[];
-  /** Ajoute un objectif COMPLET — vide, ou pré-rempli depuis une ligne de BASE. */
-  onAdd: (o: BlockObjective) => void;
   /** Remplace un objectif par celui de la fenêtre, d'un seul geste. */
   onReplace: (index: number, o: BlockObjective) => void;
   onUpdate: (index: number, field: keyof BlockObjective, value: string | null) => void;
@@ -185,6 +183,9 @@ export function CarteObjectif({ o, peutEcrire, onBasculerAtteint }: {
           /* Au téléphone, le geste seul : une phrase tronquée ne dit plus rien. */
           <><span className="hidden truncate text-muted-foreground sm:inline">{t("objectives.pasDeChargeVisee")}</span>
             <span className="ml-auto shrink-0 text-muted-foreground">{t("objectives.aCocher")}</span></>
+        ) : etat === "sans_ligne" ? (
+          <><span className="hidden truncate text-muted-foreground sm:inline">{t("objectives.nonLie")}</span>
+            <span className="truncate text-muted-foreground sm:hidden">{t("objectives.nonLieCourt")}</span></>
         ) : etat === "sans_mesure" ? (
           <><span className="hidden truncate text-muted-foreground sm:inline">{t("objectives.rienDeComparable")}</span>
             <span className="truncate text-muted-foreground sm:hidden">{t("objectives.pasDeMesure")}</span></>
@@ -316,7 +317,7 @@ export function BlockObjectivesList({ objectives, blockLabel }: { objectives: Bl
 
 export function BlockObjectivesEditor({
   objectives, blockLabel, exerciseOptions, variantOptions, assistanceOptions,
-  onAdd, onReplace, onUpdate, onRemove, onMove,
+  onReplace, onUpdate, onRemove, onMove,
 }: Props) {
   const { t } = useTranslation();
   const confirm = useConfirm();
@@ -416,13 +417,11 @@ export function BlockObjectivesEditor({
       )}
 
       {modifier && (
-        <button
-          type="button"
-          onClick={() => setFenetre({ index: null, o: objectifVide() })}
-          className="mb-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border text-xs text-muted-foreground transition-colors hover:border-gold/40 hover:text-foreground sm:h-10"
-        >
-          <Plus className="h-3.5 w-3.5" /> {t("objectives.add")}
-        </button>
+        /* UN OBJECTIF SE POSE DEPUIS LA BASE (FRE-254) : il tient à une ligne
+           du bloc, principe ou renfo — plus d'ajout à vide, sans lien. */
+        <p className="mb-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Target className="h-3.5 w-3.5 shrink-0 text-gold" /> {t("objectives.seposeDepuisLaBase")}
+        </p>
       )}
       </div>
       )}
@@ -437,7 +436,7 @@ export function BlockObjectivesEditor({
           phrase={phrase}
           onClose={() => setFenetre(null)}
           onSave={o => {
-            if (fenetre.index === null) onAdd(o); else onReplace(fenetre.index, o);
+            if (fenetre.index !== null) onReplace(fenetre.index, o);
             setFenetre(null);
           }}
           onRemove={fenetre.index === null ? undefined : async () => {
@@ -451,10 +450,4 @@ export function BlockObjectivesEditor({
       )}
     </section>
   );
-}
-
-/** Un objectif vierge, champs de texte à `''` comme la lecture les rend. */
-export function objectifVide(): BlockObjective {
-  return { id: '', exercise: '', variant: '', format: '', clusterMode: '', clusterRest: '', tempo: '',
-           sets: '', reps: '', weightMin: '', weightMax: '', assistance: '', atteintLe: null };
 }

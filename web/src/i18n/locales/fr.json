@@ -1047,7 +1047,13 @@
     "nEnRoute_other": "{{count}} en route",
     "nSansCible_one": "{{count}} sans cible chiffrée",
     "nSansCible_other": "{{count}} sans cible chiffrée",
-    "pasDeMesure": "pas de mesure"
+    "pasDeMesure": "pas de mesure",
+    "principeTier": "principe tier {{tier}}",
+    "renfo": "renfo",
+    "depuisLaLigne": "Depuis la ligne de BASE · {{ligne}}",
+    "seposeDepuisLaBase": "Un objectif se pose depuis une ligne de la BASE : le bouton cible d’un principe ou d’un renfo.",
+    "nonLie": "pas lié à une ligne de la BASE",
+    "nonLieCourt": "non lié"
   },
   "periodization": {
     "aucun": "Aucun",

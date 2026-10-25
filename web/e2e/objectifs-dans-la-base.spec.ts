@@ -64,8 +64,10 @@ test('sur un bloc SANS objectif, la base invite quand même à en poser un', asy
   // APERÇU, parce qu'on vient presque toujours y lire. Ce que cette spec garde
   // reste le même — sur un bloc vide, poser un objectif doit être JOIGNABLE — et
   // elle traverse maintenant le chemin réel pour y arriver.
+  // Depuis FRE-254, un objectif se pose depuis une ligne de la BASE (bouton
+  // cible) : l'invitation renvoie à ce geste, joignable sur cet écran même.
   await page.getByRole('button', { name: /^(Éditer|Edit)$/ }).click();
-  await expect(page.getByRole('button', { name: /^(Objectif|Objective)$/ })).toBeVisible();
+  await expect(page.getByText(/Un objectif se pose depuis une ligne de la BASE/)).toBeVisible();
 });
 
 test('la vue SEMAINE garde les siens — rien n’a été déplacé', async ({ page }) => {

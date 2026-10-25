@@ -7,7 +7,7 @@ import type { BaseAccessory, BlockObjective, Principle } from '@/api/types';
  *  Les variantes d'une ligne sont une LISTE, celle d'un objectif une chaîne :
  *  elles se joignent en « CHEST + DS ». La charge devient le bas de la
  *  fourchette, le coach pose le haut s'il en veut une. */
-export function objectifDepuisLaLigne(l: Principle | BaseAccessory): BlockObjective {
+export function objectifDepuisLaLigne(l: Principle | BaseAccessory, source: 'principe' | 'renfo'): BlockObjective {
   const texte = (v: string | null | undefined) => (v ?? '').trim();
   return {
     id: '',
@@ -23,5 +23,9 @@ export function objectifDepuisLaLigne(l: Principle | BaseAccessory): BlockObject
     weightMax: '',
     assistance: texte(l.assistance),
     atteintLe: null,
+    // LE LIEN À LA LIGNE (FRE-254) : l'avancement se lit sur les lignes de
+    // semaine de même identité, tier compris pour un principe.
+    source,
+    tier: source === 'principe' ? ((l as Principle).tier ?? null) : null,
   };
 }

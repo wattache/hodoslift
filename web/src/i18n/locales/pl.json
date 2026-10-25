@@ -1130,7 +1130,13 @@
     "nSansCible_few": "{{count}} bez liczby",
     "nSansCible_many": "{{count}} bez liczby",
     "nSansCible_other": "{{count}} bez liczby",
-    "pasDeMesure": "brak pomiaru"
+    "pasDeMesure": "brak pomiaru",
+    "principeTier": "zasada tier {{tier}}",
+    "renfo": "akcesorium",
+    "depuisLaLigne": "Z wiersza szablonu · {{ligne}}",
+    "seposeDepuisLaBase": "Cel ustawia się z wiersza szablonu: przycisk celu przy zasadzie lub akcesorium.",
+    "nonLie": "niepowiązany z wierszem szablonu",
+    "nonLieCourt": "niepowiązany"
   },
   "periodization": {
     "aucun": "Brak",

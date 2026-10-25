@@ -2211,7 +2211,11 @@ CREATE TABLE block_objectives (
     -- le tempo : un objectif posé depuis une ligne de BASE la reprend en entier.
     cluster_mode text,
     cluster_rest text,
-    tempo        text
+    tempo        text,
+    -- La ligne de BASE dont l'objectif vient (FRE-254) : un principe (et son
+    -- tier) ou un renfo. NULL = posé avant la règle, non lié.
+    source       text CONSTRAINT block_objectives_source CHECK (source IN ('principe', 'renfo')),
+    tier         smallint CONSTRAINT block_objectives_tier CHECK (tier BETWEEN 1 AND 3)
 );
 CREATE INDEX ON block_objectives (block_id);
 

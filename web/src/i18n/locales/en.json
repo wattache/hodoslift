@@ -1047,7 +1047,13 @@
     "nEnRoute_other": "{{count}} on the way",
     "nSansCible_one": "{{count}} without a number",
     "nSansCible_other": "{{count}} without a number",
-    "pasDeMesure": "no measure"
+    "pasDeMesure": "no measure",
+    "principeTier": "principle tier {{tier}}",
+    "renfo": "accessory",
+    "depuisLaLigne": "From the template line · {{ligne}}",
+    "seposeDepuisLaBase": "A goal is set from a template line: the target button of a principle or an accessory.",
+    "nonLie": "not tied to a template line",
+    "nonLieCourt": "not tied"
   },
   "periodization": {
     "aucun": "None",

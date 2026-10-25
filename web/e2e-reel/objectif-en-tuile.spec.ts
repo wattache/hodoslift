@@ -8,12 +8,14 @@ import { BROKKR, PROGRAMME, arbre, jeton, modeCoach, nettoyer, poserDuRealise, p
 test.afterEach(nettoyer);
 
 test('la tuile lit la meilleure série du bloc au schéma de l’objectif', async ({ page }) => {
-  await poserUnMacro([{ name: 'SQUAT', sets: '4', reps: '4', weight: '85' }]);
+  await poserUnMacro([{ name: 'SQUAT', sets: '4', reps: '4', weight: '85', tier: 1 }]);
   await poserDuRealise({ SQUAT: { feltRPE: '8' } });
   const bloc = (await arbre()).macros[0].blocks[0];
   const r = await fetch(`${BROKKR}/programs/${PROGRAMME}/blocks/${bloc.id}/objectives`, {
     method: 'PUT', headers: { Authorization: `Bearer ${await jeton()}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ objectives: [{ exercise: 'SQUAT', sets: '4', reps: '4', weightMin: '90' }],
+    // Posé depuis le principe SQUAT tier 1 : c'est son lien qui fait lire la série.
+    body: JSON.stringify({ objectives: [{ exercise: 'SQUAT', sets: '4', reps: '4', weightMin: '90',
+                                          source: 'principe', tier: 1 }],
                            version: bloc.objectivesVersion }),
   });
   expect(r.status, await r.clone().text()).toBe(200);

@@ -3003,7 +3003,7 @@ export interface components {
              * Etat
              * @enum {string}
              */
-            etat: "atteint" | "dans_la_cible" | "en_route" | "sans_mesure" | "sans_cible";
+            etat: "atteint" | "dans_la_cible" | "en_route" | "sans_ligne" | "sans_mesure" | "sans_cible";
             /** Fait */
             fait: number | null;
             /** Semaine */
@@ -4960,6 +4960,10 @@ export interface components {
             clusterRest?: string | null;
             /** Tempo */
             tempo?: string | null;
+            /** Source */
+            source?: ("principe" | "renfo") | null;
+            /** Tier */
+            tier?: number | null;
             /** Sets */
             sets: string | null;
             /** Reps */
@@ -4998,6 +5002,10 @@ export interface components {
             clusterRest?: string | null;
             /** Tempo */
             tempo?: string | null;
+            /** Source */
+            source?: string | null;
+            /** Tier */
+            tier?: number | null;
             /** Sets */
             sets: string | null;
             /** Reps */
@@ -5154,6 +5162,10 @@ export interface components {
             clusterRest?: string | null;
             /** Tempo */
             tempo?: string | null;
+            /** Source */
+            source?: ("principe" | "renfo") | null;
+            /** Tier */
+            tier?: number | null;
             /** Sets */
             sets?: string | null;
             /** Reps */

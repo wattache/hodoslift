@@ -1,18 +1,17 @@
 """Où en est l'athlète sur chaque objectif de bloc (FRE-254).
 
-« Où j'en suis » = la meilleure charge RÉALISÉE sur le bloc de l'objectif, par une
-ligne du même geste (mouvement, variante, format, tempo) dont le schéma COUVRE
-celui de l'objectif : au moins autant de séries, au moins autant de reps. Le
-départ de la jauge est la charge de la première semaine mesurée du bloc : la
-question est « combien de chemin j'ai fait », pas « quelle fraction de la cible je
-soulève ».
+Un objectif se pose depuis UNE LIGNE DE LA BASE de son bloc (William, 25/10) —
+un principe et son tier, ou un renfo — et en garde l'identité : mouvement,
+variantes, format, tempo, tier. « Où j'en suis » = la meilleure charge RÉALISÉE
+par les lignes de semaine du bloc qui ont cette identité. Ni séries, ni reps, ni
+charge n'y entrent : elles progressent d'une semaine à l'autre.
 
-⚠️ PAS LES RECORDS : un objectif de bloc est un « 4×4 @ 90 », pas un 4RM. Le
-comparer à un single referait l'erreur volume contre série unique.
+C'est un objectif DE BLOC : ni un objectif d'athlète, ni un record. Le départ de
+la jauge est la charge de la première semaine mesurée.
 
-⚠️ RIEN N'EST INVENTÉ : sans ligne comparable, `sans_mesure` (jamais une jauge à
-zéro) ; sans charge visée, `sans_cible` — c'est là que la coche reste le seul
-signal.
+⚠️ RIEN N'EST INVENTÉ : non lié à une ligne (posé avant la règle), `sans_ligne` ;
+sans série réalisée, `sans_mesure` (jamais une jauge à zéro) ; sans charge visée,
+`sans_cible` — c'est là que la coche reste le seul signal.
 """
 from __future__ import annotations
 
@@ -26,9 +25,7 @@ from app.entrainement.records import TRACE_ARBRE
 # ligne sans charge lisible (`ff_charge` NULL : poids du corps écrit en lettres)
 # ne mesure rien et n'est pas lue.
 _LIGNES = f"""
-    SELECT w.block_id::text AS bloc, w.number AS semaine, x.name, x.variant, x.format, x.tempo,
-           ff_num(x.sets) AS series,
-           coalesce(ff_reps_low(nullif(btrim(x.reps_done), '')), ff_reps_low(x.reps)) AS reps,
+    SELECT w.block_id::text AS bloc, w.number AS semaine, x.name, x.variant, x.format, x.tempo, x.tier,
            coalesce(ff_charge(nullif(btrim(x.weight_done), '')), ff_charge(x.weight)) AS charge
     FROM training_exercises x
     JOIN training_sessions s ON s.id = x.session_id
@@ -75,22 +72,23 @@ def avancement(objectif: dict, lignes: list[dict]) -> dict:
     """L'avancement d'UN objectif, contre les lignes réalisées de SON bloc.
 
     `objectif` porte les colonnes de `block_objectives`. Rend `etat` parmi
-    `atteint`, `dans_la_cible`, `en_route`, `sans_mesure`, `sans_cible`, et les
+    `atteint`, `dans_la_cible`, `en_route`, `sans_ligne`, `sans_mesure`, `sans_cible`, et les
     nombres qui le justifient (`fait`, `semaine`, `depart`, `reste`, `jauge`)."""
     bas, haut = _nombre(objectif.get("weight_min")), _nombre(objectif.get("weight_max"))
     # Une fourchette se rejoint par sa borne BASSE : sous elle on est en route,
     # au-dessus on est dans la cible.
     cible_basse = bas if bas is not None else haut
 
-    series_visees, reps_visees = _nombre(objectif.get("sets")), _nombre(objectif.get("reps"))
+    lie = objectif.get("source") in ("principe", "renfo")
+    tier = objectif.get("tier") if objectif.get("source") == "principe" else None
     comparables = [
         l for l in lignes
-        if _cle(l["name"]) == _cle(objectif.get("exercise"))
+        if lie
+        and _cle(l["name"]) == _cle(objectif.get("exercise"))
         and _variantes(l["variant"] or []) == _variantes(objectif.get("variant"))
-        and (not _cle(objectif.get("format")) or _cle(l["format"]) == _cle(objectif.get("format")))
-        and (not _cle(objectif.get("tempo")) or _cle(l["tempo"]) == _cle(objectif.get("tempo")))
-        and (series_visees is None or (l["series"] is not None and float(l["series"]) >= series_visees))
-        and (reps_visees is None or (l["reps"] is not None and float(l["reps"]) >= reps_visees))
+        and _cle(l["format"]) == _cle(objectif.get("format"))
+        and _cle(l["tempo"]) == _cle(objectif.get("tempo"))
+        and l["tier"] == tier
     ]
     fait = semaine = depart = None
     if comparables:
@@ -104,6 +102,8 @@ def avancement(objectif: dict, lignes: list[dict]) -> dict:
         return {**sortie, "etat": "atteint", "jauge": 1.0}
     if cible_basse is None:
         return {**sortie, "etat": "sans_cible"}
+    if not lie:
+        return {**sortie, "etat": "sans_ligne"}
     if fait is None:
         return {**sortie, "etat": "sans_mesure"}
     if fait >= cible_basse:

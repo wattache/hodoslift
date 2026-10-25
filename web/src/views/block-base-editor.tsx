@@ -1095,7 +1095,7 @@ export function BlockBaseEditor({ blockLabel, programId, blockId, base, lib, can
                             onUpdate={(f, v) => updatePrinciple(i, f, v)} onSetKind={k => setPrincipleKind(i, k)}
                             onRemove={() => void removePrinciple(i)}
                             onDuplicate={() => commit({ ...draft, daySplit, principles: dupliquerPrincipe(principles, i) })}
-                            onObjectif={onAjouterObjectif ? () => setObjectifDepuis(objectifDepuisLaLigne(p)) : undefined}
+                            onObjectif={onAjouterObjectif ? () => setObjectifDepuis(objectifDepuisLaLigne(p, 'principe')) : undefined}
                           />
                         </div>
                       </div>
@@ -1206,7 +1206,7 @@ export function BlockBaseEditor({ blockLabel, programId, blockId, base, lib, can
                         onUpdate={(f, v) => updateAccessory(i, f, v)} onSetKind={k => setAccessoryKind(i, k)}
                         onRemove={() => void removeAccessory(i)}
                         onDuplicate={() => commit({ ...draft, daySplit, principles, accessories: dupliquerAccessoire(accessories, i) })}
-                        onObjectif={onAjouterObjectif ? () => setObjectifDepuis(objectifDepuisLaLigne(a)) : undefined} />
+                        onObjectif={onAjouterObjectif ? () => setObjectifDepuis(objectifDepuisLaLigne(a, 'renfo')) : undefined} />
 
                       {/* Le geste de liaison se lit ENTRE les deux lignes qu'il
                           relie. Première version : une icône de 12 px à 40 %

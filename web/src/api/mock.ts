@@ -254,15 +254,15 @@ export const mockTraining: Macrocycle[] = [
         startDate: '',
         endDate: '',
         objectives: [
-          { id: '', exercise: 'MUSCLE UP', variant: 'Strict', format: '', sets: '5', reps: '3', weightMin: '5', weightMax: '8', assistance: '', atteintLe: null,
+          { id: '', exercise: 'MUSCLE UP', variant: 'Strict', format: '', sets: '5', reps: '3', weightMin: '5', weightMax: '8', assistance: '', atteintLe: null, source: 'principe', tier: 1,
             avancement: { etat: 'en_route', fait: 4, semaine: 2, depart: 2.5, reste: 1, jauge: 0.6 } },
           // ⚠️ UN OBJECTIF ATTEINT, et il manquait : sans lui le dev-mock ne
           // montre jamais l'état que la coche existe pour dire — ni l'e2e ne
           // peut le viser dans la vue ATHLÈTE, qui est celle qui le lit.
-          { id: '', exercise: 'SQUAT', variant: '', format: '', sets: '5', reps: '5', weightMin: '100', weightMax: '100', assistance: '', atteintLe: iso(-12),
+          { id: '', exercise: 'SQUAT', variant: '', format: '', sets: '5', reps: '5', weightMin: '100', weightMax: '100', assistance: '', atteintLe: iso(-12), source: 'principe', tier: 1,
             avancement: { etat: 'atteint', fait: 100, semaine: 3, depart: 92.5, reste: null, jauge: 1 } },
-          { id: '', exercise: 'PULL UP', variant: '', format: 'EMOM', clusterMode: '60', sets: '10', reps: '1', weightMin: '7,5', weightMax: '', assistance: '', atteintLe: null,
-            avancement: { etat: 'sans_mesure', fait: null, semaine: null, depart: null, reste: null, jauge: null } },
+          { id: '', exercise: 'PULL UP', variant: '', format: 'EMOM', clusterMode: '60', sets: '10', reps: '1', weightMin: '7,5', weightMax: '', assistance: '', atteintLe: null, source: null, tier: null,
+            avancement: { etat: 'sans_ligne', fait: null, semaine: null, depart: null, reste: null, jauge: null } },
           { id: '', exercise: 'DIPS', variant: 'Pause', format: 'CLUSTER', clusterMode: '1/1', clusterRest: '15s', sets: '3', reps: '2', weightMin: '', weightMax: '', assistance: '', atteintLe: null,
             avancement: { etat: 'sans_cible', fait: null, semaine: null, depart: null, reste: null, jauge: null } },
         ],

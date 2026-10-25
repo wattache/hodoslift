@@ -46,6 +46,12 @@ export function ObjectifDialog({
   const [o, setO] = useState<BlockObjective>(initial);
   const poser = <K extends keyof BlockObjective>(k: K, v: BlockObjective[K]) => setO(d => ({ ...d, [k]: v }));
   const lu = phrase(o);
+  /* ⚠️ CE QUI DÉFINIT LA LIGNE NE SE MODIFIE PAS (FRE-254) : l'objectif vient
+     d'une ligne de la BASE et en garde l'identité — mouvement, variante, format,
+     tempo, tier. La changer ici le délierait de ses séries. */
+  const fige = !!o.source;
+  const ligneSource = o.source === 'principe'
+    ? t("objectives.principeTier", { tier: o.tier ?? "—" }) : o.source === 'renfo' ? t("objectives.renfo") : "";
 
   return (
     <DialogPrimitive.Root open onOpenChange={ouvert => { if (!ouvert) onClose(); }}>
@@ -64,7 +70,17 @@ export function ObjectifDialog({
           <DialogPrimitive.Description className="sr-only">{t("objectives.mouvement")}</DialogPrimitive.Description>
 
           <form className="flex flex-col gap-3" onSubmit={e => { e.preventDefault(); onSave(o); }}>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {fige && (
+              <div data-ligne-de-l-objectif className="rounded-md border border-border/70 bg-muted/40 px-3 py-2">
+                <div className="font-display text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                  {t("objectives.depuisLaLigne", { ligne: ligneSource })}
+                </div>
+                <div className="mt-0.5 font-mono text-xs">
+                  {[o.exercise, o.variant, o.format, o.tempo && `tempo ${o.tempo}`].filter(Boolean).join(" · ")}
+                </div>
+              </div>
+            )}
+            <div className={cn("grid grid-cols-1 gap-2 sm:grid-cols-2", fige && "hidden")}>
               <Champ libelle={t("objectives.mouvement")}>
                 <select className={SELECT_CLASS} value={o.exercise ?? ""} onChange={e => poser("exercise", e.target.value)}>
                   <option value="">—</option>
@@ -82,7 +98,7 @@ export function ObjectifDialog({
             {/* Le format ET ses options : la durée d'un EMOM ou d'un AMRAP, le
                 schéma et le repos d'un cluster — les mêmes champs que la BASE. */}
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <Champ libelle={t("objectives.format")}>
+              <Champ libelle={t("objectives.format")} className={cn(fige && "hidden")}>
                 <select className={SELECT_CLASS} value={o.format ?? ""} onChange={e => poser("format", e.target.value)}>
                   {avecLaValeur(EXERCISE_FORMATS, o.format).map(f => <option key={f} value={f}>{f || "—"}</option>)}
                 </select>
@@ -99,7 +115,7 @@ export function ObjectifDialog({
                          className="h-11 w-full text-sm sm:h-[38px] sm:text-xs" onChange={e => poser("clusterRest", e.target.value)} />
                 </Champ>
               )}
-              <Champ libelle={t("objectives.tempo")}>
+              <Champ libelle={t("objectives.tempo")} className={cn(fige && "hidden")}>
                 <Input value={o.tempo ?? ""} className="h-11 w-full text-sm sm:h-[38px] sm:text-xs" onChange={e => poser("tempo", e.target.value)} />
               </Champ>
             </div>

@@ -9,6 +9,7 @@ test.afterEach(nettoyer);
 const objectifsEnBase = () => colonne(`
   SELECT o.exercise || '|' || coalesce(o.format, '⌀') || '|' || coalesce(o.cluster_mode, '⌀') || '|'
       || coalesce(o.cluster_rest, '⌀') || '|' || coalesce(o.tempo, '⌀') || '|' || coalesce(o.sets, '⌀') || 'x' || coalesce(o.reps, '⌀')
+      || '|' || coalesce(o.source, '⌀') || ' ' || coalesce(o.tier::text, '⌀')
   FROM block_objectives o JOIN training_blocks b ON b.id = o.block_id
   JOIN training_macros m ON m.id = b.macro_id WHERE m.program_id = 'e2e-program' ORDER BY o.position`);
 
@@ -30,5 +31,6 @@ test('l’objectif tiré d’une ligne en cluster garde son schéma, son repos e
   await page.getByRole('dialog').getByRole('button', { name: 'Ajouter', exact: true }).click();
 
   // MUTATION QUI ROUGIT : `clusterMode` absent de l'écriture (`_COLONNES_OBJECTIF`).
-  await expect.poll(objectifsEnBase, { timeout: 10_000 }).toBe('MUSCLE UP|CLUSTER|1/1/1|15s|DS|4x3');
+  // Et son LIEN à la ligne : un principe, tier 1 (FRE-254).
+  await expect.poll(objectifsEnBase, { timeout: 10_000 }).toBe('MUSCLE UP|CLUSTER|1/1/1|15s|DS|4x3|principe 1');
 });
