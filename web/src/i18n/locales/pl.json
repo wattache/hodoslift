@@ -1623,7 +1623,11 @@
     "copierSurLesSuivantes": "Skopiuj serię {{n}} do kolejnych",
     "effacerLesSeries": "Wyczyścić zapisane serie?",
     "effacerLesSeries_detail": "Wiersz wraca do jednego wpisu: RPE, powtórzenia i ciężar trzeba będzie wpisać ponownie dla całości.",
-    "effacer": "Wyczyść"
+    "effacer": "Wyczyść",
+    "objectifDuBloc_one": "Cel bloku",
+    "objectifDuBloc_few": "Cele bloku",
+    "objectifDuBloc_many": "Cele bloku",
+    "objectifDuBloc_other": "Cele bloku"
   },
   "share": {
     "bloc": "BLOK",

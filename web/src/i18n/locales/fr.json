@@ -1516,7 +1516,9 @@
     "copierSurLesSuivantes": "Copier la série {{n}} sur les suivantes",
     "effacerLesSeries": "Effacer les séries notées ?",
     "effacerLesSeries_detail": "La ligne repasse en saisie unique : RPE, répétitions et charge seront à ressaisir pour l’ensemble.",
-    "effacer": "Effacer"
+    "effacer": "Effacer",
+    "objectifDuBloc_one": "Objectif du bloc",
+    "objectifDuBloc_other": "Objectifs du bloc"
   },
   "share": {
     "bloc": "BLOC",

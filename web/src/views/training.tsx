@@ -569,6 +569,7 @@ export function TrainingView() {
                 canEditSelectedAthlete={sel.isSelf}
                 storageScopeKey={storageScopeKey}
                 blockWeeks={block?.weeks}
+                objectifsDuBloc={block?.objectives}
                 athleteName={`${athlete.firstName} ${athlete.lastName}`.trim()}
                 /* Bloc + semaine seulement : le nom du macro est souvent long
                    (« ROAD TO 100 ») et poussait la semaine hors du bandeau. Il

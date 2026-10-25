@@ -1,7 +1,9 @@
 import { Fragment, useState, useLayoutEffect, useRef } from "react";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { ChevronDown, ChevronUp, Copy, Plus, TriangleAlert, Video } from "lucide-react";
-import type { ExerciseKind, ObjectifTechnique, SessionEditing, WeekEditing } from '@/api/types';
+import type { BlockObjective, ExerciseKind, ObjectifTechnique, SessionEditing, WeekEditing } from '@/api/types';
+import { Cadre, CarteObjectif } from './block-objectives-editor';
+import { objectifsDeLExercice } from '@/lib/objectifs-de-l-exercice';
 import { cleMouvement } from "@/api/hooks/use-objectifs-techniques";
 import { ObjectifsPastille } from "@/components/training/objectifs-pastille";
 import { chargeEtAssistance } from "@/lib/weight";
@@ -67,6 +69,8 @@ export interface SessionTableProps {
   tempoOptions?: string[];
   /** Toutes les semaines du bloc — pour la mini progression de l'exercice. */
   blockWeeks?: WeekEditing[];
+  /** Les objectifs du bloc : ceux de l'exercice s'affichent dans son pli (FRE-253). */
+  objectifsDuBloc?: BlockObjective[];
   /** Namespace localStorage pour éviter les collisions entre profils. */
   storageScopeKey?: string;
   /** Bloc courant — bandeau de l'image de progression d'un exercice. */
@@ -148,7 +152,7 @@ function exerciseNumbers(exercises: { groupId?: string | null }[]): number[] {
 }
 
 export function SessionTable(props: SessionTableProps) {
-  const { session, mode = "athlete", canEditSelectedAthlete = false, onFeltRPEChange, onFeltRPEGlobal, onUpdateSetRPE, onUpdateSetValue, onEffacerLesSeries, onUpdateField, onSetSessionKind, objectifsParMouvement, blockWeeks, storageScopeKey, shareBlock } = props;
+  const { session, mode = "athlete", canEditSelectedAthlete = false, onFeltRPEChange, onFeltRPEGlobal, onUpdateSetRPE, onUpdateSetValue, onEffacerLesSeries, onUpdateField, onSetSessionKind, objectifsParMouvement, blockWeeks, objectifsDuBloc, storageScopeKey, shareBlock } = props;
   const confirm = useConfirm();
   const { t } = useTranslation();
   const [openNotes, setOpenNotes] = useState<Record<number, boolean>>({});
@@ -950,6 +954,25 @@ export function SessionTable(props: SessionTableProps) {
                           faisait lire « SUR CE BLOC » puis « PROGRESSION SUR LE
                           BLOC » à vingt pixels d'écart. C'est le libellé de la
                           colonne qu'on passe à la carte. */}
+                      {/* L'OBJECTIF DU BLOC POUR CET EXERCICE (FRE-253) : l'athlète
+                          voit vers quoi la séance le mène, là où il regarde déjà
+                          sa progression. Rien quand le bloc n'en pose pas. */}
+                      {(() => {
+                        const lies = objectifsDeLExercice(objectifsDuBloc, ex);
+                        if (!lies.length) return null;
+                        return (
+                          <div className="mb-3" data-objectif-de-l-exercice>
+                            <div className="mb-1.5 font-display text-[11px] uppercase tracking-[0.14em] text-muted-foreground sm:text-[10px]">
+                              {t("session.objectifDuBloc", { count: lies.length })}
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                              {lies.slice(0, 3).map((o, k) => (
+                                <Cadre key={k} atteint={!!o.atteintLe}><CarteObjectif o={o} peutEcrire={false} /></Cadre>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
                       {blockWeeks && blockWeeks.length >= 1 ? (
                         <ExerciseProgression session={session} exerciseIndex={i} blockWeeks={blockWeeks}
                                              shareBlock={shareBlock} titre={t("session.surCeBloc")} />
