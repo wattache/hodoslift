@@ -509,7 +509,8 @@ export function TrainingView() {
                 exerciseOptions={[...new Set([...coachLib.principaux, ...coachLib.renforcement])]}
                 variantOptions={coachLib.variantes}
                 assistanceOptions={coachLib.assistances}
-                onAdd={() => editor.addObjective()}
+                onAdd={o => editor.addObjective(o)}
+                onReplace={(i, o) => editor.replaceObjective(i, o)}
                 onUpdate={(i, field, value) => editor.updateObjective(i, field, value)}
                 onRemove={i => editor.removeObjective(i)}
                 onMove={(from, to) => editor.moveObjective(from, to)}
@@ -555,6 +556,7 @@ export function TrainingView() {
                 pastBlocks={pastBlocksForBase}
                 onChange={base => { if (blockIndex >= 0) void editor.updateBlockBase(blockIndex, base); }}
                 onGenerate={() => { if (blockIndex >= 0) { void editor.generateWeekOneFromBase(blockIndex); setShowBase(false); } }}
+                onAjouterObjectif={o => editor.addObjective(o)}
               />
             </>
           ) : brancheSemaine && week ? (

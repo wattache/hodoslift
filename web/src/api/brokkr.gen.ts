@@ -4928,6 +4928,12 @@ export interface components {
             variant: string | null;
             /** Format */
             format: string | null;
+            /** Clustermode */
+            clusterMode?: string | null;
+            /** Clusterrest */
+            clusterRest?: string | null;
+            /** Tempo */
+            tempo?: string | null;
             /** Sets */
             sets: string | null;
             /** Reps */
@@ -4959,6 +4965,12 @@ export interface components {
             variant: string | null;
             /** Format */
             format: string | null;
+            /** Clustermode */
+            clusterMode?: string | null;
+            /** Clusterrest */
+            clusterRest?: string | null;
+            /** Tempo */
+            tempo?: string | null;
             /** Sets */
             sets: string | null;
             /** Reps */
@@ -5109,6 +5121,12 @@ export interface components {
             variant?: string | null;
             /** Format */
             format?: string | null;
+            /** Clustermode */
+            clusterMode?: string | null;
+            /** Clusterrest */
+            clusterRest?: string | null;
+            /** Tempo */
+            tempo?: string | null;
             /** Sets */
             sets?: string | null;
             /** Reps */

@@ -170,7 +170,8 @@ def _base_lignes(table: str, portee: str):
 def _objectifs(portee: str):
     return text(f"""
     SELECT o.block_id AS bloc_uuid, o.id, o.exercise, o.variant, o.format, o.sets,
-           o.reps, o.weight_min, o.weight_max, o.assistance, o.atteint_le
+           o.reps, o.weight_min, o.weight_max, o.assistance, o.atteint_le,
+           o.cluster_mode, o.cluster_rest, o.tempo
     FROM block_objectives o
     {portee}
     ORDER BY o.position
@@ -278,7 +279,8 @@ def _sortie(ligne, correspondance: dict) -> dict:
 #: l'ordre de `position`. Pas l'`id` : le PUT réinsère la liste et en fabrique
 #: de nouveaux, une liste identique changerait sinon d'empreinte.
 COLONNES_EMPREINTE_OBJECTIFS = ("exercise", "variant", "format", "sets", "reps",
-                                "weight_min", "weight_max", "assistance", "atteint_le")
+                                "weight_min", "weight_max", "assistance", "atteint_le",
+                                "cluster_mode", "cluster_rest", "tempo")
 
 
 def version_des_objectifs(lignes) -> str:
@@ -300,7 +302,8 @@ def _sortie_objectif(o) -> dict:
     """
     return {
         "id": str(o["id"]), "exercise": o["exercise"], "variant": o["variant"],
-        "format": o["format"], "sets": o["sets"], "reps": o["reps"],
+        "format": o["format"], "clusterMode": o["cluster_mode"], "clusterRest": o["cluster_rest"],
+        "tempo": o["tempo"], "sets": o["sets"], "reps": o["reps"],
         "weightMin": o["weight_min"], "weightMax": o["weight_max"],
         "assistance": o["assistance"],
         # ⚠️ `None` ET NON `''` — « pas atteint » est une ABSENCE de date. Les

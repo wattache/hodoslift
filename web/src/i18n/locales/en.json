@@ -260,7 +260,10 @@
     "nouvelAccessoireAide": "Pick the day and the movement: it will join the end of {{jour}}.",
     "ajouterAuJour": "Add to {{jour}}",
     "annulerLAccessoire": "Cancel",
-    "tierHorsRepartition": "Tier {{tier}} is not in the split: this principle generates no line."
+    "tierHorsRepartition": "Tier {{tier}} is not in the split: this principle generates no line.",
+    "objectifDepuis": "Block goal from this line",
+    "objectifDepuisLaLigne": "Set a goal from the line {{nom}}",
+    "objectifAjoute": "Goal added to {{bloc}}"
   },
   "bilan": {
     "ajouterUneRubrique": "Add a section",
@@ -1020,7 +1023,17 @@
     "monter": "Move this goal up",
     "descendre": "Move this goal down",
     "mouvement": "Movement",
-    "chargeKg": "Load — kg"
+    "chargeKg": "Load — kg",
+    "nouvelObjectif": "New goal",
+    "modifierObjectif": "Edit goal",
+    "ajouter": "Add",
+    "schema": "Scheme",
+    "duree": "Duration",
+    "reposCluster": "Cluster rest",
+    "tempo": "Tempo",
+    "chargeMin": "Low load",
+    "chargeMax": "High load",
+    "modifierLObjectif": "Edit the goal {{nom}}"
   },
   "periodization": {
     "aucun": "None",

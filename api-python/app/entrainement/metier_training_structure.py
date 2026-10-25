@@ -284,6 +284,7 @@ def relire_semaine(conn, program_id: str, week_id: str) -> dict[str, Any]:
 
 #: camelCase du contrat → colonne d'un objectif de bloc.
 _COLONNES_OBJECTIF = {"exercise": "exercise", "variant": "variant", "format": "format",
+                      "clusterMode": "cluster_mode", "clusterRest": "cluster_rest", "tempo": "tempo",
                       "sets": "sets", "reps": "reps", "weightMin": "weight_min",
                       "weightMax": "weight_max", "assistance": "assistance",
                       "atteintLe": "atteint_le"}

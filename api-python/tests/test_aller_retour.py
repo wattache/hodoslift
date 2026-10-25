@@ -171,6 +171,21 @@ def test_objectifs_du_bloc(client, vide):
            "version": relu["objectivesVersion"]})
 
 
+def test_un_objectif_garde_les_options_de_son_format_et_son_tempo(client, vide):
+    """Un objectif posé depuis une ligne de BASE la reprend en entier (FRE-252) :
+    format ET ses options, tempo compris. Écrit, puis relu par l'arbre.
+
+    MUTATION QUI ROUGIT : retirer `clusterMode` de `_COLONNES_OBJECTIF`."""
+    bloc = _arbre(client)["blocks"][0]
+    r = client.put(f"/programs/p1/blocks/{bloc['id']}/objectives", headers=_AUTH, json={
+        "objectives": [{"exercise": "MUSCLE UP", "format": "CLUSTER", "clusterMode": "1/1/1",
+                        "clusterRest": "15s", "tempo": "DS", "sets": "4", "reps": "3"}],
+        "version": bloc["objectivesVersion"]})
+    assert r.status_code == 200, r.text
+    o = _arbre(client)["blocks"][0]["objectives"][0]
+    assert (o["format"], o["clusterMode"], o["clusterRest"], o["tempo"]) == ("CLUSTER", "1/1/1", "15s", "DS")
+
+
 def test_contenu_d_une_semaine(client, vide):
     """L'écho du contenu : séances et lignes telles que la lecture les rend.
 

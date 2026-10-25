@@ -17557,6 +17557,39 @@
             ],
             "title": "Format"
           },
+          "clusterMode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clustermode"
+          },
+          "clusterRest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clusterrest"
+          },
+          "tempo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tempo"
+          },
           "sets": {
             "anyOf": [
               {
@@ -17678,6 +17711,39 @@
               }
             ],
             "title": "Format"
+          },
+          "clusterMode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clustermode"
+          },
+          "clusterRest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clusterrest"
+          },
+          "tempo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tempo"
           },
           "sets": {
             "anyOf": [
@@ -18014,6 +18080,42 @@
               }
             ],
             "title": "Format"
+          },
+          "clusterMode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clustermode"
+          },
+          "clusterRest": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clusterrest"
+          },
+          "tempo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tempo"
           },
           "sets": {
             "anyOf": [

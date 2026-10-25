@@ -30,6 +30,11 @@ class ObjectiveIn(BaseModel):
         default=None, max_length=_STR_MAX)
     variant: str | None = Field(default=None, max_length=_STR_MAX)
     format: str | None = Field(default=None, max_length=_STR_MAX)
+    # Les options du format, comme sur une ligne : la durée d'un EMOM, le schéma
+    # et le repos d'un cluster.
+    clusterMode: str | None = Field(default=None, max_length=_STR_MAX)
+    clusterRest: str | None = Field(default=None, max_length=_STR_MAX)
+    tempo: str | None = Field(default=None, max_length=_STR_MAX)
     sets: str | None = Field(default=None, max_length=_STR_MAX)
     reps: str | None = Field(default=None, max_length=_STR_MAX)
     weightMin: str | None = Field(default=None, max_length=_STR_MAX)

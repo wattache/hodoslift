@@ -260,7 +260,10 @@
     "nouvelAccessoireAide": "Choisis le jour et le mouvement : il rejoindra la fin de {{jour}}.",
     "ajouterAuJour": "Ajouter à {{jour}}",
     "annulerLAccessoire": "Annuler",
-    "tierHorsRepartition": "Tier {{tier}} absent de la répartition : ce principe n'engendre aucune ligne."
+    "tierHorsRepartition": "Tier {{tier}} absent de la répartition : ce principe n'engendre aucune ligne.",
+    "objectifDepuis": "Objectif du bloc depuis cette ligne",
+    "objectifDepuisLaLigne": "Poser un objectif depuis la ligne {{nom}}",
+    "objectifAjoute": "Objectif ajouté à {{bloc}}"
   },
   "bilan": {
     "ajouterUneRubrique": "Ajouter une rubrique",
@@ -1020,7 +1023,17 @@
     "monter": "Monter cet objectif",
     "descendre": "Descendre cet objectif",
     "mouvement": "Mouvement",
-    "chargeKg": "Charge — kg"
+    "chargeKg": "Charge — kg",
+    "nouvelObjectif": "Nouvel objectif",
+    "modifierObjectif": "Modifier l'objectif",
+    "ajouter": "Ajouter",
+    "schema": "Schéma",
+    "duree": "Durée",
+    "reposCluster": "Repos du cluster",
+    "tempo": "Tempo",
+    "chargeMin": "Charge basse",
+    "chargeMax": "Charge haute",
+    "modifierLObjectif": "Modifier l'objectif {{nom}}"
   },
   "periodization": {
     "aucun": "Aucun",

@@ -25,18 +25,23 @@ test.afterEach(nettoyer);
 const LE_BLOC = `SELECT b.id FROM training_blocks b JOIN training_macros m ON m.id = b.macro_id
                  WHERE m.program_id = '${PROGRAMME}'`;
 
-/** Déplie les objectifs du bloc, passe en édition, ouvre l'objectif SQUAT. */
-async function ouvrirLObjectif(page: Page) {
+/** Déplie les objectifs du bloc, passe en édition. */
+async function deplierEnEdition(page: Page) {
   await page.getByRole('button', { name: /^(Objectifs du bloc|Block objectives)$/ }).click();
-  const liste = page.locator('section').filter({ has: page.getByText(/SQUAT/) }).last();
   await page.getByRole('button', { name: /^(Éditer|Edit)$/ }).last().click();
-  await liste.getByRole('button', { name: /SQUAT/ }).first().click();
 }
 
-/** Un champ de l'objectif ouvert — par son `<label>`, qui le distingue des
- *  cases de la grille voisine, nommées par `aria-label`. */
+/** Ouvre la fenêtre de l'objectif SQUAT (FRE-252 : l'objectif s'édite dans une
+ *  fenêtre, et s'écrit à « Enregistrer », plus à chaque frappe). */
+const ouvrirLObjectif = (page: Page) =>
+  page.getByRole('button', { name: "Modifier l'objectif SQUAT" }).click();
+
+/** Un champ de la fenêtre — par son `<label>`. */
 const champ = (page: Page, libelle: string) =>
-  page.locator('label', { hasText: libelle }).locator('input');
+  page.getByRole('dialog').locator('label', { hasText: libelle }).locator('input');
+
+const enregistrer = (page: Page) =>
+  page.getByRole('dialog').getByRole('button', { name: 'Enregistrer' }).click();
 
 async function ecrireDepuisLeTelephone(blocId: string, objectives: unknown[]) {
   const bloc = (await arbre()).macros[0].blocks.find(b => b.id === blocId)!;
@@ -58,6 +63,7 @@ test('la coche du téléphone survit à l’onglet de l’ordinateur resté ouve
   await page.goto('/training');
   await modeCoach(page);
   await page.getByRole('button', { name: 'Semaine 1' }).first().click();
+  await deplierEnEdition(page);
   await ouvrirLObjectif(page);
   const series = champ(page, 'Séries');
   await expect(series).toHaveValue('5', { timeout: 15_000 });
@@ -65,8 +71,9 @@ test('la coche du téléphone survit à l’onglet de l’ordinateur resté ouve
   // Le téléphone coche « atteint ».
   await ecrireDepuisLeTelephone(blocId, [{ exercise: 'SQUAT', sets: '5', reps: '1', atteintLe: '2026-09-14' }]);
 
-  // L'ordinateur, sur sa lecture d'avant, change les séries.
+  // L'ordinateur, sur sa lecture d'avant, change les séries et enregistre.
   await series.fill('4');
+  await enregistrer(page);
 
   // Refusé, et dit.
   await expect(page.getByText('Ces objectifs ont changé')).toBeVisible({ timeout: 10_000 });
@@ -74,8 +81,11 @@ test('la coche du téléphone survit à l’onglet de l’ordinateur resté ouve
   expect(colonne(
     `SELECT coalesce(atteint_le::text, 'NULL') || ' ' || sets FROM block_objectives WHERE block_id = '${blocId}'`,
   )).toBe('2026-09-14 5');
-  // Et l'écran s'est rechargé sur la vraie liste : la coche y est.
+  // Et l'écran s'est rechargé sur la vraie liste : rouvert, l'objectif porte la
+  // coche du téléphone et ses séries d'origine.
+  await ouvrirLObjectif(page);
   await expect(champ(page, 'Séries')).toHaveValue('5', { timeout: 10_000 });
+  await expect(page.getByRole('dialog').getByRole('button', { name: /Atteint le/ })).toBeVisible();
 });
 
 test('depuis l’écran, deux modifications à la suite passent toutes les deux', async ({ page }) => {
@@ -90,12 +100,16 @@ test('depuis l’écran, deux modifications à la suite passent toutes les deux'
   await page.goto('/training');
   await modeCoach(page);
   await page.getByRole('button', { name: 'Semaine 1' }).first().click();
+  await deplierEnEdition(page);
   await ouvrirLObjectif(page);
 
   await champ(page, 'Séries').fill('4');
+  await enregistrer(page);
   await expect.poll(() => colonne(`SELECT sets FROM block_objectives WHERE block_id = '${blocId}'`),
                     { timeout: 10_000 }).toBe('4');
+  await ouvrirLObjectif(page);
   await champ(page, 'Reps').fill('2');
+  await enregistrer(page);
   await expect.poll(() => colonne(`SELECT reps FROM block_objectives WHERE block_id = '${blocId}'`),
                     { timeout: 10_000 }).toBe('2');
   await expect(page.getByText('Ces objectifs ont changé')).toHaveCount(0);

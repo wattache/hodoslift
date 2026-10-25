@@ -50,7 +50,8 @@ function deepClone<T>(value: T): T {
  *  qui est la raison pour laquelle une séance ou une ligne neuve, elles, n'ont
  *  pas d'id du tout. */
 function createEmptyObjective(): BlockObjective {
-  return { id: '', exercise: '', variant: '', format: '', sets: '', reps: '', weightMin: '', weightMax: '', assistance: '' };
+  return { id: '', exercise: '', variant: '', format: '', clusterMode: '', clusterRest: '', tempo: '',
+           sets: '', reps: '', weightMin: '', weightMax: '', assistance: '' };
 }
 
 
@@ -210,7 +211,8 @@ export interface TrainingEditor {
   toggleWeekHidden: (macroId: string, blockId: string, weekId: string) => void;
 
   /* Objectifs du bloc sélectionné */
-  addObjective: () => void;
+  addObjective: (o?: BlockObjective) => void;
+  replaceObjective: (index: number, o: BlockObjective) => void;
   updateObjective: (index: number, field: keyof BlockObjective, value: string | null) => void;
   removeObjective: (index: number) => void;
   /** Déplace un objectif : l'ordre du tableau EST sa position en base. */
@@ -1179,8 +1181,14 @@ export function useTrainingEditor(
       });
   }, [commit, planifierObjectifs, programId]);
 
-  const addObjective = useCallback(() => {
-    saveObjectives(objectives => { objectives.push(createEmptyObjective()); });
+  /** Ajoute un objectif — vide, ou COMPLET quand il vient de la fenêtre (FRE-252). */
+  const addObjective = useCallback((o?: BlockObjective) => {
+    saveObjectives(objectives => { objectives.push(o ? { ...o, id: '' } : createEmptyObjective()); });
+  }, [saveObjectives]);
+
+  /** Remplace un objectif par celui de la fenêtre : une écriture, pas une par champ. */
+  const replaceObjective = useCallback((index: number, o: BlockObjective) => {
+    saveObjectives(objectives => { if (objectives[index]) objectives[index] = { ...o, id: objectives[index].id }; });
   }, [saveObjectives]);
 
   const updateObjective = useCallback((index: number, field: keyof BlockObjective, value: string | null) => {
@@ -1367,6 +1375,7 @@ export function useTrainingEditor(
     decalerLaFinDeSemaine,
     toggleWeekHidden,
     addObjective,
+    replaceObjective,
     updateObjective,
     removeObjective,
     moveObjective,

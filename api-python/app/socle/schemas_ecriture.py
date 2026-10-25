@@ -257,6 +257,9 @@ class ObjectifEcrit(BaseModel):
     exercise: str | None
     variant: str | None
     format: str | None
+    clusterMode: str | None = None
+    clusterRest: str | None = None
+    tempo: str | None = None
     sets: str | None
     reps: str | None
     weightMin: str | None

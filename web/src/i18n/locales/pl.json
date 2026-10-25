@@ -293,7 +293,10 @@
     "nouvelAccessoireAide": "Wybierz dzień i ruch: trafi na koniec {{jour}}.",
     "ajouterAuJour": "Dodaj do {{jour}}",
     "annulerLAccessoire": "Anuluj",
-    "tierHorsRepartition": "Tier {{tier}} nie występuje w podziale: ta zasada nie tworzy żadnej linii."
+    "tierHorsRepartition": "Tier {{tier}} nie występuje w podziale: ta zasada nie tworzy żadnej linii.",
+    "objectifDepuis": "Cel bloku z tego wiersza",
+    "objectifDepuisLaLigne": "Ustaw cel z wiersza {{nom}}",
+    "objectifAjoute": "Cel dodany do {{bloc}}"
   },
   "bilan": {
     "ajouterUneRubrique": "Dodaj sekcję",
@@ -1097,7 +1100,17 @@
     "monter": "Przesuń cel w górę",
     "descendre": "Przesuń cel w dół",
     "mouvement": "Ruch",
-    "chargeKg": "Obciążenie — kg"
+    "chargeKg": "Obciążenie — kg",
+    "nouvelObjectif": "Nowy cel",
+    "modifierObjectif": "Edytuj cel",
+    "ajouter": "Dodaj",
+    "schema": "Schemat",
+    "duree": "Czas",
+    "reposCluster": "Przerwa w klastrze",
+    "tempo": "Tempo",
+    "chargeMin": "Dolny ciężar",
+    "chargeMax": "Górny ciężar",
+    "modifierLObjectif": "Edytuj cel {{nom}}"
   },
   "periodization": {
     "aucun": "Brak",

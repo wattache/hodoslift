@@ -2206,7 +2206,12 @@ CREATE TABLE block_objectives (
     -- vocabulaire pour la même idée se paierait à chaque lecture de code — et
     -- NULL dit « pas atteint » sans qu'on ait à l'écrire.
     atteint_le date,
-    UNIQUE (block_id, position)
+    UNIQUE (block_id, position),
+    -- Les options du format (durée d'un EMOM, schéma et repos d'un cluster) et
+    -- le tempo : un objectif posé depuis une ligne de BASE la reprend en entier.
+    cluster_mode text,
+    cluster_rest text,
+    tempo        text
 );
 CREATE INDEX ON block_objectives (block_id);
 

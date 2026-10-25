@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, ChevronUp, ChevronDown, Dumbbell, Eye, EyeOff, Link2, Link2Off, Lock, LockOpen, ListChecks, Minus, Plus, RotateCw, Settings2, Sparkles, TriangleAlert, Trash2, Wand2, Copy } from 'lucide-react';
+import { CalendarDays, ChevronUp, ChevronDown, Dumbbell, Eye, EyeOff, Link2, Link2Off, Lock, LockOpen, ListChecks, Minus, Plus, RotateCw, Settings2, Sparkles, Target, TriangleAlert, Trash2, Wand2, Copy } from 'lucide-react';
 import type {
-  IncrementUnit, BlockBase, DayTiers, ExerciseKind, Principle, BaseAccessory, OneRepMax } from '@/api/types';
+  IncrementUnit, BlockBase, BlockObjective, DayTiers, ExerciseKind, Principle, BaseAccessory, OneRepMax } from '@/api/types';
 import type { BlockEditing } from '@/api/types';
 import { abregerMouvements, couleurDuJour, CYCLE_MAX, CYCLE_MIN, joursDuCycle, mouvementsDeLaTrame, nomDuJour, normaliseDaySplit, sansNomsDeSemaine, rangDeCycle, versJourDeCycle } from '@/lib/constants';
 import { datesDeS1 } from '@/lib/program-selection';
@@ -20,6 +20,10 @@ import { useLocalStorageState } from '@/lib/storage';
 import { usePreferenceProgression } from '@/lib/preference-progression';
 import { cn } from '@/lib/utils';
 import { dupliquerAccessoire, dupliquerPrincipe } from '@/lib/dupliquer-base';
+import { objectifDepuisLaLigne } from '@/lib/objectif-depuis-ligne';
+import { ObjectifDialog } from '@/components/training/objectif-dialog';
+import { phrase as phraseDeLObjectif } from '@/components/training/block-objectives-editor';
+import { toast } from 'sonner';
 import { DatePicker } from '@/components/ui/date-picker';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useTranslation } from 'react-i18next';
@@ -65,6 +69,9 @@ interface Props {
    *  divergentes à « peut-on écraser le local ? » seraient exactement le défaut
    *  qu'on répare. */
   hasPendingWrites: () => boolean;
+  /** Pose un objectif de bloc, pré-rempli depuis une ligne (FRE-252). Absent :
+   *  pas de bouton — l'écran ne propose que ce qu'on peut écrire. */
+  onAjouterObjectif?: (o: BlockObjective) => void;
   /** Blocs précédents du macro — pour l'historique de progression par mouvement. */
   pastBlocks?: BlockEditing[];
 }
@@ -192,7 +199,8 @@ function dureeDuCycle(split: DayTiers[]): number {
   return joursDuCycle(Math.max(split.length, dernier)).length;
 }
 
-export function BlockBaseEditor({ blockLabel, programId, blockId, base, lib, canGenerate, onChange, onGenerate, hasPendingWrites, pastBlocks = [] }: Props) {
+export function BlockBaseEditor({ blockLabel, programId, blockId, base, lib, canGenerate, onChange, onGenerate, hasPendingWrites, pastBlocks = [], onAjouterObjectif }: Props) {
+  const [objectifDepuis, setObjectifDepuis] = useState<BlockObjective | null>(null);
   // L'historique dessine le rendu de la personne qui regarde (27/09).
   const progression = usePreferenceProgression();
   const { t } = useTranslation();
@@ -1087,6 +1095,7 @@ export function BlockBaseEditor({ blockLabel, programId, blockId, base, lib, can
                             onUpdate={(f, v) => updatePrinciple(i, f, v)} onSetKind={k => setPrincipleKind(i, k)}
                             onRemove={() => void removePrinciple(i)}
                             onDuplicate={() => commit({ ...draft, daySplit, principles: dupliquerPrincipe(principles, i) })}
+                            onObjectif={onAjouterObjectif ? () => setObjectifDepuis(objectifDepuisLaLigne(p)) : undefined}
                           />
                         </div>
                       </div>
@@ -1196,7 +1205,8 @@ export function BlockBaseEditor({ blockLabel, programId, blockId, base, lib, can
                         onSetGroupKind={(nature) => choisirNatureDuGroupe(i, nature)}
                         onUpdate={(f, v) => updateAccessory(i, f, v)} onSetKind={k => setAccessoryKind(i, k)}
                         onRemove={() => void removeAccessory(i)}
-                        onDuplicate={() => commit({ ...draft, daySplit, principles, accessories: dupliquerAccessoire(accessories, i) })} />
+                        onDuplicate={() => commit({ ...draft, daySplit, principles, accessories: dupliquerAccessoire(accessories, i) })}
+                        onObjectif={onAjouterObjectif ? () => setObjectifDepuis(objectifDepuisLaLigne(a)) : undefined} />
 
                       {/* Le geste de liaison se lit ENTRE les deux lignes qu'il
                           relie. Première version : une icône de 12 px à 40 %
@@ -1278,6 +1288,25 @@ export function BlockBaseEditor({ blockLabel, programId, blockId, base, lib, can
           )}
         </div>
       </SectionShell>
+
+      {/* L'OBJECTIF DEPUIS UNE LIGNE (FRE-252) : la même fenêtre que dans la liste
+          des objectifs, pré-remplie ; on corrige ce qu'on veut, puis on pose. */}
+      {objectifDepuis && onAjouterObjectif && (
+        <ObjectifDialog
+          initial={objectifDepuis}
+          nouveau
+          exerciseOptions={[...new Set([...lib.principaux, ...lib.renforcement])]}
+          variantOptions={lib.variantes}
+          assistanceOptions={lib.assistances}
+          phrase={phraseDeLObjectif}
+          onClose={() => setObjectifDepuis(null)}
+          onSave={o => {
+            onAjouterObjectif(o);
+            setObjectifDepuis(null);
+            toast.success(t("base.objectifAjoute", { bloc: blockLabel }));
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -1341,13 +1370,15 @@ function SectionShell({
 }
 
 /* ---- Ligne de principe ---- */
-export function PrincipleRow({ p, lib, usedTiers, onUpdate, onSetKind, onRemove, onDuplicate }: {
+export function PrincipleRow({ p, lib, usedTiers, onUpdate, onSetKind, onRemove, onDuplicate, onObjectif }: {
   p: Principle; lib: CoachLib; usedTiers: Set<1 | 2 | 3>;
   /** `string[]` pour le seul champ qui en porte : les variantes (FRE-33). */
   onUpdate: (field: keyof Principle, value: string | null | string[] | boolean) => void;
   onSetKind: (kind: ExerciseKind) => void;
   onRemove: () => void;
   onDuplicate?: () => void;
+  /** Ouvre la fenêtre d'objectif pré-remplie depuis cette ligne. */
+  onObjectif?: () => void;
 }) {
   const { t } = useTranslation();
   // ⚠️ LE TIER DU PRINCIPE EST TOUJOURS PROPOSÉ, même absent de la répartition :
@@ -1419,14 +1450,21 @@ export function PrincipleRow({ p, lib, usedTiers, onUpdate, onSetKind, onRemove,
         </div>
       </Field>
       <Field label={t("base.note")}><Txt value={p.coachNote ?? ''} onChange={v => onUpdate('coachNote', v)} w={160} /></Field>
+      {onObjectif && (
+        <button type="button" onClick={onObjectif} aria-label={t("base.objectifDepuisLaLigne", { nom: p.name || t("base.sansNom") })}
+                title={t("base.objectifDepuis")}
+                className="ml-auto flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-gold/15 hover:text-gold">
+          <Target className="h-3.5 w-3.5" />
+        </button>
+      )}
       {onDuplicate && (
         <button type="button" onClick={onDuplicate} aria-label={t("session.dupliquerLaLigne", { nom: p.name || t("base.sansNom") })}
                 title={t("session.dupliquer")}
-                className="ml-auto flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground">
+                className={cn("flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground", !onObjectif && "ml-auto")}>
           <Copy className="h-3.5 w-3.5" />
         </button>
       )}
-      <button type="button" onClick={onRemove} className={cn('flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/15 hover:text-destructive', !onDuplicate && 'ml-auto')}>
+      <button type="button" onClick={onRemove} className={cn('flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/15 hover:text-destructive', !onDuplicate && !onObjectif && 'ml-auto')}>
         <Trash2 className="h-3.5 w-3.5" />
       </button>
     </div>
@@ -1434,7 +1472,7 @@ export function PrincipleRow({ p, lib, usedTiers, onUpdate, onSetKind, onRemove,
 }
 
 /* ---- Ligne d'accessoire ---- */
-function AccessoryRow({ a, lib, jours, libelleDuJour, sortedRenforcement, ouvreLeGroupe, suiteDuGroupe, tailleDuGroupe, onSetGroupKind, onUpdate, onSetKind, onRemove, onDuplicate }: {
+function AccessoryRow({ a, lib, jours, libelleDuJour, sortedRenforcement, ouvreLeGroupe, suiteDuGroupe, tailleDuGroupe, onSetGroupKind, onUpdate, onSetKind, onRemove, onDuplicate, onObjectif }: {
   a: BaseAccessory; lib: CoachLib;
   /** Les jours du cycle — c'est la grille qui en décide, pas cette ligne. */
   jours: string[];
@@ -1455,6 +1493,8 @@ function AccessoryRow({ a, lib, jours, libelleDuJour, sortedRenforcement, ouvreL
   onSetKind: (kind: ExerciseKind) => void;
   onRemove: () => void;
   onDuplicate?: () => void;
+  /** Ouvre la fenêtre d'objectif pré-remplie depuis cette ligne. */
+  onObjectif?: () => void;
 }) {
   const { t } = useTranslation();
   const nature: NatureDeGroupe = natureDe(a);
@@ -1547,14 +1587,21 @@ function AccessoryRow({ a, lib, jours, libelleDuJour, sortedRenforcement, ouvreL
         </div>
       </Field>
       <Field label={t("base.note")}><Txt value={a.coachNote ?? ''} onChange={v => onUpdate('coachNote', v)} w={160} /></Field>
+      {onObjectif && (
+        <button type="button" onClick={onObjectif} aria-label={t("base.objectifDepuisLaLigne", { nom: a.name || t("base.sansNom") })}
+                title={t("base.objectifDepuis")}
+                className="ml-auto flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-gold/15 hover:text-gold">
+          <Target className="h-3.5 w-3.5" />
+        </button>
+      )}
       {onDuplicate && (
         <button type="button" onClick={onDuplicate} aria-label={t("session.dupliquerLaLigne", { nom: a.name || t("base.sansNom") })}
                 title={t("session.dupliquer")}
-                className="ml-auto flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground">
+                className={cn("flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground", !onObjectif && "ml-auto")}>
           <Copy className="h-3.5 w-3.5" />
         </button>
       )}
-      <button type="button" onClick={onRemove} className={cn('flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/15 hover:text-destructive', !onDuplicate && 'ml-auto')}>
+      <button type="button" onClick={onRemove} className={cn('flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/15 hover:text-destructive', !onDuplicate && !onObjectif && 'ml-auto')}>
         <Trash2 className="h-3.5 w-3.5" />
       </button>
     </div>

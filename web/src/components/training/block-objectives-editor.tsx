@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Check, ChevronDown, ChevronRight, ChevronUp, Eye, Pencil, Plus, Target, Trash2 } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, ChevronUp, Eye, Pencil, Plus, Target } from "lucide-react";
 
 import type { BlockObjective } from "@/api/types";
-import { Input } from "@/components/ui/input";
+import { ObjectifDialog } from "./objectif-dialog";
+import { formatBadgeSuffix } from "./format";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { formatShort } from "@/lib/dates-ui";
 import { cn } from "@/lib/utils";
@@ -45,18 +46,15 @@ interface Props {
   exerciseOptions: string[];
   variantOptions: string[];
   assistanceOptions: string[];
-  onAdd: () => void;
+  /** Ajoute un objectif COMPLET — vide, ou pré-rempli depuis une ligne de BASE. */
+  onAdd: (o: BlockObjective) => void;
+  /** Remplace un objectif par celui de la fenêtre, d'un seul geste. */
+  onReplace: (index: number, o: BlockObjective) => void;
   onUpdate: (index: number, field: keyof BlockObjective, value: string | null) => void;
   onRemove: (index: number) => void;
   /** Déplace un objectif — l'ordre de la liste EST sa position en base. */
   onMove?: (from: number, to: number) => void;
 }
-
-/** Mêmes valeurs que le format d'un exercice de séance (`session-table`). */
-const EXERCISE_FORMATS = ["", "EMOM", "AMRAP", "CLUSTER"];
-
-const SELECT_CLASS =
-  "h-11 w-full rounded-md border border-border bg-background px-2 text-sm outline-none focus:border-gold sm:h-[38px] sm:text-xs";
 
 /** La CHARGE d'un objectif, telle qu'elle se lit : un seul nombre quand les deux
  *  bornes se valent ou que le max manque, une fourchette sinon. Sortie des deux
@@ -67,13 +65,21 @@ function charge(o: BlockObjective): string {
   return `${seul ? o.weightMin : `${o.weightMin}–${o.weightMax}`} kg`;
 }
 
+/** Le format avec ses options, écrit comme sur une ligne de séance : « EMOM 10' - 60" ». */
+export function formatComplet(o: BlockObjective): string {
+  if (!o.format) return "";
+  return (o.format + formatBadgeSuffix({ format: o.format, clusterMode: o.clusterMode ?? null,
+                                         clusterRest: o.clusterRest ?? null, sets: o.sets ?? null })).trim();
+}
+
 /** L'objectif en une phrase — ce que la fiche d'édition relit sous les champs.
  *  « squat comp 5×3 à 140–150 kg ». */
-function phrase(o: BlockObjective): string {
+export function phrase(o: BlockObjective): string {
   const morceaux = [
     (o.exercise || "").toLowerCase(),
     (o.variant || "").toLowerCase(),
-    o.format || "",
+    formatComplet(o),
+    o.tempo ? `tempo ${o.tempo}` : "",
     o.sets && o.reps ? `${o.sets}×${o.reps}` : "",
   ].filter(Boolean);
   /* Pas de préposition : la phrase est rendue dans les deux langues du produit,
@@ -153,8 +159,11 @@ export function CarteObjectif({ o, peutEcrire, onBasculerAtteint }: {
         {o.format && (
           <span className="ml-1.5 rounded px-1 font-display text-[9px] uppercase tracking-wider text-metric"
                 style={{ backgroundColor: 'color-mix(in oklab, var(--metric) 15%, transparent)' }}>
-            {o.format}
+            {formatComplet(o)}
           </span>
+        )}
+        {o.tempo && (
+          <span className="ml-1.5 font-mono text-[10px] text-muted-foreground">{o.tempo}</span>
         )}
         {o.assistance && (
           <span className="ml-1.5 text-[10px] text-muted-foreground">{o.assistance}</span>
@@ -294,7 +303,7 @@ export function BlockObjectivesList({ objectives, blockLabel }: { objectives: Bl
 
 export function BlockObjectivesEditor({
   objectives, blockLabel, exerciseOptions, variantOptions, assistanceOptions,
-  onAdd, onUpdate, onRemove, onMove,
+  onAdd, onReplace, onUpdate, onRemove, onMove,
 }: Props) {
   const { t } = useTranslation();
   const confirm = useConfirm();
@@ -303,9 +312,9 @@ export function BlockObjectivesEditor({
      éditeur était le seul écran à s'ouvrir en mode saisie, alors qu'on vient
      presque toujours y lire. */
   const [modifier, setModifier] = useState(false);
-  /* ⚠️ UNE SEULE FICHE OUVERTE — c'est l'avantage décisif sur le tableau : les
-     autres objectifs restent LISIBLES pendant qu'on en corrige un. */
-  const [ouvert, setOuvert] = useState<number | null>(null);
+  /* LA FENÊTRE D'OBJECTIF (FRE-252) : `index` null pour un ajout. La liste reste
+     lisible derrière, et rien ne s'écrit avant « Enregistrer ». */
+  const [fenetre, setFenetre] = useState<{ index: number | null; o: BlockObjective } | null>(null);
   // Replié par défaut, comme la lecture de l'athlète (voir `BlockObjectivesList`).
   const [deplie, setDeplie] = useState(false);
   const atteints = objectives.filter(o => o.atteintLe).length;
@@ -331,7 +340,7 @@ export function BlockObjectivesEditor({
         action={deplie && (
           <button
             type="button"
-            onClick={() => { setModifier(v => !v); setOuvert(null); }}
+            onClick={() => { setModifier(v => !v); setFenetre(null); }}
             aria-pressed={modifier}
             className={cn(
               "flex h-11 items-center gap-1.5 rounded-md px-2.5 text-xs transition-colors sm:h-8",
@@ -355,7 +364,6 @@ export function BlockObjectivesEditor({
       ) : (
         <ul className="mb-3 flex flex-col gap-1.5">
           {objectives.map((o, i) => {
-            const enEdition = modifier && ouvert === i;
             return (
               <Cadre key={i} atteint={!!o.atteintLe}>
                 <div className="flex items-start gap-2">
@@ -380,7 +388,8 @@ export function BlockObjectivesEditor({
                   )}
 
                   {modifier ? (
-                    <button type="button" onClick={() => setOuvert(enEdition ? null : i)}
+                    <button type="button" onClick={() => setFenetre({ index: i, o })}
+                            aria-label={t("objectives.modifierLObjectif", { nom: o.exercise || t("objectives.fallbackName") })}
                             className="min-w-0 flex-1 text-left">
                       <CarteObjectif o={o} peutEcrire={false} />
                     </button>
@@ -389,109 +398,6 @@ export function BlockObjectivesEditor({
                   )}
                 </div>
 
-                {enEdition && (
-                  <div className="mt-3 border-t border-border/60 pt-3">
-                    {/* ⚠️ LES LIBELLÉS SONT EN DUR, AU-DESSUS. Un `placeholder`
-                        s'efface à la frappe — au moment exact où l'on a besoin de
-                        savoir ce qu'on remplit. Même leçon que le pli de saisie. */}
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                      <Champ libelle={t('objectives.mouvement')}>
-                        <select className={SELECT_CLASS} value={o.exercise ?? ''}
-                                onChange={e => onUpdate(i, "exercise", e.target.value)}>
-                          <option value="">—</option>
-                          {exerciseOptions.map(n => <option key={n} value={n}>{n}</option>)}
-                        </select>
-                      </Champ>
-                      <Champ libelle={t('objectives.variant')}>
-                        <select className={SELECT_CLASS} value={o.variant ?? ''}
-                                onChange={e => onUpdate(i, "variant", e.target.value)}>
-                          <option value="">—</option>
-                          {variantOptions.map(v => <option key={v} value={v}>{v}</option>)}
-                        </select>
-                      </Champ>
-                      <Champ libelle={t('objectives.format')}>
-                        <select className={SELECT_CLASS} value={o.format ?? ''}
-                                onChange={e => onUpdate(i, "format", e.target.value)}>
-                          {EXERCISE_FORMATS.map(f => <option key={f} value={f}>{f || "—"}</option>)}
-                        </select>
-                      </Champ>
-                    </div>
-
-                    <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      <Champ libelle={t('objectives.series')}>
-                        <Input value={o.sets ?? ''} className="h-11 w-full text-sm sm:h-[38px] sm:text-xs"
-                               onChange={e => onUpdate(i, "sets", e.target.value)} />
-                      </Champ>
-                      <Champ libelle={t('objectives.reps')}>
-                        <Input value={o.reps ?? ''} className="h-11 w-full text-sm sm:h-[38px] sm:text-xs"
-                               onChange={e => onUpdate(i, "reps", e.target.value)} />
-                      </Champ>
-                      <Champ libelle={t('objectives.chargeKg')} className="col-span-2">
-                        <div className="flex items-center gap-1.5">
-                          {/* Le liseré doré des champs de charge, comme dans le
-                              pli de saisie : c'est la valeur qu'on vient poser. */}
-                          <Input value={o.weightMin ?? ''} className="h-11 w-full border-gold/25 text-sm sm:h-[38px] sm:text-xs"
-                                 onChange={e => onUpdate(i, "weightMin", e.target.value)} />
-                          <span className="text-xs text-muted-foreground">–</span>
-                          <Input value={o.weightMax ?? ''} className="h-11 w-full border-gold/25 text-sm sm:h-[38px] sm:text-xs"
-                                 onChange={e => onUpdate(i, "weightMax", e.target.value)} />
-                        </div>
-                      </Champ>
-                    </div>
-
-                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                      <Champ libelle={t('objectives.assistance')}>
-                        <select className={SELECT_CLASS} value={o.assistance || ""}
-                                onChange={e => onUpdate(i, "assistance", e.target.value)}>
-                          <option value="">—</option>
-                          {assistanceOptions.map(a => <option key={a} value={a}>{a}</option>)}
-                        </select>
-                      </Champ>
-                    </div>
-
-                    {/* ⚠️ LA PHRASE EN RELECTURE. Elle vérifie d'un coup d'œil que
-                        l'objectif dit bien ce qu'on voulait, sans repasser en
-                        Aperçu — sept champs remplis ne se relisent pas tout
-                        seuls. */}
-                    {phrase(o) && (
-                      <p className="mt-2.5 text-[11px] italic text-muted-foreground">
-                        {t('objectives.seLit', { phrase: phrase(o) })}
-                      </p>
-                    )}
-
-                    <div className="mt-3 flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => basculerAtteint(i, o)}
-                        aria-pressed={!!o.atteintLe}
-                        className={cn(
-                          "flex h-11 items-center gap-1.5 rounded-md border px-3 text-xs transition-colors sm:h-[38px]",
-                          o.atteintLe
-                            ? "border-transparent bg-gold font-semibold text-gold-foreground"
-                            : "border-border text-muted-foreground hover:border-gold/40 hover:text-foreground",
-                        )}
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                        {o.atteintLe
-                          ? t("objectives.atteintLe", { date: formatShort(o.atteintLe) })
-                          : t("objectives.marquerAtteint")}
-                      </button>
-                      <button
-                        type="button"
-                        title={t('objectives.removeTitle')}
-                        onClick={async () => {
-                          if (await confirm({ title: t('objectives.confirmRemove', { name: o.exercise || t('objectives.fallbackName') }) })) {
-                            setOuvert(null);
-                            onRemove(i);
-                          }
-                        }}
-                        className="ml-auto flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/15 hover:text-destructive sm:h-[38px] sm:w-[38px]"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                )}
               </Cadre>
             );
           })}
@@ -501,7 +407,7 @@ export function BlockObjectivesEditor({
       {modifier && (
         <button
           type="button"
-          onClick={onAdd}
+          onClick={() => setFenetre({ index: null, o: objectifVide() })}
           className="mb-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border text-xs text-muted-foreground transition-colors hover:border-gold/40 hover:text-foreground sm:h-10"
         >
           <Plus className="h-3.5 w-3.5" /> {t("objectives.add")}
@@ -509,19 +415,35 @@ export function BlockObjectivesEditor({
       )}
       </div>
       )}
+
+      {fenetre && (
+        <ObjectifDialog
+          initial={fenetre.o}
+          nouveau={fenetre.index === null}
+          exerciseOptions={exerciseOptions}
+          variantOptions={variantOptions}
+          assistanceOptions={assistanceOptions}
+          phrase={phrase}
+          onClose={() => setFenetre(null)}
+          onSave={o => {
+            if (fenetre.index === null) onAdd(o); else onReplace(fenetre.index, o);
+            setFenetre(null);
+          }}
+          onRemove={fenetre.index === null ? undefined : async () => {
+            const i = fenetre.index!;
+            if (await confirm({ title: t('objectives.confirmRemove', { name: fenetre.o.exercise || t('objectives.fallbackName') }) })) {
+              setFenetre(null);
+              onRemove(i);
+            }
+          }}
+        />
+      )}
     </section>
   );
 }
 
-function Champ({ libelle, className, children }: {
-  libelle: string; className?: string; children: React.ReactNode;
-}) {
-  return (
-    <label className={cn("block min-w-0", className)}>
-      <span className="mb-1 block font-display text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-        {libelle}
-      </span>
-      {children}
-    </label>
-  );
+/** Un objectif vierge, champs de texte à `''` comme la lecture les rend. */
+export function objectifVide(): BlockObjective {
+  return { id: '', exercise: '', variant: '', format: '', clusterMode: '', clusterRest: '', tempo: '',
+           sets: '', reps: '', weightMin: '', weightMax: '', assistance: '', atteintLe: null };
 }
