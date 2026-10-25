@@ -193,6 +193,19 @@ function CaseSemaine({ p }: { p: ProgressionPoint }) {
   );
 }
 
+/** Le jour en encre, ce qui le précise (variante, tempo, tier) en gris : deux
+ *  informations de même couleur se lisaient comme une seule. */
+function LibelleCreneau({ texte, jour }: { texte: string; jour: string }) {
+  if (!jour || !texte.startsWith(jour)) return <span className="text-foreground">{texte}</span>;
+  const reste = texte.slice(jour.length).replace(/^\s*·\s*/, "");
+  return (
+    <>
+      <span className="text-foreground">{jour}</span>
+      {reste && <span className="ml-1.5 font-mono text-[11px] font-normal uppercase text-muted-foreground">{reste}</span>}
+    </>
+  );
+}
+
 function libelleCreneau(carte: HistoryCard, duMemeBloc: HistoryCard[]): string {
   const base = descriptionCreneau(carte);
   // Deux créneaux que la description ne sépare pas — même jour, même variante,
@@ -392,11 +405,11 @@ function LigneDeBloc({ bloc, ouverte, basculer, colonnes }: {
               return (
                 <tr key={creneau.key} aria-label={trajectoireEnMots(creneau.points, t)}
                     className="grid grid-cols-4 gap-y-1 border-t border-border/40 px-2.5 py-2 first:border-t-0 sm:table-row">
-                  <th scope="row" className="col-span-4 py-1 pr-3 text-left align-top font-normal sm:w-[236px] sm:py-2">
+                  <th scope="row" className="col-span-4 py-1 pr-3 text-left align-top font-normal sm:w-[236px] sm:py-2 sm:pl-3">
                     {/* Créneau unique : jour, variante, tempo et trajectoire sont
                         déjà sur la ligne repliée — on ne les répète pas. */}
                     <div className="text-[12.5px] font-medium">
-                      {!seul && libelleCreneau(creneau, bloc.creneaux)}
+                      {!seul && <LibelleCreneau texte={libelleCreneau(creneau, bloc.creneaux)} jour={(creneau.session.name ?? "").trim()} />}
                       <BadgeFormat carte={creneau} />
                     </div>
                     {!seul && <TrajectoireDuCreneau points={creneau.points} />}
@@ -409,7 +422,7 @@ function LigneDeBloc({ bloc, ouverte, basculer, colonnes }: {
                   {Array.from({ length: colonnes }, (_, k) => {
                     const p = creneau.points[k];
                     return (
-                      <td key={k} className="py-1 text-center align-top sm:py-2">
+                      <td key={k} className="py-1 text-center align-top sm:py-2 sm:last:pr-3">
                         {p && !semaineVide(p) && <>
                           <span className="block font-mono text-[10px] text-muted-foreground sm:hidden">{p.label}</span>
                           <CaseSemaine p={p} />
