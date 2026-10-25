@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { NatureDeGroupe } from "@/lib/groupe";
 import { Calendar, Check, ChevronDown, ChevronUp, Dumbbell, Pencil, Trash2, Plus, X } from "lucide-react";
-import type { BlockObjective, ExerciseKind, ObjectifTechnique, SessionEditing, WeekEditing } from "@/api/types";
+import type { ExerciseKind, ObjectifTechnique, SessionEditing, WeekEditing } from "@/api/types";
 import { formatLong, todayISO } from "@/lib/dates-ui";
 import { sessionTonnage, formatKg } from "@/lib/tonnage";
 import { avancementDeLaSeance, seanceAOuvrir, seanceEstCompletee } from "@/lib/realise";
@@ -59,8 +59,6 @@ interface Props {
   tempoOptions?: string[];
   /** Toutes les semaines du bloc — pour la mini progression par exercice. */
   blockWeeks?: WeekEditing[];
-  /** Les objectifs du bloc — l'athlète les retrouve dans le pli d'un exercice. */
-  objectifsDuBloc?: BlockObjective[];
   /** Partage de séance : nom imprimé sur l'image générée. */
   athleteName?: string;
   /** Situe la séance sur l'image de partage (bandeau). */
@@ -69,7 +67,7 @@ interface Props {
   shareBlock?: string;
 }
 
-export function WeekView({ week, sessionInitiale, mode = "athlete", allowCoachMode = false, canEditSelectedAthlete = false, storageScopeKey, athleteName, shareContext, shareBlock, onFeltRPEChange, onFeltRPEGlobal, onUpdateSetRPE, onUpdateSetValue, onEffacerLesSeries, onUpdateForm, onUpdateField, onSetExerciseKind, onSetSessionKind, onAddExercise, onRemoveExercise, onDuplicateExercise, onMoveExercise, onMoveExerciseToSession, onToggleGroup, onSetGroupKind, onMoveSession, onRenameSession, onDeleteSession, nameOptions, objectifsParMouvement, variantOptions, assistanceOptions, tempoOptions, blockWeeks, objectifsDuBloc }: Props) {
+export function WeekView({ week, sessionInitiale, mode = "athlete", allowCoachMode = false, canEditSelectedAthlete = false, storageScopeKey, athleteName, shareContext, shareBlock, onFeltRPEChange, onFeltRPEGlobal, onUpdateSetRPE, onUpdateSetValue, onEffacerLesSeries, onUpdateForm, onUpdateField, onSetExerciseKind, onSetSessionKind, onAddExercise, onRemoveExercise, onDuplicateExercise, onMoveExercise, onMoveExerciseToSession, onToggleGroup, onSetGroupKind, onMoveSession, onRenameSession, onDeleteSession, nameOptions, objectifsParMouvement, variantOptions, assistanceOptions, tempoOptions, blockWeeks }: Props) {
   const { t } = useTranslation();
   // Athlète : accordéon (une seule séance ouverte). Coach : tout déplié par
   // défaut pour une vue d'ensemble (comme le legacy), chaque séance restant
@@ -289,7 +287,6 @@ export function WeekView({ week, sessionInitiale, mode = "athlete", allowCoachMo
               assistanceOptions={assistanceOptions}
               tempoOptions={tempoOptions}
               blockWeeks={blockWeeks}
-              objectifsDuBloc={objectifsDuBloc}
               storageScopeKey={storageScopeKey}
               canEditSelectedAthlete={canEditSelectedAthlete}
               athleteName={athleteName}
@@ -440,7 +437,6 @@ function SessionCard({
   assistanceOptions,
   tempoOptions,
   blockWeeks,
-  objectifsDuBloc,
   storageScopeKey,
   canEditSelectedAthlete,
   athleteName,
@@ -485,8 +481,6 @@ function SessionCard({
   assistanceOptions?: string[];
   tempoOptions?: string[];
   blockWeeks?: WeekEditing[];
-  /** Les objectifs du bloc — l'athlète les retrouve dans le pli d'un exercice. */
-  objectifsDuBloc?: BlockObjective[];
   storageScopeKey?: string;
   canEditSelectedAthlete?: boolean;
   /** Partage de séance : nom affiché sur l'image générée. */
@@ -749,7 +743,6 @@ function SessionCard({
             assistanceOptions={assistanceOptions}
             tempoOptions={tempoOptions}
             blockWeeks={blockWeeks}
-            objectifsDuBloc={objectifsDuBloc}
             shareBlock={shareBlock}
           />
           {coachEdit && (

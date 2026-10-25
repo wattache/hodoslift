@@ -1536,9 +1536,7 @@
     "copierSurLesSuivantes": "Copy set {{n}} to the next ones",
     "effacerLesSeries": "Clear the logged sets?",
     "effacerLesSeries_detail": "The line goes back to a single entry: RPE, reps and load will need to be entered again for all sets.",
-    "effacer": "Clear",
-    "objectifDuBloc_one": "Block goal",
-    "objectifDuBloc_other": "Block goals"
+    "effacer": "Clear"
   },
   "share": {
     "bloc": "BLOCK",
