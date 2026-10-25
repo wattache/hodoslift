@@ -880,7 +880,14 @@ export const mockTracking: TrackingResponse = {
     failsAtMax: i === 10 ? 1 : 0,
     macroNumber: 1,
     blockNumber: i < 8 ? 1 : 2,
+    // Les mesures de progression (25/10) : neutres ici, le mock ne les dessine pas.
+    lourdes: 0,
+    e1Kg: null,
+    intensite: null,
+    e1Raison: null,
   })),
+  // Les travaux refaits (25/10) : vides ici, le mock ne les montre pas.
+  refaits: [],
   // UNE COURBE PAR COMBINAISON (FRE-182) — quatre, pour que la légende en montre
   // une ÉTEINTE par défaut (seules les trois plus travaillées s'allument), et
   // qu'une combinaison « sans variante » soit une courbe comme une autre.
