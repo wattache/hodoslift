@@ -120,3 +120,37 @@ def test_le_port_de_la_base_entre_dans_l_url(monkeypatch):
     assert db._resolve_url().port == 15432
     monkeypatch.setattr(settings, "db_port", None)
     assert db._resolve_url().port is None  # absent = le 5432 du pilote
+
+
+def test_une_erreur_sql_ne_part_PAS_chez_sentry_avec_ses_valeurs(pg_engine, monkeypatch):
+    """Une erreur SQL sur une écriture de santé, telle qu'elle partirait chez
+    Sentry (FRE-258) : ni la liste des valeurs liées (SQLAlchemy), ni la valeur
+    que Postgres recopie dans son propre message. Éprouvé sur le VRAI moteur de
+    `get_engine`, branché sur la base de test, puis passé au filtre d'envoi.
+
+    MUTATIONS QUI ROUGISSENT : retirer `hide_parameters=True` ; ne plus masquer
+    le texte des erreurs de base dans `_nettoyer`.
+
+    ⚠️ `get_engine` est celui importé en tête de fichier : la configuration
+    commune remplace `db.get_engine` par une garde pendant les tests."""
+    import sys
+    import pytest
+    from sqlalchemy import text
+    from sqlalchemy.exc import DBAPIError
+    from app.socle import db
+    from app.socle.observabilite import _nettoyer
+    monkeypatch.setattr(db, "_resolve_url", lambda: pg_engine.url)
+    get_engine.cache_clear()
+    try:
+        with pytest.raises(DBAPIError) as erreur, get_engine().connect() as conn:
+            conn.execute(text("SELECT CAST(:antecedents AS integer)"), {"antecedents": "SENTINELLE-entorse"})
+        assert "parameters hidden" in str(erreur.value)
+        evenement = {"exception": {"values": [{"type": "DataError", "value": str(erreur.value)}]}}
+        try:
+            raise erreur.value
+        except DBAPIError:
+            envoye = _nettoyer(evenement, {"exc_info": sys.exc_info()})
+        assert "SENTINELLE" not in str(envoye)
+        assert "22P02" in envoye["exception"]["values"][0]["value"]
+    finally:
+        get_engine.cache_clear()

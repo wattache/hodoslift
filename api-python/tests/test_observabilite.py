@@ -166,3 +166,16 @@ def test_la_version_deployee_prefere_le_SHA_a_la_revision(monkeypatch):
 
     monkeypatch.setattr(settings, "k_revision", "")
     assert settings.version_deployee is None
+
+
+def test_sentry_n_emporte_PAS_les_variables_locales(monkeypatch):
+    """Une écriture de santé qui lève porte dans ses frames le texte du bilan ou
+    de la note (FRE-258) — Sentry n'est pas un hébergeur de santé.
+    MUTATION QUI ROUGIT : retirer `include_local_variables=False`."""
+    import sentry_sdk
+    import app.socle.observabilite as obs
+    recu = {}
+    monkeypatch.setattr(sentry_sdk, "init", lambda **k: recu.update(k))
+    monkeypatch.setattr(obs.settings, "sentry_dsn", "https://cle@exemple.invalid/1")
+    obs.installer()
+    assert recu.get("include_local_variables") is False

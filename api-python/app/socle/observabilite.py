@@ -82,6 +82,22 @@ def _masquer(texte: str) -> str:
     return _SEGMENT_IDENTIFIANT.sub(r"/\1/{id}", texte)
 
 
+def _erreur_de_base(exc) -> str | None:
+    """Le code SQLSTATE d'une erreur de base, ou `None` si ce n'en est pas une.
+
+    ⚠️ LE TEXTE D'UNE ERREUR POSTGRES RECOPIE LES VALEURS (FRE-258) : « invalid
+    input syntax … : "<la valeur>" », « Failing row contains (<toute la
+    ligne>) ». `hide_parameters` ne masque que la liste de SQLAlchemy ; ce texte,
+    lui, vient du serveur. Il ne part donc jamais : seul le code reste."""
+    import psycopg
+    from sqlalchemy.exc import DBAPIError
+    if isinstance(exc, DBAPIError):
+        exc = exc.orig
+    if isinstance(exc, psycopg.Error):
+        return exc.sqlstate or "sans code"
+    return None
+
+
 def _nettoyer(evenement: dict, indice: dict) -> dict | None:
     """`before_send` — le dernier point de passage avant l'envoi.
 
@@ -103,8 +119,11 @@ def _nettoyer(evenement: dict, indice: dict) -> dict | None:
         if isinstance(evenement.get(cle), str):
             evenement[cle] = _masquer(evenement[cle])
 
+    code_sql = _erreur_de_base(exc)
     for valeur in evenement.get("exception", {}).get("values", []):
-        if isinstance(valeur.get("value"), str):
+        if code_sql is not None:
+            valeur["value"] = f"erreur de base de données (SQLSTATE {code_sql}) — détail dans Cloud Logging par requestId"
+        elif isinstance(valeur.get("value"), str):
             valeur["value"] = _masquer(valeur["value"])
 
     if isinstance(evenement.get("request", {}).get("url"), str):
@@ -142,6 +161,9 @@ def installer() -> None:
         # Les corps de requête ne partent jamais : ils portent le poids, les
         # blessures, les notes du kiné.
         max_request_body_size="never",
+        # Ni les variables locales des frames (FRE-258) : une écriture de santé
+        # qui lève les porte toutes — le texte du bilan, la note, la douleur.
+        include_local_variables=False,
         # Échantillonné : c'est le tracing qui consomme le quota, pas les
         # incidents, et une fraction suffit à voir une route se dégrader.
         traces_sample_rate=0.1,

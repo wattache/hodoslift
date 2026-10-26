@@ -130,6 +130,10 @@ def get_engine() -> Engine:
     connexions sont prises, la suivante doit échouer VITE. Au-delà de cinq
     secondes ce n'est plus de la contention, c'est une panne, et elle doit se
     voir au lieu d'empiler des requêtes en attente.
+
+    ⚠️ `hide_parameters=True` (FRE-258) : sans lui, le message d'une erreur SQL
+    porte les VALEURS liées — antécédents, notes du kiné, résultats de bilan —,
+    et ce message part chez Sentry, qui n'est pas un hébergeur de santé.
     """
     return create_engine(
         _resolve_url(),
@@ -138,6 +142,7 @@ def get_engine() -> Engine:
         pool_size=5,
         max_overflow=2,
         pool_timeout=5,
+        hide_parameters=True,
     )
 
 
