@@ -90,8 +90,8 @@ export function ExerciseProgressionCard({
      `ProgressionBloc`. */
   return (
     <div className={className}>
-      // Le titre ne se tronque pas pour laisser la place au sélecteur : sur une
-      // colonne étroite (le pli), la droite de l'en-tête passe à la ligne.
+      {/* Le titre ne se tronque pas pour laisser la place au sélecteur : sur une
+          colonne étroite (le pli), la droite de l'en-tête passe à la ligne. */}
       <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
         <div className="min-w-0">
           <div className="truncate text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{resolvedTitle}</div>
