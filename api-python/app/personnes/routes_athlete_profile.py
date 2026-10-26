@@ -28,7 +28,12 @@ router = APIRouter(prefix="/athletes/{athlete_id}", tags=["athlete-profile"])
 
 # ⚠️ L'existence ET la liaison en UNE requête : deux laisseraient un intervalle
 # entre « la fiche existe » et « elle est liée », pour un aller-retour de plus.
-_ETAT_SQL = text("SELECT user_uid IS NOT NULL AS liee FROM athletes WHERE legacy_id = :legacy")
+_ETAT_SQL = text(
+    "SELECT a.user_uid IS NOT NULL AS liee, "
+    "EXISTS (SELECT 1 FROM bilans b WHERE b.athlete_id = a.id) "
+    "OR EXISTS (SELECT 1 FROM kine_notes n WHERE n.athlete_id = a.id) AS dossier_kine "
+    "FROM athletes a WHERE a.legacy_id = :legacy"
+)
 
 # La projection des 1RM vers la page publique du coach (FRE-30).
 #
@@ -138,6 +143,16 @@ def patch_profile(
                 "email_fige_par_le_compte",
                 status.HTTP_409_CONFLICT,
                 "fiche rattachée à un compte : son adresse vient du compte",
+            )
+        # ⚠️ ET DÈS QU'UN DOSSIER KINÉ EXISTE, MÊME SANS COMPTE (FRE-257). Sur une
+        # fiche non liée, l'adresse décide qui s'y rattachera : le coach qui y
+        # écrit celle d'un second compte devient owner et lit les bilans. Le
+        # secret médical prime sur la correction d'une adresse.
+        if "email" in data and etat[1]:
+            raise ErreurMetier(
+                "email_fige_par_le_dossier_kine",
+                status.HTTP_409_CONFLICT,
+                "fiche avec bilan ou note kiné : son adresse ne se change plus",
             )
         if set_clauses:
             session.execute(update_sql, params)

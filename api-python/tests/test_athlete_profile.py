@@ -177,6 +177,31 @@ def test_l_email_SE_FIGE_des_que_la_fiche_porte_un_compte(auth_as, sql):
     assert _row(sql)["email"] == "bob@x.com"   # rien touché
 
 
+@pytest.mark.parametrize("dossier", ["bilan", "note"])
+def test_l_email_SE_FIGE_des_qu_un_dossier_kine_existe_meme_sans_compte(auth_as, sql, dossier):
+    """⚠️ LA FENÊTRE QUE FRE-131 LAISSAIT (FRE-257). Fiche jamais liée, avec un
+    bilan : le coach y écrivait l'adresse d'un second compte Google, s'y
+    rattachait par `POST /athletes/link`, et lisait les bilans en owner.
+    MUTATION QUI ROUGIT : retirer le refus `email_fige_par_le_dossier_kine`."""
+    _seed_authz()
+    _seed_row(sql, email="bob@x.com")
+    athlete = sql.execute(text("SELECT id FROM athletes WHERE legacy_id = 'a1'")).scalar_one()
+    if dossier == "bilan":
+        sql.execute(text("INSERT INTO bilans (athlete_id, modele_nom, bilan_date) "
+                         "VALUES (:a, 'Bilan', '2026-10-01')"), {"a": athlete})
+    else:
+        sql.execute(text("INSERT INTO users (uid, email) VALUES ('kine-1', 'k@x.com') ON CONFLICT DO NOTHING"))
+        sql.execute(text("INSERT INTO kine_notes (athlete_id, kine_uid, contenu) "
+                         "VALUES (:a, 'kine-1', 'entorse')"), {"a": athlete})
+    r = auth_as(uid="coach-1").patch("/athletes/a1/profile",
+                                     json={"email": "second@pirate.com"}, headers=_AUTH)
+    assert r.status_code == 409
+    assert r.json()["code"] == "email_fige_par_le_dossier_kine"
+    assert _row(sql)["email"] == "bob@x.com"
+    lie = auth_as(uid="pirate", email="second@pirate.com", email_verified=True).post("/athletes/link", headers=_AUTH)
+    assert lie.json()["linked"] is False
+
+
 def test_le_gel_ne_prend_QUE_l_email_en_otage(auth_as, sql):
     """Une fiche liée reste éditable — poids, taille, âge, nom. Un refus qui
     emporterait tout le profil punirait le coach pour un geste qu'il ne fait

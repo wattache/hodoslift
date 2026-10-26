@@ -14454,6 +14454,7 @@
               "rubrique_non_vide",
               "test_utilise",
               "email_fige_par_le_compte",
+              "email_fige_par_le_dossier_kine",
               "slug_deja_pris",
               "slug_immuable",
               "entree_deja_existante",

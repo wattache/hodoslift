@@ -310,6 +310,13 @@ CODES: dict[str, str] = {
         "Cette fiche est rattachée à un compte : son adresse vient de ce compte "
         "et ne se change plus ici."
     ),
+    # ⚠️ Avant même la liaison, dès qu'un bilan ou une note kiné existe
+    # (FRE-257) : l'adresse décide qui se rattachera à la fiche, donc qui lira
+    # le dossier médical.
+    "email_fige_par_le_dossier_kine": (
+        "Cette fiche porte un dossier kiné : son adresse ne se change plus ici. "
+        "L'athlète se connecte avec l'adresse déjà saisie."
+    ),
     "slug_deja_pris": "Un autre profil coach porte déjà ce slug.",
     "slug_immuable": "Le slug d'un profil ne se change pas après création.",
     "entree_deja_existante": "Une entrée (catégorie, nom) identique existe déjà.",
