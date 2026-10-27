@@ -4,6 +4,7 @@ import { api } from '@/api/client';
 import { clesDUneDouleur, invalider } from '@/api/cles';
 import { mockDouleurs, mockLogsDeDouleur, mockResolve } from '@/api/mock';
 import type { Douleur, DouleurDeclaree, DouleurModifiee, LogDeDouleur, LogLu } from '@/api/types';
+import { todayIso } from '@/lib/dates';
 import { isFirebaseConfigured } from '@/firebase';
 
 const isMock = !isFirebaseConfigured;
@@ -77,4 +78,35 @@ export function useNoterDouleur(athleteId: string | null | undefined) {
   return useEcriture(athleteId,
     ({ id, jour, ...corps }: LogDeDouleur & { id: string; jour: string }) =>
       api.put<unknown, LogDeDouleur>(`/athletes/${athleteId}/douleurs/${id}/logs/${jour}`, corps));
+}
+
+/** ⚠️ DÉCLARER ET NOTER SONT DEUX APPELS, et le second peut échouer seul. La
+ *  douleur reste alors créée : l'erreur porte sur la NOTE, pas sur la
+ *  déclaration — dire « ça n'a pas marché » ferait recommencer, et créerait un
+ *  doublon que le serveur refuserait en 409. `NoteEchouee` transporte cette
+ *  nuance jusqu'à l'écran. Le contrat de déclaration ne prend pas d'intensité,
+ *  et on ne le change pas pour ça : une douleur se déclare, puis se note. */
+export class NoteEchouee extends Error {
+  readonly douleurId: string;
+  constructor(douleurId: string) { super('note non ecrite'); this.douleurId = douleurId; }
+}
+
+/** Déclarer une douleur ET la noter le même jour — le geste de l'onglet
+ *  Douleurs et celui de la ligne de séance, écrit UNE fois. */
+export function useDeclarerEtNoter(athleteId: string | null | undefined) {
+  const declarer = useDeclarerDouleur(athleteId);
+  const noter = useNoterDouleur(athleteId);
+  return {
+    isPending: declarer.isPending || noter.isPending,
+    async mutateAsync({ nom, zone, jour = todayIso(), ...note }:
+      { nom: string; zone: string; jour?: string } & LogDeDouleur): Promise<{ id: string }> {
+      const creee = await declarer.mutateAsync({ nom, zone, debut: jour }) as { id: string };
+      try {
+        await noter.mutateAsync({ id: creee.id, jour, ...note });
+      } catch {
+        throw new NoteEchouee(creee.id);
+      }
+      return creee;
+    },
+  };
 }

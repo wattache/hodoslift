@@ -20,6 +20,8 @@ type AthleteViewMode = "detailed" | "simple";
 const VIEW_MODE_KEY = "ff-athlete-view-mode";
 
 interface Props {
+  /** `legacy_id` de l'athlète : signaler une gêne depuis une ligne, et lire celles déjà signalées. */
+  athleteId?: string;
   week: WeekEditing;
   /** La séance à ouvrir d'emblée — le guichet y mène par l'URL (`?session=`).
    *  Sans elle, la vue choisit celle du jour. */
@@ -67,7 +69,7 @@ interface Props {
   shareBlock?: string;
 }
 
-export function WeekView({ week, sessionInitiale, mode = "athlete", allowCoachMode = false, canEditSelectedAthlete = false, storageScopeKey, athleteName, shareContext, shareBlock, onFeltRPEChange, onFeltRPEGlobal, onUpdateSetRPE, onUpdateSetValue, onEffacerLesSeries, onUpdateForm, onUpdateField, onSetExerciseKind, onSetSessionKind, onAddExercise, onRemoveExercise, onDuplicateExercise, onMoveExercise, onMoveExerciseToSession, onToggleGroup, onSetGroupKind, onMoveSession, onRenameSession, onDeleteSession, nameOptions, objectifsParMouvement, variantOptions, assistanceOptions, tempoOptions, blockWeeks }: Props) {
+export function WeekView({ week, sessionInitiale, mode = "athlete", allowCoachMode = false, canEditSelectedAthlete = false, storageScopeKey, athleteName, athleteId, shareContext, shareBlock, onFeltRPEChange, onFeltRPEGlobal, onUpdateSetRPE, onUpdateSetValue, onEffacerLesSeries, onUpdateForm, onUpdateField, onSetExerciseKind, onSetSessionKind, onAddExercise, onRemoveExercise, onDuplicateExercise, onMoveExercise, onMoveExerciseToSession, onToggleGroup, onSetGroupKind, onMoveSession, onRenameSession, onDeleteSession, nameOptions, objectifsParMouvement, variantOptions, assistanceOptions, tempoOptions, blockWeeks }: Props) {
   const { t } = useTranslation();
   // Athlète : accordéon (une seule séance ouverte). Coach : tout déplié par
   // défaut pour une vue d'ensemble (comme le legacy), chaque séance restant
@@ -288,6 +290,7 @@ export function WeekView({ week, sessionInitiale, mode = "athlete", allowCoachMo
               tempoOptions={tempoOptions}
               blockWeeks={blockWeeks}
               storageScopeKey={storageScopeKey}
+              athleteId={athleteId}
               canEditSelectedAthlete={canEditSelectedAthlete}
               athleteName={athleteName}
               shareContext={shareContext}
@@ -440,6 +443,7 @@ function SessionCard({
   storageScopeKey,
   canEditSelectedAthlete,
   athleteName,
+  athleteId,
   shareContext,
   shareBlock,
 }: {
@@ -485,6 +489,7 @@ function SessionCard({
   canEditSelectedAthlete?: boolean;
   /** Partage de séance : nom affiché sur l'image générée. */
   athleteName?: string;
+  athleteId?: string;
   /** Situe la séance sur l'image de partage (bandeau). */
   shareContext?: string;
   /** Bloc seul — bandeau de l'image de progression d'un exercice. */
@@ -720,6 +725,7 @@ function SessionCard({
             session={session}
             mode={mode}
             storageScopeKey={storageScopeKey}
+            athleteId={athleteId}
             canEditSelectedAthlete={canEditSelectedAthlete}
             onFeltRPEChange={onFeltRPEChange}
             onFeltRPEGlobal={onFeltRPEGlobal}

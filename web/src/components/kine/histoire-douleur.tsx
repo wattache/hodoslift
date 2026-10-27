@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useLogsDeDouleur } from '@/api/hooks/use-douleurs';
 import { cheminAdouci, cheminDroit, suitesEtPonts } from '@/lib/courbe';
+import { SurLaLigne } from '@/components/kine/sur-la-ligne';
 import { cleDIntensite, couleurDIntensite } from '@/lib/douleurs/intensite';
 
 type Props = { athleteId: string; douleurId: string };
@@ -163,6 +164,9 @@ export function HistoireDeLaDouleur({ athleteId, douleurId }: Props) {
             {l.commentaire && (
               <span className="flex-1 italic text-muted-foreground">« {l.commentaire} »</span>
             )}
+            {/* Sur quelle ligne de séance — c'est ce que le kiné vient croiser
+                avec l'intensité : « ça tire aux dips, pas au squat ». */}
+            <SurLaLigne exercices={l.exercices} className="basis-full" />
           </li>
         ))}
       </ul>

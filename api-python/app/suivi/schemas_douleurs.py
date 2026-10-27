@@ -7,6 +7,7 @@ existe depuis août — mais l'identité à laquelle la rattacher.
 
 from datetime import date as date_cls
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -42,6 +43,20 @@ class DouleurModifiee(BaseModel):
     fin: date_cls | None = None
 
 
+class ExerciceSignale(BaseModel):
+    """La ligne de séance depuis laquelle l'athlète signale — son identifiant seul.
+
+    ⚠️ LE CLICHÉ SE PREND CÔTÉ SERVEUR, jamais depuis le client : nom, variantes,
+    format, séries, reps et charge sont relus dans `training_exercises`, et la
+    ligne doit appartenir au programme de CET athlète (404 sinon).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    #: En `UUID` : un identifiant mal formé est un 422, pas un `CAST` qui lève.
+    exerciseId: UUID
+
+
 class LogDouleur(BaseModel):
     """Ce que l'athlète en dit un jour donné."""
 
@@ -68,6 +83,35 @@ class LogDouleur(BaseModel):
     #: VEILLE.
     entrainement: bool | None = None
 
+    #: La ligne de séance où ça a fait mal, quand on signale depuis elle.
+    #:
+    #: ⚠️ ELLE S'AJOUTE, ELLE NE REMPLACE PAS : la même épaule peut gêner au
+    #: muscle up puis aux dips dans la même séance. Et signaler depuis une ligne
+    #: DIT qu'on s'est entraîné : `entrainement: false` avec un exercice est une
+    #: contradiction (422), `None` vaut `True`.
+    exercice: ExerciceSignale | None = None
+
+
+class ExerciceDeDouleur(BaseModel):
+    """Le cliché d'une ligne de séance, tel qu'il a été signalé.
+
+    ⚠️ `exerciseId` S'ÉTEINT AVEC LA LIGNE (semaine régénérée), le cliché reste :
+    `ligneVivante` dit si le lien tient encore. `weight` et `reps` sont le réalisé
+    s'il était saisi, sinon le prescrit — la règle du guichet.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    exerciseId: str | None
+    name: str
+    variant: list[str]
+    tempo: str | None
+    format: str | None
+    sets: str | None
+    reps: str | None
+    weight: str | None
+    ligneVivante: bool
+
 
 class LogLu(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -77,6 +121,9 @@ class LogLu(BaseModel):
     commentaire: str | None
     #: `None` quand la question n'a pas été posée — voir `LogDouleur`.
     entrainement: bool | None = None
+    #: Les lignes de séance depuis lesquelles cette note a été signalée ; `[]`
+    #: — jamais absent, jamais `null` — quand elle vient de l'onglet Douleurs.
+    exercices: list[ExerciceDeDouleur]
 
 
 class DouleurLue(BaseModel):

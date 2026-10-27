@@ -7,6 +7,8 @@ réponse sans erreur ni journal, le front reçoit `undefined` et l'écran se vid
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.suivi.schemas_douleurs import ExerciceDeDouleur
+
 
 class DouleurSignalee(BaseModel):
     """Une douleur notée ce jour-là.
@@ -28,6 +30,8 @@ class DouleurSignalee(BaseModel):
     logs: int = Field(description="Combien de fois elle a été notée, en tout")
     recurrente: bool = Field(
         description="Déduit du compte : notée plus d'une fois, elle revient")
+    exercices: list[ExerciceDeDouleur] = Field(
+        description="Les lignes de séance depuis lesquelles la note a été signalée ; `[]` sinon")
 
 
 class Signalement(BaseModel):

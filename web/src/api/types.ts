@@ -821,3 +821,6 @@ export type DouleurModifiee = components['schemas']['DouleurModifiee'];
 export type LogDeDouleur = components['schemas']['LogDouleur'];
 /** Un relevé LU — ce que l'historique d'une douleur rend (FRE-197). */
 export type LogLu = components['schemas']['LogLu'];
+/** La ligne de séance depuis laquelle une note a été signalée : un cliché pris
+ *  par brokkr, dont le lien (`exerciseId`) s'éteint avec la ligne. */
+export type ExerciceDeDouleur = components['schemas']['ExerciceDeDouleur'];

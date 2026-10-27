@@ -800,7 +800,14 @@
     "titre": "Pain",
     "toucheLaZone": "Tap where it hurts.",
     "voirHistoire_one": "See history ({{count}} log)",
-    "voirHistoire_other": "See history ({{count}} logs)"
+    "voirHistoire_other": "See history ({{count}} logs)",
+    "signalerUneGene": "Report discomfort",
+    "surLaLigne": "On which session line",
+    "sur": "on",
+    "geneNoteeLe": "logged on {{date}}",
+    "noterCetteDouleur": "Log “{{nom}}”",
+    "entraineImplicite": "Reported from the session: this note counts as a training day.",
+    "envoiEchoue": "The note did not go through. Try again."
   },
   "espace": {
     "monProfil": "My profile",

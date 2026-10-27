@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { afficherVariantes } from "@/lib/variantes";
 import { EditCell, NoteArea } from "./cellules-coach";
 import { CartesCoach } from "./cartes-coach";
+import { SignalerSurLaLigne } from "@/components/kine/signaler-sur-la-ligne";
 import { TableauCoach } from "./tableau-coach";
 import { useMediaQuery } from "@/lib/use-mobile";
 
@@ -55,6 +56,10 @@ export interface SessionTableProps {
   onSetGroupKind?: (exerciseIndex: number, nature: NatureDeGroupe) => void;
   /** Suggestions de noms d'exercice (principaux ∪ renforcement) pour l'édition coach. */
   nameOptions?: string[];
+  /** L'athlète dont c'est la séance (`legacy_id`) : ce qu'il faut pour signaler
+   *  une gêne depuis une ligne, et pour lire celles déjà signalées. Absent, la
+   *  ligne ne propose ni ne montre rien. */
+  athleteId?: string;
   /** Les objectifs techniques OUVERTS de l'athlète, groupés par mouvement
    *  normalisé (FRE-122). Absent = la pastille ne s'affiche nulle part, ce qui
    *  est l'état correct quand la lecture n'est pas autorisée ou pas chargée. */
@@ -148,7 +153,7 @@ function exerciseNumbers(exercises: { groupId?: string | null }[]): number[] {
 }
 
 export function SessionTable(props: SessionTableProps) {
-  const { session, mode = "athlete", canEditSelectedAthlete = false, onFeltRPEChange, onFeltRPEGlobal, onUpdateSetRPE, onUpdateSetValue, onEffacerLesSeries, onUpdateField, onSetSessionKind, objectifsParMouvement, blockWeeks, storageScopeKey, shareBlock } = props;
+  const { session, mode = "athlete", canEditSelectedAthlete = false, onFeltRPEChange, onFeltRPEGlobal, onUpdateSetRPE, onUpdateSetValue, onEffacerLesSeries, onUpdateField, onSetSessionKind, objectifsParMouvement, blockWeeks, storageScopeKey, shareBlock, athleteId } = props;
   const confirm = useConfirm();
   const { t } = useTranslation();
   const [openNotes, setOpenNotes] = useState<Record<number, boolean>>({});
@@ -800,16 +805,29 @@ export function SessionTable(props: SessionTableProps) {
                               pli déplié ne tenait plus dans l'écran du téléphone
                               avec la progression dessous. Il reste un bouton, et
                               s'ouvre de lui-même dès qu'il porte du texte (2b). */}
-                          {athleteEdit && !(feedbackOuvert[exerciseKey] || ex.athleteFeedback) && (
-                            <button
-                              type="button"
-                              onClick={() => setFeedbackOuvert((st) => ({ ...st, [exerciseKey]: true }))}
-                              className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-lg border border-dashed border-border px-2.5 text-[12px] text-muted-foreground hover:border-gold/35 hover:text-foreground"
-                            >
-                              <Plus className="h-3.5 w-3.5" aria-hidden />
-                              {t("session.ajouterUnMot")}
-                            </button>
-                          )}
+                          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+                            {/* ⚠️ UNE GÊNE SE SIGNALE D'ICI, sans passer par
+                                l'onglet Douleurs : la note garde la LIGNE où ça
+                                a fait mal. Le bouton n'existe que pour l'athlète
+                                (brokkr n'écrit qu'en `owner`) ; la puce de ce qui
+                                a déjà été signalé se lit par tous. */}
+                            {athleteId && (
+                              <SignalerSurLaLigne athleteId={athleteId} ligne={ex}
+                                                  // `''` et `null` disent tous deux « pas de date prévue » : aujourd'hui.
+                                                  jour={session.sessionDate || undefined}
+                                                  peutEcrire={athleteEdit} />
+                            )}
+                            {athleteEdit && !(feedbackOuvert[exerciseKey] || ex.athleteFeedback) && (
+                              <button
+                                type="button"
+                                onClick={() => setFeedbackOuvert((st) => ({ ...st, [exerciseKey]: true }))}
+                                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-dashed border-border px-2.5 text-[12px] text-muted-foreground hover:border-gold/35 hover:text-foreground"
+                              >
+                                <Plus className="h-3.5 w-3.5" aria-hidden />
+                                {t("session.ajouterUnMot")}
+                              </button>
+                            )}
+                          </div>
                         </div>
 
                         <div className="grid grid-cols-3 gap-2 sm:gap-3">

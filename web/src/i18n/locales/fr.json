@@ -800,7 +800,14 @@
     "titre": "Douleurs",
     "toucheLaZone": "Touche la zone qui te fait mal.",
     "voirHistoire_one": "Voir l'historique ({{count}} relevé)",
-    "voirHistoire_other": "Voir l'historique ({{count}} relevés)"
+    "voirHistoire_other": "Voir l'historique ({{count}} relevés)",
+    "signalerUneGene": "Signaler une gêne",
+    "surLaLigne": "Sur quelle ligne de séance",
+    "sur": "sur",
+    "geneNoteeLe": "notée le {{date}}",
+    "noterCetteDouleur": "Noter « {{nom}} »",
+    "entraineImplicite": "Signalée depuis la séance : la note compte comme un jour entraîné.",
+    "envoiEchoue": "La note n'est pas passée. Réessaie."
   },
   "espace": {
     "monProfil": "Mon profil",

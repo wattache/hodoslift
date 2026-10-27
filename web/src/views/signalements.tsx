@@ -5,6 +5,7 @@ import { HeartPulse } from 'lucide-react';
 
 import { useSignalements } from '@/api/hooks/use-signalements';
 import { useAthleteSelection } from '@/lib/athlete-selection';
+import { libelleDExercice } from '@/lib/douleurs/libelles';
 import type { Signalement } from '@/api/types';
 import { cn } from '@/lib/utils';
 
@@ -71,6 +72,8 @@ function Ligne({ s, onOuvrir }: { s: Signalement; onOuvrir: () => void }) {
           // écran. Le compte vient du serveur, on ne le recalcule pas.
           d.recurrente ? t('douleurs.recurrente', { count: d.logs }) : null,
           d.commentaire,
+          // Sur quelle ligne de séance — la même écriture que la carte et le guichet.
+          ...d.exercices.map(e => `${t('douleurs.sur')} ${libelleDExercice(e)}`),
         ].filter(Boolean).join(' · ')).join(' — ')}
       </span>
     </li>

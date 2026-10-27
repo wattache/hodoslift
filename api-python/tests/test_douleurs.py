@@ -16,7 +16,9 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
+from tests.chargeur_arbre import Arbre, load
 from tests.conftest import client_de
+from tests.fixtures_training import arbre_de_test
 
 _A1 = "11111111-1111-1111-1111-111111111111"
 _A2 = "22222222-2222-2222-2222-222222222222"
@@ -151,7 +153,7 @@ def test_noter_DEUX_fois_le_meme_jour_remplace(monde):
 
     lue = c.get("/athletes/leg-1/douleurs").json()[0]
     assert lue["logs"] == 1
-    assert lue["derniere"] == {"date": "2026-09-22", "intensite": 3, "commentaire": "ça passe", "entrainement": None}
+    assert lue["derniere"] == {"date": "2026-09-22", "intensite": 3, "commentaire": "ça passe", "entrainement": None, "exercices": []}
 
 
 def test_ZERO_est_une_reponse(monde):
@@ -221,9 +223,9 @@ def test_l_historique_rend_TOUS_les_releves_du_plus_recent(monde):
     r = c.get(f"/athletes/leg-1/douleurs/{d}/logs")
     assert r.status_code == 200
     assert r.json() == [
-        {"date": "2026-09-22", "intensite": 1, "commentaire": "jour 22", "entrainement": None},
-        {"date": "2026-09-20", "intensite": 4, "commentaire": "jour 20", "entrainement": None},
-        {"date": "2026-09-18", "intensite": 7, "commentaire": "jour 18", "entrainement": None},
+        {"date": "2026-09-22", "intensite": 1, "commentaire": "jour 22", "entrainement": None, "exercices": []},
+        {"date": "2026-09-20", "intensite": 4, "commentaire": "jour 20", "entrainement": None, "exercices": []},
+        {"date": "2026-09-18", "intensite": 7, "commentaire": "jour 18", "entrainement": None, "exercices": []},
     ]
 
 
@@ -238,7 +240,7 @@ def test_une_correction_ne_fait_pas_DEUX_points(monde):
           json={"intensite": 3, "commentaire": "ça passe"})
 
     assert c.get(f"/athletes/leg-1/douleurs/{d}/logs").json() == [
-        {"date": "2026-09-22", "intensite": 3, "commentaire": "ça passe", "entrainement": None}]
+        {"date": "2026-09-22", "intensite": 3, "commentaire": "ça passe", "entrainement": None, "exercices": []}]
 
 
 def test_une_douleur_JAMAIS_notee_rend_une_liste_vide(monde):
@@ -259,7 +261,7 @@ def test_une_douleur_CLOSE_garde_son_histoire(monde):
     c.patch(f"/athletes/leg-1/douleurs/{d}", json={"fin": "2026-09-21"})
 
     assert c.get(f"/athletes/leg-1/douleurs/{d}/logs").json() == [
-        {"date": "2026-09-20", "intensite": 5, "commentaire": None, "entrainement": None}]
+        {"date": "2026-09-20", "intensite": 5, "commentaire": None, "entrainement": None, "exercices": []}]
 
 
 def test_le_STAFF_lit_l_historique(monde):
@@ -318,7 +320,7 @@ def test_le_jour_entraine_se_DECLARE_et_se_relit(monde):
     assert "entrainement" in r.json()["written"]
 
     assert c.get(f"/athletes/leg-1/douleurs/{d}/logs").json() == [
-        {"date": "2026-09-20", "intensite": 6, "commentaire": None, "entrainement": True}]
+        {"date": "2026-09-20", "intensite": 6, "commentaire": None, "entrainement": True, "exercices": []}]
 
 
 def test_UN_JOUR_SANS_n_est_pas_un_jour_NON_DIT(monde):
@@ -357,3 +359,143 @@ def test_corriger_sa_note_peut_REMETTRE_la_question_a_non_dit(monde):
     c.put(f"/athletes/leg-1/douleurs/{d}/logs/2026-09-20", json={"intensite": 6})
 
     assert c.get(f"/athletes/leg-1/douleurs/{d}/logs").json()[0]["entrainement"] is None
+
+
+# --------------------------------------------------------------------------- #
+# 4. Signalée depuis une LIGNE DE SÉANCE (William, 27/10)
+# --------------------------------------------------------------------------- #
+#
+# Ce que ces specs gardent, par ordre d'importance :
+#   · la ligne d'un AUTRE athlète est introuvable, et rien ne s'écrit ;
+#   · les exercices s'AJOUTENT à la note du jour, l'intensité se corrige ;
+#   · le cliché survit à la ligne (semaine régénérée), le lien s'éteint.
+# Vues rouges : `DO NOTHING` → `DO UPDATE` (la même ligne deux fois en faisait
+# deux), `SET NULL` → `CASCADE` (la ligne supprimée emportait le cliché), la
+# garde `entrainement is False` retirée (la contradiction passait).
+
+@pytest.fixture
+def seance(monde):
+    """L'athlète A a un programme, et sa séance du 5 janvier porte les lignes
+    réelles de `arbre_de_test` (SQUAT COMP 5×5 @ 100, PULL UP 8/10 fait 7…)."""
+    monde.execute(text("INSERT INTO programs (id, coach_uid, athlete_id) "
+                       "VALUES ('p1', 'coach-1', CAST(:a AS uuid))"), {"a": _A1})
+    load(monde, Arbre(macros=arbre_de_test("p1")))
+    return monde
+
+
+def _ligne(conn, name: str) -> str:
+    return str(conn.execute(text(
+        "SELECT id FROM training_exercises WHERE name = :n ORDER BY position LIMIT 1"),
+        {"n": name}).scalar())
+
+
+def _noter(douleur_id: str, *, uid="ath-1", legacy="leg-1", jour="2026-01-05", **corps):
+    return _client(uid).put(f"/athletes/{legacy}/douleurs/{douleur_id}/logs/{jour}",
+                            json={"intensite": 5, **corps})
+
+
+def _logs(douleur_id: str, *, uid="ath-1", legacy="leg-1") -> list[dict]:
+    r = _client(uid).get(f"/athletes/{legacy}/douleurs/{douleur_id}/logs")
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def test_signalee_depuis_une_ligne_la_note_porte_son_CLICHE(seance):
+    """Le cliché se prend côté serveur : le client n'envoie que l'identifiant."""
+    d = _declarer().json()["id"]
+    squat = _ligne(seance, "SQUAT")
+    r = _noter(d, exercice={"exerciseId": squat}, entrainement=True)
+    assert r.status_code == 200, r.text
+    assert "exercice" in r.json()["written"]
+
+    [note] = _logs(d)
+    [ex] = note["exercices"]
+    assert ex["exerciseId"] == squat and ex["ligneVivante"] is True
+    assert (ex["name"], ex["variant"], ex["sets"], ex["reps"], ex["weight"]) == \
+        ("SQUAT", ["COMP"], "5", "5", "100")
+    # La LISTE porte le même cliché sur la dernière note.
+    [douleur] = _client("ath-1").get("/athletes/leg-1/douleurs").json()
+    assert douleur["derniere"]["exercices"][0]["name"] == "SQUAT"
+
+
+def test_le_REALISE_vaut_quand_il_est_saisi_sinon_le_prescrit(seance):
+    """PULL UP est prescrit 8/10 et fait 7 : la note dit 7 — la règle du guichet."""
+    d = _declarer().json()["id"]
+    _noter(d, exercice={"exerciseId": _ligne(seance, "PULL UP")})
+    [ex] = _logs(d)[0]["exercices"]
+    assert ex["reps"] == "7"
+
+
+def test_deux_lignes_le_meme_jour_s_AJOUTENT_et_l_intensite_se_corrige(seance):
+    """L'épaule gêne au squat (5) puis aux dips (7) : UNE note à 7, DEUX lignes."""
+    d = _declarer().json()["id"]
+    _noter(d, intensite=5, exercice={"exerciseId": _ligne(seance, "SQUAT")})
+    _noter(d, intensite=7, exercice={"exerciseId": _ligne(seance, "DIPS")})
+    [note] = _logs(d)
+    assert note["intensite"] == 7
+    assert [e["name"] for e in note["exercices"]] == ["SQUAT", "DIPS"]
+
+
+def test_la_meme_ligne_deux_fois_ne_fait_qu_UNE_entree(seance):
+    d = _declarer().json()["id"]
+    squat = _ligne(seance, "SQUAT")
+    _noter(d, exercice={"exerciseId": squat})
+    _noter(d, exercice={"exerciseId": squat})
+    assert len(_logs(d)[0]["exercices"]) == 1
+
+
+def test_signaler_depuis_une_ligne_DIT_le_jour_entraine(seance):
+    """Pas besoin de répondre à la question : signaler depuis la séance y répond."""
+    d = _declarer().json()["id"]
+    _noter(d, exercice={"exerciseId": _ligne(seance, "SQUAT")})
+    assert _logs(d)[0]["entrainement"] is True
+
+
+def test_un_exercice_avec_un_jour_SANS_est_une_contradiction(seance):
+    d = _declarer().json()["id"]
+    r = _noter(d, exercice={"exerciseId": _ligne(seance, "SQUAT")}, entrainement=False)
+    assert r.status_code == 422 and r.json()["code"] == "corps_invalide"
+    assert _logs(d) == []
+
+
+def test_la_ligne_d_un_AUTRE_athlete_est_introuvable_et_rien_ne_s_ecrit(seance):
+    """LE test de cette extension. B tient une douleur légitime et un identifiant
+    de ligne volé à A : 404, et pas même la note du jour n'est écrite."""
+    d = _declarer(uid="ath-2", legacy="leg-2").json()["id"]
+    r = _noter(d, uid="ath-2", legacy="leg-2", exercice={"exerciseId": _ligne(seance, "SQUAT")})
+    assert r.status_code == 404 and r.json()["code"] == "exercice_introuvable"
+    assert _logs(d, uid="ath-2", legacy="leg-2") == []
+
+
+def test_un_identifiant_de_ligne_mal_forme_est_un_422_pas_un_500(seance):
+    d = _declarer().json()["id"]
+    r = _noter(d, exercice={"exerciseId": "pas-un-uuid"})
+    assert r.status_code == 422
+
+
+def test_la_ligne_disparue_laisse_son_CLICHE_et_eteint_le_lien(seance):
+    """La semaine se régénère, la ligne meurt ; la douleur, elle, reste."""
+    d = _declarer().json()["id"]
+    squat = _ligne(seance, "SQUAT")
+    _noter(d, exercice={"exerciseId": squat})
+    seance.execute(text("DELETE FROM training_exercises WHERE id = CAST(:x AS uuid)"), {"x": squat})
+    [ex] = _logs(d)[0]["exercices"]
+    assert ex["exerciseId"] is None and ex["ligneVivante"] is False
+    assert ex["name"] == "SQUAT" and ex["weight"] == "100"
+
+
+def test_le_tableau_des_signalements_porte_les_exercices(seance):
+    """Le staff lit SUR QUOI ça a fait mal, par la même vue que la coche."""
+    d = _declarer().json()["id"]
+    _noter(d, exercice={"exerciseId": _ligne(seance, "SQUAT")})
+    r = _client("coach-1").get("/athletes/signalements?jours=365")
+    assert r.status_code == 200, r.text
+    [s] = [s for s in r.json() if s["date"] == "2026-01-05"]
+    assert s["douleurs"][0]["exercices"][0]["name"] == "SQUAT"
+
+
+def test_notee_depuis_l_onglet_douleurs_la_note_n_a_AUCUN_exercice(seance):
+    """`[]`, jamais `null` : l'absence a une seule forme."""
+    d = _declarer().json()["id"]
+    _noter(d)
+    assert _logs(d)[0]["exercices"] == []

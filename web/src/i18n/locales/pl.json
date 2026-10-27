@@ -862,7 +862,14 @@
     "voirHistoire_one": "Pokaż historię ({{count}} wpis)",
     "voirHistoire_few": "Pokaż historię ({{count}} wpisy)",
     "voirHistoire_many": "Pokaż historię ({{count}} wpisów)",
-    "voirHistoire_other": "Pokaż historię ({{count}} wpisów)"
+    "voirHistoire_other": "Pokaż historię ({{count}} wpisów)",
+    "signalerUneGene": "Zgłoś dolegliwość",
+    "surLaLigne": "Przy którym ćwiczeniu",
+    "sur": "przy",
+    "geneNoteeLe": "zapisano {{date}}",
+    "noterCetteDouleur": "Zapisz „{{nom}}”",
+    "entraineImplicite": "Zgłoszone z treningu: wpis liczy się jako dzień treningowy.",
+    "envoiEchoue": "Wpis nie przeszedł. Spróbuj ponownie."
   },
   "espace": {
     "monProfil": "Mój profil",

@@ -68,11 +68,12 @@ def _douleur_de_l_athlete(session, athlete_uuid: str, douleur_id: str):
 _LISTE_SQL = text("""
     SELECT d.id::text AS id, d.nom, d.zone, d.debut, d.fin,
            (SELECT count(*) FROM douleur_logs l WHERE l.douleur_id = d.id) AS logs,
-           dl.log_date, dl.intensite, dl.commentaire
+           dl.log_date, dl.intensite, dl.commentaire, dl.entrainement, dl.exercices
       FROM douleurs d
       LEFT JOIN LATERAL (
-          SELECT l.log_date, l.intensite, l.commentaire
-            FROM douleur_logs l
+          -- `douleur_notes` : la note ET les lignes de séance d'où elle vient.
+          SELECT l.log_date, l.intensite, l.commentaire, l.entrainement, l.exercices
+            FROM douleur_notes l
            WHERE l.douleur_id = d.id
            ORDER BY l.log_date DESC
            LIMIT 1
@@ -105,13 +106,15 @@ def lister(
             "date": r["log_date"].isoformat(),
             "intensite": r["intensite"],
             "commentaire": r["commentaire"],
+            "entrainement": r["entrainement"],
+            "exercices": r["exercices"],
         },
     } for r in lignes]
 
 
 _LOGS_SQL = text("""
-    SELECT log_date, intensite, commentaire, entrainement
-      FROM douleur_logs
+    SELECT log_date, intensite, commentaire, entrainement, exercices
+      FROM douleur_notes
      WHERE douleur_id = CAST(:d AS uuid)
      ORDER BY log_date DESC
 """)
@@ -153,6 +156,7 @@ def lister_les_logs(
         "intensite": r["intensite"],
         "commentaire": r["commentaire"],
         "entrainement": r["entrainement"],
+        "exercices": r["exercices"],
     } for r in lignes]
 
 
@@ -232,6 +236,43 @@ def modifier(
     return {"ok": True, "written": sorted(fourni)}
 
 
+# LA LIGNE DE SÉANCE D'OÙ L'ON SIGNALE — celle de CET athlète, remontée jusqu'au
+# programme (FRE-43 : l'appartenance se vérifie, pas seulement l'accès). Le
+# réalisé vaut quand il est saisi, sinon le prescrit — la règle du guichet.
+_LIGNE_SQL = text("""
+    SELECT x.name, coalesce(x.variant, '{}') AS variant, x.tempo, x.format, x.sets,
+           coalesce(x.reps_done, x.reps) AS reps, coalesce(x.weight_done, x.weight) AS weight
+      FROM training_exercises x
+      JOIN training_sessions s ON s.id = x.session_id
+      JOIN training_weeks    w ON w.id = s.week_id
+      JOIN training_blocks   b ON b.id = w.block_id
+      JOIN training_macros   m ON m.id = b.macro_id
+      JOIN programs          p ON p.id = m.program_id
+     WHERE x.id = CAST(:x AS uuid) AND p.athlete_id = CAST(:a AS uuid)
+""")
+
+
+def _ligne_de_l_athlete(session, athlete_uuid: str, exercise_id: str):
+    """Le cliché d'une ligne de séance, si elle est bien dans le programme de CET
+    athlète.
+
+    Raises:
+        ErreurMetier: `exercice_introuvable` (404) — y compris pour la ligne d'un
+            autre athlète : on ne confirme pas l'existence de ce qui ne vous
+            regarde pas.
+        ErreurMetier: `corps_invalide` (422) sur une ligne sans mouvement : il
+            n'y a rien à nommer dans la note.
+    """
+    row = session.execute(_LIGNE_SQL, {"x": exercise_id, "a": athlete_uuid}).mappings().first()
+    if row is None:
+        raise ErreurMetier("exercice_introuvable", status.HTTP_404_NOT_FOUND,
+                           "cette ligne n'est pas dans le programme de cet athlète")
+    if row["name"] is None:
+        raise ErreurMetier("corps_invalide", status.HTTP_422_UNPROCESSABLE_CONTENT,
+                           "cette ligne n'a pas de mouvement")
+    return row
+
+
 @router.put("/{douleur_id}/logs/{jour}", response_model=ChampsEcrits,
             responses=erreurs(401, 403, 404))
 def noter(
@@ -247,15 +288,33 @@ def noter(
     épaule se contrediraient : la seconde est une correction, pas un fait de
     plus. La base le tient (`UNIQUE (douleur_id, log_date)`), et l'upsert le
     rend naturel côté écran — on rouvre sa saisie, on corrige, on renvoie.
+
+    ⚠️ SAUF L'EXERCICE, QUI S'AJOUTE. Signalée depuis une ligne de séance, la
+    note garde cette ligne — et la suivante si l'épaule gêne aussi aux dips. La
+    même ligne deux fois ne fait qu'une entrée. Signaler depuis une ligne DIT
+    qu'on s'est entraîné : `entrainement: false` est alors une contradiction.
+
+    Raises:
+        ErreurMetier: `corps_invalide` (422) — un exercice avec
+            `entrainement: false` ; `exercice_introuvable` (404) — une ligne
+            hors du programme de cet athlète.
     """
+    entrainement = payload.entrainement
+    if payload.exercice is not None:
+        if entrainement is False:
+            raise ErreurMetier("corps_invalide", status.HTTP_422_UNPROCESSABLE_CONTENT,
+                               "signalée depuis une ligne de séance, la note est un jour entraîné")
+        entrainement = True
     with get_session() as conn:
         uuid = _resolve_athlete(conn, athlete_id)
         _douleur_de_l_athlete(conn, uuid, douleur_id)
+        ligne = (None if payload.exercice is None
+                 else _ligne_de_l_athlete(conn, uuid, str(payload.exercice.exerciseId)))
         # ⚠️ `NULL` ET JAMAIS `''` (FRE-137) : une seule façon de dire « rien ».
         # Un commentaire effacé revient à l'absence, pas à une chaîne vide que la
         # contrainte refuserait de toute façon.
         commentaire = (payload.commentaire or "").strip() or None
-        conn.execute(text("""
+        log_id = conn.execute(text("""
             INSERT INTO douleur_logs (douleur_id, log_date, intensite, commentaire, entrainement)
             VALUES (CAST(:d AS uuid), :j, :i, :c, :e)
             ON CONFLICT (douleur_id, log_date) DO UPDATE
@@ -268,12 +327,23 @@ def noter(
                    -- ⚠️ CE QUI RAPPELLE LE STAFF. Sans ce rafraîchissement, une
                    -- douleur qui empire ne revient jamais dans la file de qui
                    -- l'a déjà cochée.
-                   modifie_le = clock_timestamp()"""),
+                   modifie_le = clock_timestamp()
+            RETURNING id"""),
             {"d": douleur_id, "j": jour, "i": payload.intensite, "c": commentaire,
-             "e": payload.entrainement})
+             "e": entrainement}).scalar()
+        if ligne is not None:
+            conn.execute(text("""
+                INSERT INTO douleur_log_exercices
+                       (log_id, exercise_id, name, variant, tempo, format, sets, reps, weight)
+                VALUES (CAST(:l AS uuid), CAST(:x AS uuid), :name, :variant, :tempo, :format,
+                        :sets, :reps, :weight)
+                ON CONFLICT (log_id, exercise_id) WHERE exercise_id IS NOT NULL DO NOTHING"""),
+                {"l": log_id, "x": str(payload.exercice.exerciseId), **dict(ligne)})
     ecrits = ["intensite"] + (["commentaire"] if commentaire else [])
-    if payload.entrainement is not None:
+    if entrainement is not None:
         ecrits.append("entrainement")
+    if ligne is not None:
+        ecrits.append("exercice")
     log_write(uid=access.claims["uid"], resource="douleur_log",
               doc_path=f"athletes/{athlete_id}/douleurs/{douleur_id}/logs/{jour}",
               fields=ecrits)

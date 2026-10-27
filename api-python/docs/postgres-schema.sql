@@ -573,6 +573,38 @@ CREATE TABLE douleur_logs (
 );
 CREATE INDEX ON douleur_logs (douleur_id, log_date DESC);
 
+-- UNE DOULEUR SE SIGNALE DEPUIS LA LIGNE DE SÉANCE où on l'a sentie : la note
+-- du jour porte alors l'exercice. Quinze commentaires sur quarante-et-un le
+-- nommaient déjà à la main.
+--
+-- ⚠️ UN CLICHÉ, ET UN LIEN QUI PEUT S'ÉTEINDRE. La semaine se régénère et sa
+-- ligne meurt avec elle ; la douleur reste. Le cliché (nom, variantes, format,
+-- séries, reps, charge) survit, `exercise_id` passe à NULL. Le réalisé vaut
+-- quand il est saisi, sinon le prescrit — même règle que le guichet.
+--
+-- ⚠️ LES EXERCICES S'AJOUTENT, L'INTENSITÉ SE CORRIGE. Une note par jour et par
+-- douleur, mais l'épaule peut gêner au muscle up PUIS aux dips dans la même
+-- séance : deux lignes ici, une seule note là-haut.
+CREATE TABLE douleur_log_exercices (
+    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    log_id      uuid NOT NULL REFERENCES douleur_logs(id) ON DELETE CASCADE,
+    -- La clé vers `training_exercises` se pose en fin de fichier : la table des
+    -- lignes naît plus bas.
+    exercise_id uuid,
+    name    text NOT NULL CONSTRAINT douleur_log_exercices_name_non_vide CHECK (btrim(name) <> ''),
+    variant text[] NOT NULL DEFAULT '{}',
+    tempo   text CONSTRAINT douleur_log_exercices_tempo_non_vide  CHECK (btrim(tempo) <> ''),
+    format  text CONSTRAINT douleur_log_exercices_format_non_vide CHECK (btrim(format) <> ''),
+    sets    text CONSTRAINT douleur_log_exercices_sets_non_vide   CHECK (btrim(sets) <> ''),
+    reps    text CONSTRAINT douleur_log_exercices_reps_non_vide   CHECK (btrim(reps) <> ''),
+    weight  text CONSTRAINT douleur_log_exercices_weight_non_vide CHECK (btrim(weight) <> ''),
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX ON douleur_log_exercices (log_id);
+-- La même ligne signalée deux fois le même jour est UNE fois.
+CREATE UNIQUE INDEX douleur_log_exercices_une_ligne_par_note
+    ON douleur_log_exercices (log_id, exercise_id) WHERE exercise_id IS NOT NULL;
+
 -- UN SIGNALEMENT EST UN ATHLÈTE ET UN JOUR, PAS UNE DOULEUR (FRE-195) : la
 -- coche du lecteur (`signalement_vu`) porte cette clé-là, et deux douleurs
 -- notées le même jour font UNE ligne. Le tableau des signalements, la file du
@@ -580,17 +612,35 @@ CREATE INDEX ON douleur_logs (douleur_id, log_date DESC);
 --
 -- ⚠️ `recurrente` compte TOUT l'historique de la douleur, pas la fenêtre lue :
 -- une épaule notée en janvier et en juin est récurrente en juin.
+-- UNE NOTE ET SES EXERCICES, EN UN SEUL ENDROIT. La liste des douleurs,
+-- l'histoire d'une douleur et la vue `signalements` lisent la même forme ici :
+-- la définir trois fois ferait trois façons de dire « sur quoi ça a fait mal ».
+-- Colonnes nommées, jamais `*` : l'étoile se déplie dans l'ordre physique, qui
+-- diffère entre la prod et ce fichier.
+CREATE VIEW douleur_notes AS
+SELECT l.id, l.douleur_id, l.log_date, l.intensite, l.commentaire, l.entrainement,
+       l.created_at, l.modifie_le,
+       coalesce((
+           SELECT jsonb_agg(jsonb_build_object(
+                      'exerciseId', e.exercise_id::text, 'name', e.name, 'variant', e.variant,
+                      'tempo', e.tempo, 'format', e.format, 'sets', e.sets, 'reps', e.reps,
+                      'weight', e.weight, 'ligneVivante', e.exercise_id IS NOT NULL)
+                  ORDER BY e.created_at)
+             FROM douleur_log_exercices e WHERE e.log_id = l.id), '[]'::jsonb) AS exercices
+  FROM douleur_logs l;
+
 CREATE VIEW signalements AS
 SELECT d.athlete_id, l.log_date,
        jsonb_agg(jsonb_build_object(
            'id', d.id::text, 'nom', d.nom, 'zone', d.zone,
            'intensite', l.intensite, 'commentaire', l.commentaire,
-           'logs', n.logs, 'recurrente', n.logs > 1
+           'logs', n.logs, 'recurrente', n.logs > 1,
+           'exercices', l.exercices
        ) ORDER BY l.intensite DESC, d.nom) AS douleurs,
        -- Le repère de « noté après coché » : l'upsert rafraîchit `modifie_le`
        -- quand on réécrit la même journée.
        max(l.modifie_le) AS note_le
-  FROM douleur_logs l
+  FROM douleur_notes l
   JOIN douleurs d ON d.id = l.douleur_id
   JOIN LATERAL (SELECT count(*) AS logs FROM douleur_logs x WHERE x.douleur_id = d.id) n ON true
  GROUP BY d.athlete_id, l.log_date;
@@ -2260,6 +2310,11 @@ ALTER TABLE training_base_accessories ADD COLUMN structure text NOT NULL DEFAULT
 ALTER TABLE athlete_goals             ADD COLUMN structure text NOT NULL DEFAULT 'french-forge' REFERENCES structures(slug);
 ALTER TABLE athlete_prs               ADD COLUMN structure text NOT NULL DEFAULT 'french-forge' REFERENCES structures(slug);
 ALTER TABLE block_objectives          ADD COLUMN structure text NOT NULL DEFAULT 'french-forge' REFERENCES structures(slug);
+
+-- La note de douleur signalée depuis une ligne de séance : le lien s'éteint
+-- avec la ligne (`SET NULL`), le cliché reste.
+ALTER TABLE douleur_log_exercices ADD CONSTRAINT douleur_log_exercices_exercise_id_fkey
+  FOREIGN KEY (exercise_id) REFERENCES training_exercises(id) ON DELETE SET NULL;
 
 ALTER TABLE training_exercises ADD CONSTRAINT training_exercises_mouvement_fkey
   FOREIGN KEY (structure, categorie, name) REFERENCES library_entries (structure, category, name) ON UPDATE CASCADE;

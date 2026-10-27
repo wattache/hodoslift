@@ -268,6 +268,16 @@ export interface paths {
          *     épaule se contrediraient : la seconde est une correction, pas un fait de
          *     plus. La base le tient (`UNIQUE (douleur_id, log_date)`), et l'upsert le
          *     rend naturel côté écran — on rouvre sa saisie, on corrige, on renvoie.
+         *
+         *     ⚠️ SAUF L'EXERCICE, QUI S'AJOUTE. Signalée depuis une ligne de séance, la
+         *     note garde cette ligne — et la suivante si l'épaule gêne aussi aux dips. La
+         *     même ligne deux fois ne fait qu'une entrée. Signaler depuis une ligne DIT
+         *     qu'on s'est entraîné : `entrainement: false` est alors une contradiction.
+         *
+         *     Raises:
+         *         ErreurMetier: `corps_invalide` (422) — un exercice avec
+         *             `entrainement: false` ; `exercice_introuvable` (404) — une ligne
+         *             hors du programme de cet athlète.
          */
         put: operations["noter_athletes__athlete_id__douleurs__douleur_id__logs__jour__put"];
         post?: never;
@@ -3946,6 +3956,11 @@ export interface components {
              * @description Déduit du compte : notée plus d'une fois, elle revient
              */
             recurrente: boolean;
+            /**
+             * Exercices
+             * @description Les lignes de séance depuis lesquelles la note a été signalée ; `[]` sinon
+             */
+            exercices: components["schemas"]["ExerciceDeDouleur"][];
         };
         /**
          * EntreeCreee
@@ -4093,6 +4108,34 @@ export interface components {
             canTrain?: boolean | null;
         };
         /**
+         * ExerciceDeDouleur
+         * @description Le cliché d'une ligne de séance, tel qu'il a été signalé.
+         *
+         *     ⚠️ `exerciseId` S'ÉTEINT AVEC LA LIGNE (semaine régénérée), le cliché reste :
+         *     `ligneVivante` dit si le lien tient encore. `weight` et `reps` sont le réalisé
+         *     s'il était saisi, sinon le prescrit — la règle du guichet.
+         */
+        ExerciceDeDouleur: {
+            /** Exerciseid */
+            exerciseId: string | null;
+            /** Name */
+            name: string;
+            /** Variant */
+            variant: string[];
+            /** Tempo */
+            tempo: string | null;
+            /** Format */
+            format: string | null;
+            /** Sets */
+            sets: string | null;
+            /** Reps */
+            reps: string | null;
+            /** Weight */
+            weight: string | null;
+            /** Lignevivante */
+            ligneVivante: boolean;
+        };
+        /**
          * ExerciceDuDossier
          * @description Une ligne de la séance, de quoi juger sans l'ouvrir.
          */
@@ -4113,6 +4156,21 @@ export interface components {
             seriesTenues: number | null;
             /** Seriestotal */
             seriesTotal: number | null;
+        };
+        /**
+         * ExerciceSignale
+         * @description La ligne de séance depuis laquelle l'athlète signale — son identifiant seul.
+         *
+         *     ⚠️ LE CLICHÉ SE PREND CÔTÉ SERVEUR, jamais depuis le client : nom, variantes,
+         *     format, séries, reps et charge sont relus dans `training_exercises`, et la
+         *     ligne doit appartenir au programme de CET athlète (404 sinon).
+         */
+        ExerciceSignale: {
+            /**
+             * Exerciseid
+             * Format: uuid
+             */
+            exerciseId: string;
         };
         /**
          * ExerciseLineCreate
@@ -4662,6 +4720,7 @@ export interface components {
             commentaire?: string | null;
             /** Entrainement */
             entrainement?: boolean | null;
+            exercice?: components["schemas"]["ExerciceSignale"] | null;
         };
         /** LogLu */
         LogLu: {
@@ -4673,6 +4732,8 @@ export interface components {
             commentaire: string | null;
             /** Entrainement */
             entrainement?: boolean | null;
+            /** Exercices */
+            exercices: components["schemas"]["ExerciceDeDouleur"][];
         };
         /**
          * MacroCreate

@@ -935,7 +935,7 @@
           "douleurs"
         ],
         "summary": "Noter",
-        "description": "Note la douleur pour un jour donné. Réécrire le même jour REMPLACE.\n\n⚠️ UN LOG PAR JOUR ET PAR DOULEUR. Deux notes le même jour pour la même\népaule se contrediraient : la seconde est une correction, pas un fait de\nplus. La base le tient (`UNIQUE (douleur_id, log_date)`), et l'upsert le\nrend naturel côté écran — on rouvre sa saisie, on corrige, on renvoie.",
+        "description": "Note la douleur pour un jour donné. Réécrire le même jour REMPLACE.\n\n⚠️ UN LOG PAR JOUR ET PAR DOULEUR. Deux notes le même jour pour la même\népaule se contrediraient : la seconde est une correction, pas un fait de\nplus. La base le tient (`UNIQUE (douleur_id, log_date)`), et l'upsert le\nrend naturel côté écran — on rouvre sa saisie, on corrige, on renvoie.\n\n⚠️ SAUF L'EXERCICE, QUI S'AJOUTE. Signalée depuis une ligne de séance, la\nnote garde cette ligne — et la suivante si l'épaule gêne aussi aux dips. La\nmême ligne deux fois ne fait qu'une entrée. Signaler depuis une ligne DIT\nqu'on s'est entraîné : `entrainement: false` est alors une contradiction.\n\nRaises:\n    ErreurMetier: `corps_invalide` (422) — un exercice avec\n        `entrainement: false` ; `exercice_introuvable` (404) — une ligne\n        hors du programme de cet athlète.",
         "operationId": "noter_athletes__athlete_id__douleurs__douleur_id__logs__jour__put",
         "security": [
           {
@@ -14337,6 +14337,14 @@
             "type": "boolean",
             "title": "Recurrente",
             "description": "Déduit du compte : notée plus d'une fois, elle revient"
+          },
+          "exercices": {
+            "items": {
+              "$ref": "#/components/schemas/ExerciceDeDouleur"
+            },
+            "type": "array",
+            "title": "Exercices",
+            "description": "Les lignes de séance depuis lesquelles la note a été signalée ; `[]` sinon"
           }
         },
         "additionalProperties": false,
@@ -14348,7 +14356,8 @@
           "intensite",
           "commentaire",
           "logs",
-          "recurrente"
+          "recurrente",
+          "exercices"
         ],
         "title": "DouleurSignalee",
         "description": "Une douleur notée ce jour-là.\n\n⚠️ TYPÉE, LÀ OÙ LE QUESTIONNAIRE ÉTAIT LIBRE. Le bloc `kine` n'était pas\ndécrit au contrat parce que les questions n'étaient pas arrêtées — c'était le\nbon compromis tant qu'on cherchait leur forme. Elles le sont : une douleur a\nune zone, une intensité et un commentaire. Ce qui reste libre est le TEXTE,\npas la structure autour."
@@ -14808,6 +14817,106 @@
         "type": "object",
         "title": "EventPatch"
       },
+      "ExerciceDeDouleur": {
+        "properties": {
+          "exerciseId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exerciseid"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "variant": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Variant"
+          },
+          "tempo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tempo"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format"
+          },
+          "sets": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sets"
+          },
+          "reps": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reps"
+          },
+          "weight": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight"
+          },
+          "ligneVivante": {
+            "type": "boolean",
+            "title": "Lignevivante"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "exerciseId",
+          "name",
+          "variant",
+          "tempo",
+          "format",
+          "sets",
+          "reps",
+          "weight",
+          "ligneVivante"
+        ],
+        "title": "ExerciceDeDouleur",
+        "description": "Le cliché d'une ligne de séance, tel qu'il a été signalé.\n\n⚠️ `exerciseId` S'ÉTEINT AVEC LA LIGNE (semaine régénérée), le cliché reste :\n`ligneVivante` dit si le lien tient encore. `weight` et `reps` sont le réalisé\ns'il était saisi, sinon le prescrit — la règle du guichet."
+      },
       "ExerciceDuDossier": {
         "properties": {
           "name": {
@@ -14872,6 +14981,22 @@
         ],
         "title": "ExerciceDuDossier",
         "description": "Une ligne de la séance, de quoi juger sans l'ouvrir."
+      },
+      "ExerciceSignale": {
+        "properties": {
+          "exerciseId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Exerciseid"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "exerciseId"
+        ],
+        "title": "ExerciceSignale",
+        "description": "La ligne de séance depuis laquelle l'athlète signale — son identifiant seul.\n\n⚠️ LE CLICHÉ SE PREND CÔTÉ SERVEUR, jamais depuis le client : nom, variantes,\nformat, séries, reps et charge sont relus dans `training_exercises`, et la\nligne doit appartenir au programme de CET athlète (404 sinon)."
       },
       "ExerciseLineCreate": {
         "properties": {
@@ -16831,6 +16956,16 @@
               }
             ],
             "title": "Entrainement"
+          },
+          "exercice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExerciceSignale"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -16872,6 +17007,13 @@
               }
             ],
             "title": "Entrainement"
+          },
+          "exercices": {
+            "items": {
+              "$ref": "#/components/schemas/ExerciceDeDouleur"
+            },
+            "type": "array",
+            "title": "Exercices"
           }
         },
         "additionalProperties": false,
@@ -16879,7 +17021,8 @@
         "required": [
           "date",
           "intensite",
-          "commentaire"
+          "commentaire",
+          "exercices"
         ],
         "title": "LogLu"
       },

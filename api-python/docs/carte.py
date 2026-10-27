@@ -80,7 +80,7 @@ DOMAINES = [
       "training_exercises", "training_base_principles", "training_base_accessories",
       "block_objectives", "library_entries"]),
     ("suivi", "Suivi", "Ce que l'athlète note, et ce que le staff en lit.",
-     ["daily_logs", "douleurs", "douleur_logs", "signalement_vu", "training_sets",
+     ["daily_logs", "douleurs", "douleur_logs", "douleur_log_exercices", "signalement_vu", "training_sets",
       "athlete_prs", "athlete_goals", "objectifs_techniques", "calendar_events"]),
     ("competitions", "Compétitions", "Une épreuve, ses mouvements, ses participants et leurs essais.",
      ["competitions", "competition_movements", "competition_participants", "competition_attempts",

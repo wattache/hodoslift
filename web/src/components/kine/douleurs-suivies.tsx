@@ -1,14 +1,14 @@
 import { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { TFunction } from 'i18next';
 
 import { FigureDuCorps } from '@/components/kine/figure-du-corps';
-import { useDeclarerDouleur, useDouleurs, useModifierDouleur, useNoterDouleur } from '@/api/hooks/use-douleurs';
+import { useDeclarerEtNoter, useDouleurs, useModifierDouleur, useNoterDouleur } from '@/api/hooks/use-douleurs';
 import type { Douleur } from '@/api/types';
-import { cleDuNom, litLeCode } from '@/lib/anatomie/zones';
 import { HistoireDeLaDouleur } from '@/components/kine/histoire-douleur';
 import { SelecteurDIntensite } from '@/components/kine/selecteur-intensite';
+import { SurLaLigne } from '@/components/kine/sur-la-ligne';
 import { couleurDIntensite } from '@/lib/douleurs/intensite';
+import { nomDeZone } from '@/lib/douleurs/libelles';
 import { todayIso } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 
@@ -30,7 +30,7 @@ type Props = {
 export function DouleursSuivies({ athleteId, canWrite }: Props) {
   const { t } = useTranslation();
   const { data: douleurs = [], isLoading } = useDouleurs(athleteId);
-  const declarer = useDeclarerDouleur(athleteId);
+  const declarer = useDeclarerEtNoter(athleteId);
   const noter = useNoterDouleur(athleteId);
   const modifier = useModifierDouleur(athleteId);
 
@@ -38,10 +38,7 @@ export function DouleursSuivies({ athleteId, canWrite }: Props) {
   const [nom, setNom] = useState('');
   const [intensiteNeuve, setIntensiteNeuve] = useState(3);
   const [entraineNeuve, setEntraineNeuve] = useState<boolean | undefined>(undefined);
-  /** ⚠️ DÉCLARER ET NOTER SONT DEUX APPELS, et le second peut échouer seul. La
-   *  douleur reste alors créée : l'erreur porte donc sur la NOTE, pas sur la
-   *  déclaration — dire « ça n'a pas marché » ferait recommencer, et créerait
-   *  un doublon que le serveur refuserait en 409. */
+  // Voir `NoteEchouee` : la douleur est créée, c'est la note qui n'est pas passée.
   const [erreurNote, setErreurNote] = useState<string | null>(null);
   const idNeuve = useId();
 
@@ -63,15 +60,9 @@ export function DouleursSuivies({ athleteId, canWrite }: Props) {
   const valider = async () => {
     if (!zoneChoisie || !nom.trim()) return;
     setErreurNote(null);
-    // ⚠️ LE CONTRAT DE DÉCLARATION NE PREND PAS D'INTENSITÉ, et on ne le change
-    // pas pour ça : une douleur se déclare, puis se note. Deux appels, dans cet
-    // ordre, parce que le second a besoin de l'identité que le premier crée.
-    const creee = await declarer.mutateAsync(
-      { nom: nom.trim(), zone: zoneChoisie, debut: todayIso() }) as { id: string };
     try {
-      await noter.mutateAsync(
-        { id: creee.id, jour: todayIso(), intensite: intensiteNeuve, commentaire: null,
-          entrainement: entraineNeuve });
+      await declarer.mutateAsync({ nom: nom.trim(), zone: zoneChoisie, intensite: intensiteNeuve,
+                                   commentaire: null, entrainement: entraineNeuve });
     } catch {
       setErreurNote(t('douleurs.noteEchouee'));
       return;
@@ -192,7 +183,7 @@ export function DouleursSuivies({ athleteId, canWrite }: Props) {
 
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={() => void valider()}
-                      disabled={!nom.trim() || declarer.isPending || noter.isPending}
+                      disabled={!nom.trim() || declarer.isPending}
                       className="h-11 rounded-lg bg-gold px-4 text-sm font-semibold text-[#131316] disabled:opacity-40">
                 {t('douleurs.suivre')}
               </button>
@@ -270,17 +261,6 @@ function aRelancer(derniere?: string): boolean {
   return Date.parse(todayIso()) - Date.parse(derniere) >= 7 * 86_400_000;
 }
 
-/** Le nom lisible d'une zone : « Pectoraux gauche ».
- *
- *  ⚠️ LE CODE RESTE LE REPLI. Une zone retirée d'une planche future n'a plus de
- *  traduction : on affiche son slug plutôt qu'une clé i18n crue, qui serait
- *  illisible et ne dirait même pas de quoi il s'agit. */
-function nomDeZone(code: string, t: TFunction): string {
-  const { slug, cote } = litLeCode(code);
-  const zone = t(cleDuNom(slug), { defaultValue: slug });
-  return cote ? `${zone} ${t(`anatomie.${cote}`)}` : zone;
-}
-
 function CarteDouleur({ douleur, canWrite, athleteId, surligne, onNoter, onClore }: {
   douleur: Douleur; canWrite: boolean; athleteId: string; surligne: boolean;
   onNoter: (intensite: number, commentaire: string | null,
@@ -352,6 +332,10 @@ function CarteDouleur({ douleur, canWrite, athleteId, surligne, onNoter, onClore
         <p className="mt-2 text-xs italic text-muted-foreground">
           « {douleur.derniere.commentaire} »
         </p>
+      )}
+      {/* Sur quelle ligne de séance ça a fait mal — quand la note vient de là. */}
+      {douleur.derniere && douleur.derniere.exercices.length > 0 && (
+        <SurLaLigne exercices={douleur.derniere.exercices} className="mt-2" />
       )}
 
       {/* ⚠️ L'HISTOIRE NE SE CHARGE QU'UNE FOIS DEMANDÉE, et c'est la règle du

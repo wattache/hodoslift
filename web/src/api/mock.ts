@@ -19,6 +19,7 @@ import type {
   RecordDeForce,
   NoteKine,
   Douleur,
+  ExerciceDeDouleur,
   LogLu,
   ObjectifTechnique,
 } from './types';
@@ -563,18 +564,18 @@ export const mockSignalements: Signalement[] = [
     programId: 'mock-prog-lea', date: iso(0),
     douleurs: [{ id: 'dlr-1', nom: 'Genou droit', zone: 'knees:droite',
                  intensite: 2, commentaire: 'Face externe, en fin de séance',
-                 logs: 2, recurrente: true }] },
+                 logs: 2, recurrente: true, exercices: [] }] },
   // Deux douleurs LE MÊME JOUR : une seule ligne, une seule coche.
   { athleteId: 'mock-theo', firstName: 'Théo', lastName: 'Bernard',
     programId: 'mock-prog-theo', date: iso(0),
     douleurs: [{ id: 'dlr-2', nom: 'Lombaires', zone: 'lower-back:droite',
-                 intensite: 8, commentaire: 'Depuis 2 semaines', logs: 1, recurrente: false },
+                 intensite: 8, commentaire: 'Depuis 2 semaines', logs: 1, recurrente: false, exercices: [] },
                { id: 'dlr-3', nom: 'Trapèze', zone: 'trapezius:gauche',
-                 intensite: 3, commentaire: null, logs: 1, recurrente: false }] },
+                 intensite: 3, commentaire: null, logs: 1, recurrente: false, exercices: [] }] },
   { athleteId: 'mock-lea', firstName: 'Léa', lastName: 'Martin',
     programId: 'mock-prog-lea', date: iso(-3),
     douleurs: [{ id: 'dlr-1', nom: 'Genou droit', zone: 'knees:droite',
-                 intensite: 5, commentaire: null, logs: 2, recurrente: true }] },
+                 intensite: 5, commentaire: null, logs: 2, recurrente: true, exercices: [] }] },
 ];
 
 export const mockEvents: CalendarEvent[] = [
@@ -1147,16 +1148,25 @@ export const mockBilanResultats: BilanResultat[] = [
  *
  *  Les zones sont des CODES, côté de l'athlète : `deltoid-anterior:droite` se touche à
  *  GAUCHE de l'écran en vue de face. */
+/** Le cliché que brokkr prend d'une ligne signalée : `ex-10`, le MUSCLE UP de la séance du jour. */
+const MUSCLE_UP_SIGNALE: ExerciceDeDouleur = {
+  exerciseId: 'ex-10', name: 'MUSCLE UP', variant: ['Strict'], tempo: null, format: null,
+  sets: '4', reps: '2', weight: '9', ligneVivante: true,
+};
+
 export const mockDouleurs: Douleur[] = [
   { id: 'dlr-1', nom: 'Mon épaule', zone: 'deltoid-anterior:droite',
     debut: '2022-09-01', fin: null, logs: 4, recurrente: true,
-    derniere: { date: iso(-1), intensite: 3, commentaire: 'Tire encore aux dips' } },
+    // ⚠️ SIGNALÉE DEPUIS LA LIGNE « MUSCLE UP » de la séance du jour (`ex-10`) :
+    // c'est la puce sur la ligne et la ligne sur la carte qu'on vient voir.
+    derniere: { date: iso(-1), intensite: 3, commentaire: 'Tire encore aux dips', entrainement: true,
+                exercices: [MUSCLE_UP_SIGNALE] } },
   { id: 'dlr-2', nom: 'Genou gauche', zone: 'knees:gauche',
     debut: '2026-05-31', fin: null, logs: 1, recurrente: false,
-    derniere: { date: iso(-6), intensite: 6, commentaire: 'Fissure au ménisque' } },
+    derniere: { date: iso(-6), intensite: 6, commentaire: 'Fissure au ménisque', exercices: [] } },
   { id: 'dlr-3', nom: 'Le coude qui tire', zone: 'forearm:gauche',
     debut: '2026-03-02', fin: '2026-04-18', logs: 3, recurrente: true,
-    derniere: { date: '2026-04-18', intensite: 0, commentaire: null } },
+    derniere: { date: '2026-04-18', intensite: 0, commentaire: null, exercices: [] } },
 ];
 
 /** L'HISTOIRE DE CHAQUE DOULEUR (FRE-197).
@@ -1172,19 +1182,23 @@ export const mockLogsDeDouleur = (id: string): LogLu[] => ({
     // ⚠️ LES TROIS ÉTATS SONT REPRÉSENTÉS, sinon l'écran n'en montre qu'un :
     // un jour entraîné, un jour de repos qui fait mal quand même — le cas qui
     // a motivé la colonne — et deux relevés d'avant la question.
-    { date: iso(-1), intensite: 3, commentaire: 'Tire encore aux dips', entrainement: true },
+    { date: iso(-1), intensite: 3, commentaire: 'Tire encore aux dips', entrainement: true,
+      exercices: [MUSCLE_UP_SIGNALE] },
     { date: iso(-8), intensite: 5, commentaire: 'Échauffement plus long, ça passe mieux',
-      entrainement: false },
-    { date: iso(-30), intensite: 7, commentaire: 'Réveil difficile, gêne au réveil du bras' },
-    { date: iso(-44), intensite: 6, commentaire: null },
+      entrainement: false, exercices: [] },
+    { date: iso(-30), intensite: 7, commentaire: 'Réveil difficile, gêne au réveil du bras', exercices: [] },
+    // Une ligne dont le lien s'est éteint : la semaine a été régénérée, le cliché reste.
+    { date: iso(-44), intensite: 6, commentaire: null, exercices: [
+      { exerciseId: null, name: 'DIPS', variant: [], tempo: null, format: null, sets: '4', reps: '8',
+        weight: 'PDC', ligneVivante: false }] },
   ],
   'dlr-2': [
-    { date: iso(-6), intensite: 6, commentaire: 'Fissure au ménisque' },
+    { date: iso(-6), intensite: 6, commentaire: 'Fissure au ménisque', exercices: [] },
   ],
   'dlr-3': [
-    { date: '2026-04-18', intensite: 0, commentaire: null },
-    { date: '2026-04-02', intensite: 2, commentaire: 'Presque plus rien' },
-    { date: '2026-03-02', intensite: 6, commentaire: 'Départ après une séance de traction' },
+    { date: '2026-04-18', intensite: 0, commentaire: null, exercices: [] },
+    { date: '2026-04-02', intensite: 2, commentaire: 'Presque plus rien', exercices: [] },
+    { date: '2026-03-02', intensite: 6, commentaire: 'Départ après une séance de traction', exercices: [] },
   ],
 }[id] ?? []);
 
@@ -1256,7 +1270,7 @@ function _guichetInitial(): Guichet['dossiers'] {
     { type: 'douleur', athlete: lea, date: iso(0),
       douleurs: [{ id: 'dlr-1', nom: 'Genou droit', zone: 'knees:droite',
                    intensite: 7, commentaire: 'Face externe, depuis hier',
-                   logs: 2, recurrente: true }],
+                   logs: 2, recurrente: true, exercices: [] }],
       seanceDuJour: { sessionId: 's1', weekId: 'week-3', programId: 'mock-program-lea', name: 'Séance 1' } },
     // Deux séances : la plus ANCIENNE d'abord, et l'une dépasse son RPE visé.
     { type: 'seance', athlete: theo, programId: 'mock-program-theo', sessionId: 'theo-s1', weekId: 'theo-w1',

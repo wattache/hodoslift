@@ -10,6 +10,7 @@ import { AthleteAvatar } from '@/components/athlete-avatar';
 import { athleteInitials, nomAffiche } from '@/lib/athlete';
 import { useAthleteSelection } from '@/lib/athlete-selection';
 import { formatLong, formatShort } from '@/lib/dates-ui';
+import { SurLaLigne } from '@/components/kine/sur-la-ligne';
 import { couleurDeLEcart } from '@/lib/rpe';
 import { useIsMobile } from '@/lib/use-mobile';
 import { cn } from '@/lib/utils';
@@ -433,6 +434,9 @@ function CarteDouleur({ d, position, onVu, onAdapter, onPlusTard, enCours }: {
             </div>
             {douleur.commentaire && (
               <dd className="text-sm leading-snug text-muted-foreground">{douleur.commentaire}</dd>
+            )}
+            {douleur.exercices.length > 0 && (
+              <dd><SurLaLigne exercices={douleur.exercices} /></dd>
             )}
           </div>
         ))}

@@ -569,6 +569,7 @@ export function TrainingView() {
                 allowCoachMode={canUseCoachMode}
                 canEditSelectedAthlete={sel.isSelf}
                 storageScopeKey={storageScopeKey}
+                athleteId={sel.selectedId ?? undefined}
                 blockWeeks={block?.weeks}
                 athleteName={`${athlete.firstName} ${athlete.lastName}`.trim()}
                 /* Bloc + semaine seulement : le nom du macro est souvent long
