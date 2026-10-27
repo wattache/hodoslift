@@ -431,7 +431,7 @@ def test_le_signalement_porte_TOUS_ses_champs(monde):
     # ⚠️ L'ENSEMBLE EXACT VAUT AUSSI POUR LA DOULEUR : c'est là que vivent
     # désormais les champs qu'un `response_model` peut faire disparaître.
     assert set(lu[0]["douleurs"][0]) == {"id", "nom", "zone", "intensite",
-                                         "commentaire", "logs", "recurrente"}
+                                         "commentaire", "logs", "recurrente", "exercices"}
     douleur = lu[0]["douleurs"][0]
     assert (douleur["nom"], douleur["zone"], douleur["intensite"]) == ("Genou", "knees:droite", 7)
     # ⚠️ NOTÉE UNE FOIS N'EST PAS RÉCURRENTE : le compte fait foi, pas un drapeau.

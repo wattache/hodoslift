@@ -100,6 +100,7 @@ test('l’athlète rapporte, le kiné ET le coach le voient', async () => {
     expect(lu[0].douleurs).toEqual([{
       id: expect.any(String), nom: 'Mes lombaires', zone: 'lower-back:gauche',
       intensite: 8, commentaire: 'Depuis 2 semaines', logs: 1, recurrente: false,
+      exercices: [],
     }]);
   }
 });
@@ -146,8 +147,8 @@ test('l’histoire d’une douleur se relit ENTIÈRE, le plus récent en tête',
   const r = await fetch(`${URL_DOULEURS}/${id}/logs`, { headers: await entete(ATHLETE) });
   expect(r.status).toBe(200);
   expect(await r.json()).toEqual([
-    { date: AUJOURD_HUI, intensite: 2, commentaire: 'en fait beaucoup mieux', entrainement: null },
-    { date: HIER, intensite: 6, commentaire: 'ça tire', entrainement: true },
+    { date: AUJOURD_HUI, intensite: 2, commentaire: 'en fait beaucoup mieux', entrainement: null, exercices: [] },
+    { date: HIER, intensite: 6, commentaire: 'ça tire', entrainement: true, exercices: [] },
   ]);
 
   // Le STAFF la lit aussi — c'est le point de la fonctionnalité.
