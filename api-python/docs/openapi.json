@@ -639,7 +639,7 @@
           "douleurs"
         ],
         "summary": "Declarer",
-        "description": "Déclare une douleur. Mode `owner` : c'est l'athlète qui sait où il a mal.\n\nRaises:\n    ErreurMetier: `douleur_deja_suivie` (409) si la même zone est déjà\n        suivie et toujours ouverte — c'est la même douleur, et la rattacher\n        est tout l'objet de la feature.",
+        "description": "Déclare une douleur. Mode `owner` : c'est l'athlète qui sait où il a mal.\n\n⚠️ UNE ZONE DÉJÀ PRISE PAR UNE AUTRE DOULEUR VIVANTE EST PERMISE (FRE-196) :\nun claquage du biceps n'est pas la vieille épaule. Rattacher à l'existante\nest le choix de l'athlète, que l'écran lui propose.",
         "operationId": "declarer_athletes__athlete_id__douleurs_post",
         "security": [
           {
@@ -700,16 +700,6 @@
           },
           "404": {
             "description": "La ressource n'existe pas. Un OBJET (ligne, séance, bilan, note) qui existe mais appartient à un autre programme ou à un autre athlète répond 404 lui aussi, pour ne pas révéler son existence. Un PROGRAMME ou une FICHE qui existe hors du périmètre de l'appelant répond 403.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erreur"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflit avec l'état existant (unicité, ou dépendance qui empêche).",
             "content": {
               "application/json": {
                 "schema": {
@@ -828,7 +818,7 @@
           "douleurs"
         ],
         "summary": "Modifier",
-        "description": "Renomme, redate, clôt — ou ROUVRE.\n\n⚠️ ROUVRIR EST UN CAS RÉEL, pas une commodité : une épaule se calme, puis\nrevient. Reposer `fin` à `null` rend la douleur vivante, et l'unicité par\nzone la protège d'un doublon au même moment.",
+        "description": "Renomme, redate, change les zones, clôt — ou ROUVRE.\n\n⚠️ ROUVRIR EST UN CAS RÉEL, pas une commodité : une épaule se calme, puis\nrevient. Reposer `fin` à `null` rend la douleur vivante.\n\nRaises:\n    ErreurMetier: `corps_invalide` (422) — aucun champ, ou `zones: null` :\n        sans zone, la douleur disparaît de la figure sans être close.",
         "operationId": "modifier_athletes__athlete_id__douleurs__douleur_id__patch",
         "security": [
           {
@@ -898,16 +888,6 @@
           },
           "404": {
             "description": "La ressource n'existe pas. Un OBJET (ligne, séance, bilan, note) qui existe mais appartient à un autre programme ou à un autre athlète répond 404 lui aussi, pour ne pas révéler son existence. Un PROGRAMME ou une FICHE qui existe hors du périmètre de l'appelant répond 403.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Erreur"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflit avec l'état existant (unicité, ou dépendance qui empêche).",
             "content": {
               "application/json": {
                 "schema": {
@@ -14131,11 +14111,16 @@
             "minLength": 1,
             "title": "Nom"
           },
-          "zone": {
-            "type": "string",
-            "maxLength": 60,
-            "minLength": 1,
-            "title": "Zone"
+          "zones": {
+            "items": {
+              "type": "string",
+              "maxLength": 60,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Zones"
           },
           "debut": {
             "anyOf": [
@@ -14154,7 +14139,7 @@
         "type": "object",
         "required": [
           "nom",
-          "zone"
+          "zones"
         ],
         "title": "DouleurCreee",
         "description": "Ce que l'athlète déclare la première fois."
@@ -14189,9 +14174,12 @@
             "type": "string",
             "title": "Nom"
           },
-          "zone": {
-            "type": "string",
-            "title": "Zone"
+          "zones": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Zones"
           },
           "debut": {
             "anyOf": [
@@ -14239,7 +14227,7 @@
         "required": [
           "id",
           "nom",
-          "zone",
+          "zones",
           "debut",
           "fin",
           "logs",
@@ -14263,6 +14251,24 @@
               }
             ],
             "title": "Nom"
+          },
+          "zones": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "maxLength": 60,
+                  "minLength": 1
+                },
+                "type": "array",
+                "maxItems": 20,
+                "minItems": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zones"
           },
           "debut": {
             "anyOf": [
@@ -14305,10 +14311,13 @@
             "title": "Nom",
             "description": "Le nom que l'ATHLÈTE lui donne — « mon épaule »"
           },
-          "zone": {
-            "type": "string",
-            "title": "Zone",
-            "description": "Un CODE, jamais un libellé : `deltoids:droite`"
+          "zones": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Zones",
+            "description": "Des CODES, jamais des libellés : `deltoids:droite`"
           },
           "intensite": {
             "type": "integer",
@@ -14352,7 +14361,7 @@
         "required": [
           "id",
           "nom",
-          "zone",
+          "zones",
           "intensite",
           "commentaire",
           "logs",
@@ -14452,7 +14461,6 @@
               "objectif_introuvable",
               "coach_encore_reference",
               "kine_a_des_athletes",
-              "douleur_deja_suivie",
               "bilan_deja_finalise",
               "bilan_incomplet",
               "mouvement_inconnu",

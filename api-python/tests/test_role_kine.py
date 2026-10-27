@@ -382,13 +382,17 @@ def _signaler(conn, athlete_uuid: str, jours: int, nom: str,
     """Sème une douleur notée il y a `jours` jours, en SQL — l'API la réserve à
     l'athlète lui-même, et ce qu'on mesure ici est la LECTURE du staff.
 
-    ⚠️ LA ZONE EST UNIQUE PAR ATHLÈTE TANT QU'ELLE VIT : deux appels sur la même
-    zone notent la MÊME douleur deux jours différents, ce qui est le modèle."""
+    Deux appels sur la même zone notent la MÊME douleur deux jours différents."""
     douleur = conn.execute(text(
-        "INSERT INTO douleurs (athlete_id, nom, zone) "
-        "VALUES (CAST(:a AS uuid), :n, :z) "
-        "ON CONFLICT (athlete_id, zone) WHERE fin IS NULL DO UPDATE SET nom = EXCLUDED.nom "
-        "RETURNING id"), {"a": athlete_uuid, "n": nom, "z": zone}).scalar()
+        "SELECT d.id FROM douleurs d JOIN douleur_zones z ON z.douleur_id = d.id "
+        "WHERE d.athlete_id = CAST(:a AS uuid) AND z.zone = :z AND d.fin IS NULL"),
+        {"a": athlete_uuid, "z": zone}).scalar()
+    if douleur is None:
+        douleur = conn.execute(text(
+            "INSERT INTO douleurs (athlete_id, nom) VALUES (CAST(:a AS uuid), :n) RETURNING id"),
+            {"a": athlete_uuid, "n": nom}).scalar()
+        conn.execute(text("INSERT INTO douleur_zones (douleur_id, zone) VALUES (:d, :z)"),
+                     {"d": douleur, "z": zone})
     conn.execute(text(
         "INSERT INTO douleur_logs (douleur_id, log_date, intensite) "
         "VALUES (:d, current_date - CAST(:j AS int), :i) "
@@ -408,7 +412,7 @@ def test_le_staff_voit_les_signalements_de_SES_athletes(monde):
         assert [s["firstName"] for s in lu] == ["A"], uid
         # ⚠️ LA LISTE DU JOUR, typée depuis FRE-195 : le questionnaire libre a
         # laissé place à une douleur qui a un nom, une zone et une intensité.
-        assert [d["zone"] for d in lu[0]["douleurs"]] == ["knees:droite"]
+        assert [d["zones"] for d in lu[0]["douleurs"]] == [["knees:droite"]]
         assert lu[0]["douleurs"][0]["intensite"] == 7
         assert lu[0]["programId"] == "p1"   # c'est par lui que le front navigue
 
@@ -430,10 +434,10 @@ def test_le_signalement_porte_TOUS_ses_champs(monde):
                           "programId", "date"}
     # ⚠️ L'ENSEMBLE EXACT VAUT AUSSI POUR LA DOULEUR : c'est là que vivent
     # désormais les champs qu'un `response_model` peut faire disparaître.
-    assert set(lu[0]["douleurs"][0]) == {"id", "nom", "zone", "intensite",
+    assert set(lu[0]["douleurs"][0]) == {"id", "nom", "zones", "intensite",
                                          "commentaire", "logs", "recurrente", "exercices"}
     douleur = lu[0]["douleurs"][0]
-    assert (douleur["nom"], douleur["zone"], douleur["intensite"]) == ("Genou", "knees:droite", 7)
+    assert (douleur["nom"], douleur["zones"], douleur["intensite"]) == ("Genou", ["knees:droite"], 7)
     # ⚠️ NOTÉE UNE FOIS N'EST PAS RÉCURRENTE : le compte fait foi, pas un drapeau.
     assert (douleur["logs"], douleur["recurrente"]) == (1, False)
     assert {k: v for k, v in lu[0].items() if k != "douleurs"} == {

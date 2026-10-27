@@ -15,6 +15,11 @@ export function nomDeZone(code: string, t: TFunction): string {
   return cote ? `${zone} ${t(`anatomie.${cote}`)}` : zone;
 }
 
+/** Les zones d'une douleur : « Épaule droite + Biceps droite ». */
+export function nomDesZones(codes: string[], t: TFunction): string {
+  return codes.map(c => nomDeZone(c, t)).join(' + ');
+}
+
 /** La ligne de séance telle qu'on la lit sur une note de douleur :
  *  « MUSCLE UP Strict · 5×3 @ 6 kg · EMOM ».
  *

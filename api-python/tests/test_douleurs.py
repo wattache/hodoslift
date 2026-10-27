@@ -5,9 +5,8 @@ Ce que ces specs cherchent à prouver, dans l'ordre d'importance :
   1. qu'une douleur d'un AUTRE athlète est inatteignable, même avec un
      `athlete_id` légitime dans l'URL. C'est le seul défaut ici qui serait une
      fuite de donnée de santé, pas un bug d'affichage ;
-  2. que la même zone ne se suit pas deux fois en même temps — c'est tout
-     l'objet du rattachement, et ce qui distingue cette feature d'un champ de
-     plus dans le formulaire ;
+  2. qu'une douleur porte PLUSIEURS zones, en garde au moins une, et qu'une
+     zone peut appartenir à deux douleurs vivantes (FRE-196) ;
   3. que « récurrente » se DÉDUIT du nombre de logs. Un booléen stocké aurait
      fini par contredire l'historique.
 """
@@ -45,7 +44,7 @@ def _client(uid: str) -> TestClient:
 
 
 def _declarer(uid="ath-1", legacy="leg-1", **corps):
-    defaut = {"nom": "Mon épaule", "zone": "deltoids:droite"}
+    defaut = {"nom": "Mon épaule", "zones": ["deltoids:droite"]}
     return _client(uid).post(f"/athletes/{legacy}/douleurs", json={**defaut, **corps})
 
 
@@ -77,44 +76,62 @@ def test_le_STAFF_lit_mais_n_ecrit_pas(monde):
     for uid in ("kine-1", "coach-1"):
         assert _client(uid).get("/athletes/leg-1/douleurs").status_code == 200
         assert _client(uid).post("/athletes/leg-1/douleurs",
-                                 json={"nom": "X", "zone": "chest:gauche"}).status_code == 403
+                                 json={"nom": "X", "zones": ["chest:gauche"]}).status_code == 403
 
 
 # --------------------------------------------------------------------------- #
-# 2. Une seule douleur vivante par zone
+# 2. Les zones d'une douleur (FRE-196)
 # --------------------------------------------------------------------------- #
 
-def test_la_meme_zone_ne_se_suit_pas_DEUX_fois(monde):
-    """⚠️ C'EST TOUT L'OBJET DU RATTACHEMENT. Sans ce refus, chaque signalement
-    referait un îlot — exactement l'état d'avant, où sept athlètes ont saisi une
-    fois chacun sans que rien ne se suive."""
-    assert _declarer().status_code == 201
-    r = _declarer(nom="Encore l'épaule")
-    assert r.status_code == 409
-    assert r.json()["code"] == "douleur_deja_suivie"
+def _zones(douleur_id):
+    lu = _client("ath-1").get("/athletes/leg-1/douleurs").json()
+    return next(d["zones"] for d in lu if d["id"] == douleur_id)
 
 
-def test_une_douleur_CLOSE_libere_sa_zone(monde):
-    """La même épaule peut refaire mal six mois plus tard, et c'est une NOUVELLE
-    douleur — pas la reprise de l'ancienne, dont l'historique reste lisible."""
-    premiere = _declarer().json()["id"]
-    assert _client("ath-1").patch(f"/athletes/leg-1/douleurs/{premiere}",
-                                  json={"fin": "2026-06-01"}).status_code == 200
-    assert _declarer(nom="Elle revient").status_code == 201
-    assert monde.execute(text("SELECT count(*) FROM douleurs")).scalar() == 2
+def test_une_douleur_porte_PLUSIEURS_zones(monde):
+    """« Épaule + biceps », ce n'est pas dissociable : une douleur, deux zones."""
+    d = _declarer(zones=["deltoids:droite", "biceps:droite"]).json()["id"]
+    assert _zones(d) == ["biceps:droite", "deltoids:droite"]
 
 
-def test_rouvrir_est_possible_mais_pas_en_double(monde):
-    """⚠️ ROUVRIR EST UN CAS RÉEL : une douleur qu'on croyait passée revient. On
-    l'autorise — mais pas si une autre tient déjà la zone entre-temps."""
+def test_une_zone_deja_prise_PEUT_porter_une_autre_douleur(monde):
+    """⚠️ UN CLAQUAGE DU BICEPS N'EST PAS LA VIEILLE ÉPAULE. Rattacher à
+    l'existante est un choix que l'écran propose, pas une contrainte du serveur.
+    MUTATION QUI ROUGIT : refuser une zone déjà tenue par une douleur vivante."""
+    assert _declarer(zones=["deltoids:droite", "biceps:droite"]).status_code == 201
+    assert _declarer(nom="Claquage", zones=["biceps:droite"]).status_code == 201
+    assert monde.execute(text("SELECT count(*) FROM douleurs WHERE fin IS NULL")).scalar() == 2
+
+
+def test_les_zones_se_REMPLACENT_au_patch(monde):
+    d = _declarer().json()["id"]
+    r = _client("ath-1").patch(f"/athletes/leg-1/douleurs/{d}",
+                               json={"zones": ["deltoids:droite", "biceps:droite"]})
+    assert r.status_code == 200 and r.json()["written"] == ["zones"]
+    assert _zones(d) == ["biceps:droite", "deltoids:droite"]
+    _client("ath-1").patch(f"/athletes/leg-1/douleurs/{d}", json={"zones": ["biceps:droite"]})
+    assert _zones(d) == ["biceps:droite"]
+
+
+@pytest.mark.parametrize("zones", [None, [], ["chest:gauche", "chest:gauche"]])
+def test_une_douleur_garde_AU_MOINS_une_zone_et_sans_doublon(monde, zones):
+    """⚠️ SANS ZONE, ELLE DISPARAÎT DE LA FIGURE SANS ÊTRE CLOSE — le « vide
+    contre NULL » du projet, transposé.
+    MUTATION QUI ROUGIT : laisser passer `zones: null` au patch."""
+    d = _declarer().json()["id"]
+    r = _client("ath-1").patch(f"/athletes/leg-1/douleurs/{d}", json={"zones": zones})
+    assert r.status_code == 422
+    assert _zones(d) == ["deltoids:droite"]
+    if zones is not None:
+        assert _declarer(zones=zones).status_code == 422
+
+
+def test_rouvrir_une_douleur_est_possible(monde):
+    """⚠️ ROUVRIR EST UN CAS RÉEL : une douleur qu'on croyait passée revient —
+    même si une autre tient la zone entre-temps."""
     premiere = _declarer().json()["id"]
     _client("ath-1").patch(f"/athletes/leg-1/douleurs/{premiere}", json={"fin": "2026-06-01"})
-    seconde = _declarer(nom="Elle revient").json()["id"]
-
-    r = _client("ath-1").patch(f"/athletes/leg-1/douleurs/{premiere}", json={"fin": None})
-    assert r.status_code == 409
-
-    _client("ath-1").patch(f"/athletes/leg-1/douleurs/{seconde}", json={"fin": "2026-09-01"})
+    _declarer(nom="Elle revient")
     assert _client("ath-1").patch(f"/athletes/leg-1/douleurs/{premiere}",
                                   json={"fin": None}).status_code == 200
 
@@ -188,7 +205,7 @@ def test_un_commentaire_VIDE_devient_une_absence(monde):
 def test_les_douleurs_VIVANTES_sortent_en_premier(monde):
     """Ce qu'on vient voir, c'est ce qui fait mal maintenant. Les closes restent
     lisibles en dessous : une épaule qui a fait mal six mois est un antécédent."""
-    close = _declarer(nom="Ancienne", zone="knees:gauche").json()["id"]
+    close = _declarer(nom="Ancienne", zones=["knees:gauche"]).json()["id"]
     _client("ath-1").patch(f"/athletes/leg-1/douleurs/{close}", json={"fin": "2026-05-01"})
     _declarer(nom="En cours")
 

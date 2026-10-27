@@ -282,7 +282,6 @@ CODES: dict[str, str] = {
     "coach_encore_reference": "Rétrogradation refusée : ce coach est encore référencé "
                               "(athlètes, programmes, compétitions ou bibliothèque).",
     "kine_a_des_athletes": "Rétrogradation refusée : ce kiné suit encore des athlètes.",
-    "douleur_deja_suivie": "Une douleur est déjà suivie sur cette zone, et elle n'est pas close.",
     # Bilan kiné. `bilan_deja_finalise` couvre trois refus — écrire un résultat,
     # rouvrir, supprimer — parce que c'est UNE règle : un bilan finalisé est une
     # mesure datée qui ne bouge plus. Une correction se fait par un nouveau bilan.

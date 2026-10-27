@@ -261,6 +261,17 @@ def test_pr_hors_lift_de_competition_voit_un_record_sur_du_renforcement(pg):
     assert _compter(pg, "pr_hors_lift_de_competition") == 1
 
 
+def test_douleur_sans_zone_voit_une_douleur_qui_a_perdu_ses_zones(pg):
+    """Sans zone, une douleur disparaît de la figure sans être close (FRE-196)."""
+    ids = _semer_un_arbre(pg)
+    d = pg.execute(text("INSERT INTO douleurs (athlete_id, nom) VALUES (:a, 'Épaule') RETURNING id"),
+                   {"a": ids["athlete"]}).scalar()
+    pg.execute(text("INSERT INTO douleur_zones (douleur_id, zone) VALUES (:d, 'deltoids:droite')"), {"d": d})
+    assert _compter(pg, "douleur_sans_zone") == 0
+    pg.execute(text("DELETE FROM douleur_zones WHERE douleur_id = :d"), {"d": d})
+    assert _compter(pg, "douleur_sans_zone") == 1
+
+
 def test_projection_orpheline_voit_une_ligne_sans_athlete(pg):
     """`training_sets.athlete_id` est du TEXTE recopié, sans clé étrangère :
     rien en base n'empêche l'orphelin, seul le rebuild nocturne le résorbe."""

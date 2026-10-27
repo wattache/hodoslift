@@ -108,6 +108,31 @@ test('toucher un muscle DÉJÀ suivi ne propose pas de doublon', async ({ page }
   await expect(carte.getByRole('group', { name: /Intensité|Intensity/ })).toBeVisible();
 });
 
+test('une douleur se déclare sur PLUSIEURS zones (FRE-196)', async ({ page }) => {
+  await ouvrir(page);
+  await zone(page, 'Pectoraux droite').click();
+  await zone(page, 'Pectoraux gauche').click();
+  await expect(page.getByText('Pectoraux droite + Pectoraux gauche').first()).toBeVisible();
+  // Retoucher une zone la retire.
+  await zone(page, 'Pectoraux gauche').click();
+  await expect(page.getByText('Pectoraux droite + Pectoraux gauche')).toHaveCount(0);
+});
+
+test('une zone DÉJÀ suivie peut porter une NOUVELLE douleur — un claquage n’est pas la vieille épaule', async ({ page }) => {
+  await ouvrir(page);
+  await zone(page, 'Deltoïde antérieur droite — déjà suivie').click();
+  await page.locator('[data-deja-suivie]').getByRole('button', { name: /Nouvelle douleur|New pain/ }).click();
+  await expect(page.getByRole('heading', { name: /Nouvelle douleur|New pain/ })).toBeVisible();
+});
+
+test('une zone touchée en plus S’AJOUTE à la douleur ouverte', async ({ page }) => {
+  await ouvrir(page);
+  await zone(page, 'Deltoïde antérieur droite — déjà suivie').click();
+  await zone(page, 'Pectoraux droite').click();
+  await expect(carteDe(page, 'Mon épaule').getByRole('button', { name: /Ajouter Pectoraux droite|Add Chest right/ }))
+    .toBeVisible();
+});
+
 test('noter une douleur propose ZÉRO comme réponse', async ({ page }) => {
   /** ⚠️ « PLUS MAL AUJOURD'HUI » SE DIT. Sans le zéro, une douleur qui passe ne
    *  peut s'exprimer que par le silence — et le silence veut déjà dire « pas

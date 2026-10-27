@@ -30,7 +30,7 @@ vi.mock('@/api/hooks/use-douleurs', async (importOriginal) => {
 });
 
 const douleurs: Douleur[] = [
-  { id: 'dlr-1', nom: 'Mon épaule', zone: 'deltoid-anterior:droite', debut: null, fin: null,
+  { id: 'dlr-1', nom: 'Mon épaule', zones: ['deltoid-anterior:droite'], debut: null, fin: null,
     logs: 4, recurrente: true,
     derniere: { date: '2026-10-24', intensite: 6, commentaire: null, exercices: [
       { exerciseId: 'ex-1', name: 'MUSCLE UP', variant: [], tempo: null, format: null,
@@ -104,7 +104,7 @@ describe('ce que la note emporte', () => {
     fireEvent.click(suivre);
     await waitFor(() => expect(appels.declarer).toHaveBeenCalledTimes(1));
     expect(appels.declarer).toHaveBeenCalledWith({
-      nom: 'Petit pec', zone: 'chest:droite', jour: '2026-10-25', intensite: 3, commentaire: null,
+      nom: 'Petit pec', zones: ['chest:droite'], jour: '2026-10-25', intensite: 3, commentaire: null,
       entrainement: true, exercice: { exerciseId: 'ex-1' },
     });
     expect(appels.noter).not.toHaveBeenCalled();

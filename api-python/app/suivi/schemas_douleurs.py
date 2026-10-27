@@ -9,7 +9,25 @@ from datetime import date as date_cls
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Annotated
+
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
+
+#: ⚠️ UN CODE, PAS UN LIBELLÉ : `deltoids:gauche`. Le front le fabrique en
+#: touchant la figure (`lib/anatomie/zones.ts`), et le côté est celui DE
+#: L'ATHLÈTE — jamais celui de l'écran.
+Zone = Annotated[str, Field(min_length=1, max_length=60)]
+
+
+def _sans_doublon(zones: list[str]) -> list[str]:
+    if len(set(zones)) != len(zones):
+        raise ValueError("une zone en double")
+    return zones
+
+
+#: ⚠️ AU MOINS UNE (FRE-196) : une douleur sans zone disparaît de la figure sans
+#: être close.
+Zones = Annotated[list[Zone], Field(min_length=1, max_length=20), AfterValidator(_sans_doublon)]
 
 
 class DouleurCreee(BaseModel):
@@ -21,10 +39,10 @@ class DouleurCreee(BaseModel):
     #: reconnaît dans une liste, pas par le code anatomique.
     nom: str = Field(min_length=1, max_length=80)
 
-    #: ⚠️ UN CODE, PAS UN LIBELLÉ : `deltoids:gauche`. Le front le fabrique en
-    #: touchant la figure (`lib/anatomie/zones.ts`), et le côté est celui DE
-    #: L'ATHLÈTE — jamais celui de l'écran.
-    zone: str = Field(min_length=1, max_length=60)
+    #: « Épaule + biceps » est UNE douleur (FRE-196). Une zone déjà prise par une
+    #: autre douleur vivante reste permise : un claquage du biceps n'est pas la
+    #: vieille épaule.
+    zones: Zones
 
     #: `None` quand il ne sait pas dire : « 4 ans », « souvent en début de bloc »
     #: sont des réponses vraies qu'aucune date ne rend.
@@ -37,6 +55,9 @@ class DouleurModifiee(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     nom: str | None = Field(default=None, min_length=1, max_length=80)
+    #: REMPLACE l'ensemble des zones. `null` est refusé : retirer la dernière
+    #: zone ferait disparaître la douleur de la figure sans la clore.
+    zones: Zones | None = None
     debut: date_cls | None = None
     #: La date où ça ne fait plus mal. La reposer à `null` rouvre la douleur —
     #: ce qui arrive : une épaule se calme, puis revient.
@@ -139,7 +160,7 @@ class DouleurLue(BaseModel):
 
     id: str
     nom: str
-    zone: str
+    zones: list[str]
     debut: str | None
     fin: str | None
     #: Combien de fois elle a été notée, tout l'historique compris.

@@ -45,10 +45,10 @@ function effacerLesDouleurs() {
 }
 
 /** Déclare une douleur et rend son id. */
-async function declarer(nom: string, zone: string) {
+async function declarer(nom: string, ...zones: string[]) {
   const r = await fetch(URL_DOULEURS, {
     method: 'POST', headers: await entete(ATHLETE),
-    body: JSON.stringify({ nom, zone }),
+    body: JSON.stringify({ nom, zones }),
   });
   if (r.status !== 201) throw new Error(`POST /douleurs → ${r.status}`);
   return ((await r.json()) as { id: string }).id;
@@ -66,7 +66,7 @@ async function noter(id: string, jour: string, intensite: number, commentaire?: 
 
 type Signalement = {
   athleteId: string; date: string;
-  douleurs: { nom: string; zone: string; intensite: number; commentaire: string | null;
+  douleurs: { nom: string; zones: string[]; intensite: number; commentaire: string | null;
               logs: number; recurrente: boolean }[];
 };
 
@@ -98,11 +98,27 @@ test('l’athlète rapporte, le kiné ET le coach le voient', async () => {
     // des huit saisies historiques précisaient un côté qu'aucune requête ne
     // savait retrouver. `lower-back:gauche` est une valeur, plus une phrase.
     expect(lu[0].douleurs).toEqual([{
-      id: expect.any(String), nom: 'Mes lombaires', zone: 'lower-back:gauche',
+      id: expect.any(String), nom: 'Mes lombaires', zones: ['lower-back:gauche'],
       intensite: 8, commentaire: 'Depuis 2 semaines', logs: 1, recurrente: false,
       exercices: [],
     }]);
   }
+});
+
+test('une douleur à DEUX zones remonte UNE ligne, et une zone prise peut porter une autre douleur', async () => {
+  /** FRE-196 : « épaule + biceps » est une seule douleur — le staff la lit une
+   *  fois, avec ses deux zones. Un claquage du biceps le même jour est une
+   *  AUTRE douleur, sur une zone déjà prise. */
+  const epaule = await declarer('Épaule + biceps', 'deltoids:droite', 'biceps:droite');
+  await noter(epaule, AUJOURD_HUI, 5);
+  let lu = await signalements(KINE);
+  expect(lu).toHaveLength(1);
+  expect(lu[0].douleurs.map(d => d.zones)).toEqual([['biceps:droite', 'deltoids:droite']]);
+
+  const claquage = await declarer('Claquage', 'biceps:droite');
+  await noter(claquage, AUJOURD_HUI, 7);
+  lu = await signalements(KINE);
+  expect(lu[0].douleurs.map(d => d.nom)).toEqual(['Claquage', 'Épaule + biceps']);
 });
 
 test('deux notes sur LA MÊME douleur ne font pas deux signalements distincts', async () => {

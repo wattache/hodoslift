@@ -517,11 +517,6 @@ CREATE TABLE douleurs (
     -- Le nom que l'ATHLÈTE donne : c'est par lui qu'il la reconnaît dans une
     -- liste, pas par le code anatomique.
     nom text NOT NULL CONSTRAINT douleurs_nom_non_vide CHECK (btrim(nom) <> ''),
-    -- ⚠️ UN CODE, PAS UN LIBELLÉ : `chest:gauche`. Une des huit saisies
-    -- historiques est en anglais ; le mot affiché serait illisible d'une langue
-    -- à l'autre. Le côté est celui DE L'ATHLÈTE, jamais celui de l'écran
-    -- (`eitri/src/lib/anatomie/zones.ts`).
-    zone text NOT NULL CONSTRAINT douleurs_zone_non_vide CHECK (btrim(zone) <> ''),
     -- NULL = l'athlète ne sait pas dire. « 4 ans », « souvent en début de bloc »
     -- sont des réponses vraies qu'aucune date ne rend.
     debut date,
@@ -530,11 +525,22 @@ CREATE TABLE douleurs (
     CONSTRAINT douleurs_fin_apres_debut CHECK (fin IS NULL OR debut IS NULL OR fin >= debut)
 );
 CREATE INDEX ON douleurs (athlete_id);
--- Deux douleurs VIVANTES sur la même zone sont la même : c'est tout l'objet du
--- rattachement. Une douleur close ne bloque rien — la même épaule peut refaire
--- mal six mois plus tard.
-CREATE UNIQUE INDEX douleurs_une_vivante_par_zone
-    ON douleurs (athlete_id, zone) WHERE fin IS NULL;
+
+-- LES ZONES D'UNE DOULEUR (FRE-196) : « épaule + biceps » est une seule douleur,
+-- et une zone peut appartenir à plusieurs — un claquage du biceps n'est pas la
+-- vieille épaule.
+--
+-- ⚠️ UN CODE, PAS UN LIBELLÉ : `chest:gauche`. Le côté est celui DE L'ATHLÈTE,
+-- jamais celui de l'écran (`web/src/lib/anatomie/zones.ts`).
+--
+-- ⚠️ UNE TABLE, PAS UN `text[]` : un tableau vide se confond avec l'absence. Une
+-- douleur garde au moins une zone — refusé par le serveur, vérifié par
+-- `make invariants` (`douleur_sans_zone`).
+CREATE TABLE douleur_zones (
+    douleur_id uuid NOT NULL REFERENCES douleurs(id) ON DELETE CASCADE,
+    zone text NOT NULL CONSTRAINT douleur_zones_zone_non_vide CHECK (btrim(zone) <> ''),
+    PRIMARY KEY (douleur_id, zone)
+);
 
 -- ⚠️ LA CHRONICITÉ SE DÉDUIT DU NOMBRE DE LOGS, elle ne se coche pas : un
 -- booléen à côté du compte finirait par le contredire. Même règle que « repos »
@@ -632,7 +638,7 @@ SELECT l.id, l.douleur_id, l.log_date, l.intensite, l.commentaire, l.entrainemen
 CREATE VIEW signalements AS
 SELECT d.athlete_id, l.log_date,
        jsonb_agg(jsonb_build_object(
-           'id', d.id::text, 'nom', d.nom, 'zone', d.zone,
+           'id', d.id::text, 'nom', d.nom, 'zones', z.zones,
            'intensite', l.intensite, 'commentaire', l.commentaire,
            'logs', n.logs, 'recurrente', n.logs > 1,
            'exercices', l.exercices
@@ -643,6 +649,8 @@ SELECT d.athlete_id, l.log_date,
   FROM douleur_notes l
   JOIN douleurs d ON d.id = l.douleur_id
   JOIN LATERAL (SELECT count(*) AS logs FROM douleur_logs x WHERE x.douleur_id = d.id) n ON true
+  JOIN LATERAL (SELECT coalesce(jsonb_agg(dz.zone ORDER BY dz.zone), '[]'::jsonb) AS zones
+                  FROM douleur_zones dz WHERE dz.douleur_id = d.id) z ON true
  GROUP BY d.athlete_id, l.log_date;
 
 

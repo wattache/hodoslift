@@ -562,19 +562,19 @@ export const mockSignalements: Signalement[] = [
   // revient — d'où `recurrente` et le compte de logs.
   { athleteId: 'mock-lea', firstName: 'Léa', lastName: 'Martin',
     programId: 'mock-prog-lea', date: iso(0),
-    douleurs: [{ id: 'dlr-1', nom: 'Genou droit', zone: 'knees:droite',
+    douleurs: [{ id: 'dlr-1', nom: 'Genou droit', zones: ['knees:droite'],
                  intensite: 2, commentaire: 'Face externe, en fin de séance',
                  logs: 2, recurrente: true, exercices: [] }] },
   // Deux douleurs LE MÊME JOUR : une seule ligne, une seule coche.
   { athleteId: 'mock-theo', firstName: 'Théo', lastName: 'Bernard',
     programId: 'mock-prog-theo', date: iso(0),
-    douleurs: [{ id: 'dlr-2', nom: 'Lombaires', zone: 'lower-back:droite',
+    douleurs: [{ id: 'dlr-2', nom: 'Lombaires', zones: ['lower-back:droite'],
                  intensite: 8, commentaire: 'Depuis 2 semaines', logs: 1, recurrente: false, exercices: [] },
-               { id: 'dlr-3', nom: 'Trapèze', zone: 'trapezius:gauche',
+               { id: 'dlr-3', nom: 'Trapèze', zones: ['trapezius:gauche'],
                  intensite: 3, commentaire: null, logs: 1, recurrente: false, exercices: [] }] },
   { athleteId: 'mock-lea', firstName: 'Léa', lastName: 'Martin',
     programId: 'mock-prog-lea', date: iso(-3),
-    douleurs: [{ id: 'dlr-1', nom: 'Genou droit', zone: 'knees:droite',
+    douleurs: [{ id: 'dlr-1', nom: 'Genou droit', zones: ['knees:droite'],
                  intensite: 5, commentaire: null, logs: 2, recurrente: true, exercices: [] }] },
 ];
 
@@ -1155,16 +1155,16 @@ const MUSCLE_UP_SIGNALE: ExerciceDeDouleur = {
 };
 
 export const mockDouleurs: Douleur[] = [
-  { id: 'dlr-1', nom: 'Mon épaule', zone: 'deltoid-anterior:droite',
+  { id: 'dlr-1', nom: 'Mon épaule', zones: ['deltoid-anterior:droite'],
     debut: '2022-09-01', fin: null, logs: 4, recurrente: true,
     // ⚠️ SIGNALÉE DEPUIS LA LIGNE « MUSCLE UP » de la séance du jour (`ex-10`) :
     // c'est la puce sur la ligne et la ligne sur la carte qu'on vient voir.
     derniere: { date: iso(-1), intensite: 3, commentaire: 'Tire encore aux dips', entrainement: true,
                 exercices: [MUSCLE_UP_SIGNALE] } },
-  { id: 'dlr-2', nom: 'Genou gauche', zone: 'knees:gauche',
+  { id: 'dlr-2', nom: 'Genou gauche', zones: ['knees:gauche'],
     debut: '2026-05-31', fin: null, logs: 1, recurrente: false,
     derniere: { date: iso(-6), intensite: 6, commentaire: 'Fissure au ménisque', exercices: [] } },
-  { id: 'dlr-3', nom: 'Le coude qui tire', zone: 'forearm:gauche',
+  { id: 'dlr-3', nom: 'Le coude qui tire', zones: ['forearm:gauche'],
     debut: '2026-03-02', fin: '2026-04-18', logs: 3, recurrente: true,
     derniere: { date: '2026-04-18', intensite: 0, commentaire: null, exercices: [] } },
 ];
@@ -1268,7 +1268,7 @@ function _guichetInitial(): Guichet['dossiers'] {
   return [
     // La douleur EN TÊTE, toujours. Sur l'échelle déclarée du questionnaire.
     { type: 'douleur', athlete: lea, date: iso(0),
-      douleurs: [{ id: 'dlr-1', nom: 'Genou droit', zone: 'knees:droite',
+      douleurs: [{ id: 'dlr-1', nom: 'Genou droit', zones: ['knees:droite'],
                    intensite: 7, commentaire: 'Face externe, depuis hier',
                    logs: 2, recurrente: true, exercices: [] }],
       seanceDuJour: { sessionId: 's1', weekId: 'week-3', programId: 'mock-program-lea', name: 'Séance 1' } },

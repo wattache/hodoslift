@@ -98,9 +98,9 @@ export function useDeclarerEtNoter(athleteId: string | null | undefined) {
   const noter = useNoterDouleur(athleteId);
   return {
     isPending: declarer.isPending || noter.isPending,
-    async mutateAsync({ nom, zone, jour = todayIso(), ...note }:
-      { nom: string; zone: string; jour?: string } & LogDeDouleur): Promise<{ id: string }> {
-      const creee = await declarer.mutateAsync({ nom, zone, debut: jour }) as { id: string };
+    async mutateAsync({ nom, zones, jour = todayIso(), ...note }:
+      { nom: string; zones: string[]; jour?: string } & LogDeDouleur): Promise<{ id: string }> {
+      const creee = await declarer.mutateAsync({ nom, zones, debut: jour }) as { id: string };
       try {
         await noter.mutateAsync({ id: creee.id, jour, ...note });
       } catch {

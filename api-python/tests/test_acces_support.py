@@ -109,8 +109,11 @@ def test_l_athlete_ouvert_entre_dans_la_file_les_suivis_et_les_signalements(auth
     MUTATION QUI ROUGIT : remettre `a.coach_uid = :uid OR a.kine_uid = :uid`
     dans une seule de ces trois requêtes."""
     monde.execute(text(
-        "INSERT INTO douleurs (id, athlete_id, nom, zone) VALUES "
-        "('dddddddd-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001', 'Épaule', 'épaule')"))
+        "INSERT INTO douleurs (id, athlete_id, nom) VALUES "
+        "('dddddddd-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001', 'Épaule')"))
+    monde.execute(text(
+        "INSERT INTO douleur_zones (douleur_id, zone) VALUES "
+        "('dddddddd-0000-0000-0000-000000000001', 'épaule')"))
     monde.execute(text(
         "INSERT INTO douleur_logs (douleur_id, log_date, intensite) VALUES "
         "('dddddddd-0000-0000-0000-000000000001', current_date, 6)"))

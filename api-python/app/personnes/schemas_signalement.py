@@ -24,7 +24,7 @@ class DouleurSignalee(BaseModel):
 
     id: str
     nom: str = Field(description="Le nom que l'ATHLÈTE lui donne — « mon épaule »")
-    zone: str = Field(description="Un CODE, jamais un libellé : `deltoids:droite`")
+    zones: list[str] = Field(description="Des CODES, jamais des libellés : `deltoids:droite`")
     intensite: int = Field(ge=0, le=10, description="`0` est une réponse : « plus mal »")
     commentaire: str | None
     logs: int = Field(description="Combien de fois elle a été notée, en tout")

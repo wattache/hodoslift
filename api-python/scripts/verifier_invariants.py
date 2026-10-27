@@ -234,6 +234,22 @@ INVARIANTS: list[Invariant] = [
     # COMPÉTITION : Postgres ne référence pas un index unique partiel. C'est donc
     # brokkr qui le tient, et c'est ici qu'on le vérifie.
     Invariant(
+        cle="douleur_sans_zone",
+        affirmation="une douleur garde au moins une zone : sans elle, elle "
+                    "disparaît de la figure sans être close",
+        source="docs/postgres-schema.sql — douleur_zones ; "
+               "app/suivi/routes_douleurs.py",
+        compte="""
+            SELECT count(*) FROM douleurs d
+             WHERE NOT EXISTS (SELECT 1 FROM douleur_zones z WHERE z.douleur_id = d.id)
+        """,
+        exemples="""
+            SELECT d.id::text, d.nom FROM douleurs d
+             WHERE NOT EXISTS (SELECT 1 FROM douleur_zones z WHERE z.douleur_id = d.id)
+        """,
+        tags=("douleurs",),
+    ),
+    Invariant(
         cle="pr_hors_lift_de_competition",
         affirmation="un record se tient sur un lift de compétition, "
                     "pas sur du renforcement",

@@ -56,7 +56,7 @@ def _douleur_de_l_athlete(session, athlete_uuid: str, douleur_id: str):
     on ne confirme pas l'existence de ce qui ne vous regarde pas.
     """
     row = session.execute(text("""
-        SELECT id, nom, zone, debut, fin FROM douleurs
+        SELECT id, nom, debut, fin FROM douleurs
          WHERE id = CAST(:d AS uuid) AND athlete_id = CAST(:a AS uuid)"""),
         {"d": douleur_id, "a": athlete_uuid}).mappings().first()
     if row is None:
@@ -66,7 +66,8 @@ def _douleur_de_l_athlete(session, athlete_uuid: str, douleur_id: str):
 
 
 _LISTE_SQL = text("""
-    SELECT d.id::text AS id, d.nom, d.zone, d.debut, d.fin,
+    SELECT d.id::text AS id, d.nom, d.debut, d.fin,
+           ARRAY(SELECT z.zone FROM douleur_zones z WHERE z.douleur_id = d.id ORDER BY z.zone) AS zones,
            (SELECT count(*) FROM douleur_logs l WHERE l.douleur_id = d.id) AS logs,
            dl.log_date, dl.intensite, dl.commentaire, dl.entrainement, dl.exercices
       FROM douleurs d
@@ -95,7 +96,7 @@ def lister(
         uuid = _resolve_athlete(conn, athlete_id)
         lignes = conn.execute(_LISTE_SQL, {"a": uuid}).mappings().all()
     return [{
-        "id": r["id"], "nom": r["nom"], "zone": r["zone"],
+        "id": r["id"], "nom": r["nom"], "zones": r["zones"],
         "debut": r["debut"].isoformat() if r["debut"] else None,
         "fin": r["fin"].isoformat() if r["fin"] else None,
         "logs": r["logs"],
@@ -161,7 +162,7 @@ def lister_les_logs(
 
 
 @router.post("", status_code=status.HTTP_201_CREATED,
-             response_model=DouleurCreeeReponse, responses=erreurs(401, 403, 404, 409))
+             response_model=DouleurCreeeReponse, responses=erreurs(401, 403, 404))
 def declarer(
     athlete_id: str,
     payload: DouleurCreee,
@@ -169,43 +170,47 @@ def declarer(
 ) -> dict:
     """Déclare une douleur. Mode `owner` : c'est l'athlète qui sait où il a mal.
 
-    Raises:
-        ErreurMetier: `douleur_deja_suivie` (409) si la même zone est déjà
-            suivie et toujours ouverte — c'est la même douleur, et la rattacher
-            est tout l'objet de la feature.
+    ⚠️ UNE ZONE DÉJÀ PRISE PAR UNE AUTRE DOULEUR VIVANTE EST PERMISE (FRE-196) :
+    un claquage du biceps n'est pas la vieille épaule. Rattacher à l'existante
+    est le choix de l'athlète, que l'écran lui propose.
     """
     with get_session() as conn:
         uuid = _resolve_athlete(conn, athlete_id)
-        deja = conn.execute(text("""
-            SELECT id::text FROM douleurs
-             WHERE athlete_id = CAST(:a AS uuid) AND zone = :z AND fin IS NULL"""),
-            {"a": uuid, "z": payload.zone}).scalar()
-        if deja:
-            raise ErreurMetier(
-                "douleur_deja_suivie", status.HTTP_409_CONFLICT,
-                f"une douleur est déjà suivie sur cette zone ({deja})")
         nouvelle = conn.execute(text("""
-            INSERT INTO douleurs (athlete_id, nom, zone, debut)
-            VALUES (CAST(:a AS uuid), :nom, :zone, :debut) RETURNING id"""),
-            {"a": uuid, "nom": payload.nom.strip(), "zone": payload.zone.strip(),
-             "debut": payload.debut}).scalar()
+            INSERT INTO douleurs (athlete_id, nom, debut)
+            VALUES (CAST(:a AS uuid), :nom, :debut) RETURNING id"""),
+            {"a": uuid, "nom": payload.nom.strip(), "debut": payload.debut}).scalar()
+        _poser_les_zones(conn, str(nouvelle), payload.zones)
     log_write(uid=access.claims["uid"], resource="douleur",
               doc_path=f"athletes/{athlete_id}/douleurs/{nouvelle}", fields=["create"])
     return {"ok": True, "id": str(nouvelle)}
 
 
-@router.patch("/{douleur_id}", response_model=ChampsEcrits, responses=erreurs(401, 403, 404, 409))
+def _poser_les_zones(conn, douleur_id: str, zones: list[str]) -> None:
+    """Remplace les zones d'une douleur — dans la transaction de l'appelant."""
+    conn.execute(text("DELETE FROM douleur_zones WHERE douleur_id = CAST(:d AS uuid)"),
+                 {"d": douleur_id})
+    conn.execute(text("""
+        INSERT INTO douleur_zones (douleur_id, zone)
+        SELECT CAST(:d AS uuid), unnest(CAST(:z AS text[]))"""),
+        {"d": douleur_id, "z": [z.strip() for z in zones]})
+
+
+@router.patch("/{douleur_id}", response_model=ChampsEcrits, responses=erreurs(401, 403, 404))
 def modifier(
     athlete_id: str,
     douleur_id: str,
     payload: DouleurModifiee,
     access: AthleteAccess = Depends(require_athlete_access("owner")),
 ) -> dict:
-    """Renomme, redate, clôt — ou ROUVRE.
+    """Renomme, redate, change les zones, clôt — ou ROUVRE.
 
     ⚠️ ROUVRIR EST UN CAS RÉEL, pas une commodité : une épaule se calme, puis
-    revient. Reposer `fin` à `null` rend la douleur vivante, et l'unicité par
-    zone la protège d'un doublon au même moment.
+    revient. Reposer `fin` à `null` rend la douleur vivante.
+
+    Raises:
+        ErreurMetier: `corps_invalide` (422) — aucun champ, ou `zones: null` :
+            sans zone, la douleur disparaît de la figure sans être close.
     """
     fourni = payload.model_dump(exclude_unset=True)
     if not fourni:
@@ -213,24 +218,22 @@ def modifier(
         # CLOS, et un code de plus pour le même refus le diluerait.
         raise ErreurMetier("corps_invalide", status.HTTP_422_UNPROCESSABLE_CONTENT,
                            "aucun champ à écrire")
+    if "zones" in fourni and fourni["zones"] is None:
+        raise ErreurMetier("corps_invalide", status.HTTP_422_UNPROCESSABLE_CONTENT,
+                           "une douleur garde au moins une zone")
+    zones = fourni.pop("zones", None)
     with get_session() as conn:
         uuid = _resolve_athlete(conn, athlete_id)
-        avant = _douleur_de_l_athlete(conn, uuid, douleur_id)
+        _douleur_de_l_athlete(conn, uuid, douleur_id)
         if "nom" in fourni and fourni["nom"] is not None:
             fourni["nom"] = fourni["nom"].strip()
-        # Rouvrir : on vérifie qu'aucune AUTRE ne tient déjà la zone.
-        if "fin" in fourni and fourni["fin"] is None and avant["fin"] is not None:
-            occupee = conn.execute(text("""
-                SELECT count(*) FROM douleurs
-                 WHERE athlete_id = CAST(:a AS uuid) AND zone = :z
-                   AND fin IS NULL AND id <> CAST(:d AS uuid)"""),
-                {"a": uuid, "z": avant["zone"], "d": douleur_id}).scalar()
-            if occupee:
-                raise ErreurMetier("douleur_deja_suivie", status.HTTP_409_CONFLICT,
-                                   "une autre douleur est déjà ouverte sur cette zone")
-        sets = ", ".join(f"{c} = :{c}" for c in fourni)
-        conn.execute(text(f"UPDATE douleurs SET {sets} WHERE id = CAST(:d AS uuid)"),
-                     {**fourni, "d": douleur_id})
+        if fourni:
+            sets = ", ".join(f"{c} = :{c}" for c in fourni)
+            conn.execute(text(f"UPDATE douleurs SET {sets} WHERE id = CAST(:d AS uuid)"),
+                         {**fourni, "d": douleur_id})
+        if zones is not None:
+            _poser_les_zones(conn, douleur_id, zones)
+            fourni["zones"] = zones
     log_write(uid=access.claims["uid"], resource="douleur",
               doc_path=f"athletes/{athlete_id}/douleurs/{douleur_id}", fields=sorted(fourni))
     return {"ok": True, "written": sorted(fourni)}

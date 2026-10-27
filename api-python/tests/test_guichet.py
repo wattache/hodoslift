@@ -255,10 +255,10 @@ def _signaler(jour: date, intensite: int = 6, zone: str = "knees:droite") -> Non
     transactions annulées entre deux specs, et le second test noterait un
     identifiant qui n'existe plus — un 404 qui n'apprend rien sur le produit."""
     existantes = _client("ath-1").get(f"/athletes/{LEGACY}/douleurs", headers=_AUTH).json()
-    trouvee = next((d["id"] for d in existantes if d["zone"] == zone and not d["fin"]), None)
+    trouvee = next((d["id"] for d in existantes if zone in d["zones"] and not d["fin"]), None)
     if trouvee is None:
         r = _client("ath-1").post(f"/athletes/{LEGACY}/douleurs",
-                                  json={"nom": f"Douleur {zone}", "zone": zone}, headers=_AUTH)
+                                  json={"nom": f"Douleur {zone}", "zones": [zone]}, headers=_AUTH)
         assert r.status_code == 201, r.text
         trouvee = r.json()["id"]
     r = _client("ath-1").put(
@@ -321,7 +321,7 @@ def test_le_dossier_douleur_porte_la_SEANCE_DU_JOUR(monde):
                                  "weekId": d["seanceDuJour"]["weekId"], "name": "Lundi — Bas"}
     # ⚠️ LA LISTE, PAS UN BLOC LIBRE : un athlète peut noter deux douleurs le
     # même jour, et la coche porte le jour.
-    assert [x["zone"] for x in d["douleurs"]] == ["knees:droite"]
+    assert [x["zones"] for x in d["douleurs"]] == [["knees:droite"]]
     assert d["douleurs"][0]["intensite"] == 6
 
 

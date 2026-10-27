@@ -48,3 +48,15 @@ test('toucher une zone libre ouvre la déclaration, « Suivre » attend un nom',
   await expect(volet.getByRole('heading', { name: /Nouvelle douleur|New pain/ })).toBeVisible();
   await expect(volet.getByRole('button', { name: /^(Suivre|Track it)$/ })).toBeDisabled();
 });
+
+test('toucher une zone suivie propose SA douleur, ou une nouvelle', async ({ page }) => {
+  await ouvrirLaSeance(page);
+  await page.locator('[data-signaler-gene]').first().click();
+  const volet = page.getByRole('dialog');
+  await volet.locator('svg[role="group"]').first()
+    .getByRole('button', { name: /Deltoïde antérieur droite|Anterior deltoid right/ }).click();
+  await expect(volet.getByRole('radio', { name: 'Mon épaule' })).toHaveAttribute('aria-checked', 'true');
+  await volet.getByRole('radio', { name: /Nouvelle douleur|New pain/ }).click();
+  await expect(volet.getByRole('heading', { name: /Nouvelle douleur|New pain/ })).toBeVisible();
+  await expect(volet.getByRole('button', { name: /^(Suivre|Track it)$/ })).toBeDisabled();
+});

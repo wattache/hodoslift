@@ -180,10 +180,9 @@ export interface paths {
          * Declarer
          * @description Déclare une douleur. Mode `owner` : c'est l'athlète qui sait où il a mal.
          *
-         *     Raises:
-         *         ErreurMetier: `douleur_deja_suivie` (409) si la même zone est déjà
-         *             suivie et toujours ouverte — c'est la même douleur, et la rattacher
-         *             est tout l'objet de la feature.
+         *     ⚠️ UNE ZONE DÉJÀ PRISE PAR UNE AUTRE DOULEUR VIVANTE EST PERMISE (FRE-196) :
+         *     un claquage du biceps n'est pas la vieille épaule. Rattacher à l'existante
+         *     est le choix de l'athlète, que l'écran lui propose.
          */
         post: operations["declarer_athletes__athlete_id__douleurs_post"];
         delete?: never;
@@ -243,11 +242,14 @@ export interface paths {
         head?: never;
         /**
          * Modifier
-         * @description Renomme, redate, clôt — ou ROUVRE.
+         * @description Renomme, redate, change les zones, clôt — ou ROUVRE.
          *
          *     ⚠️ ROUVRIR EST UN CAS RÉEL, pas une commodité : une épaule se calme, puis
-         *     revient. Reposer `fin` à `null` rend la douleur vivante, et l'unicité par
-         *     zone la protège d'un doublon au même moment.
+         *     revient. Reposer `fin` à `null` rend la douleur vivante.
+         *
+         *     Raises:
+         *         ErreurMetier: `corps_invalide` (422) — aucun champ, ou `zones: null` :
+         *             sans zone, la douleur disparaît de la figure sans être close.
          */
         patch: operations["modifier_athletes__athlete_id__douleurs__douleur_id__patch"];
         trace?: never;
@@ -3862,8 +3864,8 @@ export interface components {
         DouleurCreee: {
             /** Nom */
             nom: string;
-            /** Zone */
-            zone: string;
+            /** Zones */
+            zones: string[];
             /** Debut */
             debut?: string | null;
         };
@@ -3892,8 +3894,8 @@ export interface components {
             id: string;
             /** Nom */
             nom: string;
-            /** Zone */
-            zone: string;
+            /** Zones */
+            zones: string[];
             /** Debut */
             debut: string | null;
             /** Fin */
@@ -3911,6 +3913,8 @@ export interface components {
         DouleurModifiee: {
             /** Nom */
             nom?: string | null;
+            /** Zones */
+            zones?: string[] | null;
             /** Debut */
             debut?: string | null;
             /** Fin */
@@ -3935,10 +3939,10 @@ export interface components {
              */
             nom: string;
             /**
-             * Zone
-             * @description Un CODE, jamais un libellé : `deltoids:droite`
+             * Zones
+             * @description Des CODES, jamais des libellés : `deltoids:droite`
              */
-            zone: string;
+            zones: string[];
             /**
              * Intensite
              * @description `0` est une réponse : « plus mal »
@@ -4008,7 +4012,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "erreur_interne" | "route_introuvable" | "methode_non_autorisee" | "token_invalide" | "email_non_verifie" | "reserve_aux_coachs" | "reserve_aux_admins" | "reserve_au_staff" | "reserve_aux_kines" | "reserve_aux_membres" | "athlete_hors_perimetre" | "programme_hors_perimetre" | "champs_reserves_au_staff" | "prescription_reservee_au_staff" | "athlete_introuvable" | "programme_introuvable" | "utilisateur_introuvable" | "structure_inconnue" | "profil_introuvable" | "profil_requis_avant_photo" | "competition_introuvable" | "evenement_introuvable" | "bilan_introuvable" | "douleur_introuvable" | "modele_introuvable" | "note_introuvable" | "rubrique_introuvable" | "test_introuvable" | "resultat_introuvable" | "entree_introuvable" | "record_introuvable" | "seance_introuvable" | "signalement_introuvable" | "exercice_introuvable" | "objet_arbre_introuvable" | "identifiant_pris" | "objectif_introuvable" | "coach_encore_reference" | "kine_a_des_athletes" | "douleur_deja_suivie" | "bilan_deja_finalise" | "bilan_incomplet" | "mouvement_inconnu" | "test_non_bilateral" | "test_sans_mesure" | "modele_vide" | "modele_utilise" | "rubrique_non_vide" | "test_utilise" | "email_fige_par_le_compte" | "email_fige_par_le_dossier_kine" | "slug_deja_pris" | "slug_immuable" | "entree_deja_existante" | "dernier_bloc" | "semaine_deja_remplie" | "base_sans_dates" | "essais_perdus" | "slug_requis" | "pas_un_kine" | "identifiant_invalide" | "pas_un_lift_de_competition" | "jour_hors_competition" | "categorie_exige_le_genre" | "categorie_invalide" | "motif_exige_un_echec" | "verdict_sans_charge" | "annonce_en_baisse" | "categorie_dans_deux_flights" | "flight_en_double" | "fin_avant_debut" | "date_invalide" | "date_future" | "intervalle_inverse" | "competition_hors_exercices" | "reordonnancement_incoherent" | "seance_d_une_autre_semaine" | "objectifs_perimes" | "objectif_en_double" | "competition_perimee" | "coach_inconnu" | "coach_d_une_autre_structure" | "photo_trop_lourde" | "media_trop_lourd" | "media_format_refuse" | "photo_pas_png" | "base_injoignable" | "corps_invalide";
+            code: "erreur_interne" | "route_introuvable" | "methode_non_autorisee" | "token_invalide" | "email_non_verifie" | "reserve_aux_coachs" | "reserve_aux_admins" | "reserve_au_staff" | "reserve_aux_kines" | "reserve_aux_membres" | "athlete_hors_perimetre" | "programme_hors_perimetre" | "champs_reserves_au_staff" | "prescription_reservee_au_staff" | "athlete_introuvable" | "programme_introuvable" | "utilisateur_introuvable" | "structure_inconnue" | "profil_introuvable" | "profil_requis_avant_photo" | "competition_introuvable" | "evenement_introuvable" | "bilan_introuvable" | "douleur_introuvable" | "modele_introuvable" | "note_introuvable" | "rubrique_introuvable" | "test_introuvable" | "resultat_introuvable" | "entree_introuvable" | "record_introuvable" | "seance_introuvable" | "signalement_introuvable" | "exercice_introuvable" | "objet_arbre_introuvable" | "identifiant_pris" | "objectif_introuvable" | "coach_encore_reference" | "kine_a_des_athletes" | "bilan_deja_finalise" | "bilan_incomplet" | "mouvement_inconnu" | "test_non_bilateral" | "test_sans_mesure" | "modele_vide" | "modele_utilise" | "rubrique_non_vide" | "test_utilise" | "email_fige_par_le_compte" | "email_fige_par_le_dossier_kine" | "slug_deja_pris" | "slug_immuable" | "entree_deja_existante" | "dernier_bloc" | "semaine_deja_remplie" | "base_sans_dates" | "essais_perdus" | "slug_requis" | "pas_un_kine" | "identifiant_invalide" | "pas_un_lift_de_competition" | "jour_hors_competition" | "categorie_exige_le_genre" | "categorie_invalide" | "motif_exige_un_echec" | "verdict_sans_charge" | "annonce_en_baisse" | "categorie_dans_deux_flights" | "flight_en_double" | "fin_avant_debut" | "date_invalide" | "date_future" | "intervalle_inverse" | "competition_hors_exercices" | "reordonnancement_incoherent" | "seance_d_une_autre_semaine" | "objectifs_perimes" | "objectif_en_double" | "competition_perimee" | "coach_inconnu" | "coach_d_une_autre_structure" | "photo_trop_lourde" | "media_trop_lourd" | "media_format_refuse" | "photo_pas_png" | "base_injoignable" | "corps_invalide";
             /** Detail */
             detail: string;
             /** Status */
@@ -6942,15 +6946,6 @@ export interface operations {
                     "application/json": components["schemas"]["Erreur"];
                 };
             };
-            /** @description Conflit avec l'état existant (unicité, ou dépendance qui empêche). */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erreur"];
-                };
-            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -7066,15 +7061,6 @@ export interface operations {
             };
             /** @description La ressource n'existe pas. Un OBJET (ligne, séance, bilan, note) qui existe mais appartient à un autre programme ou à un autre athlète répond 404 lui aussi, pour ne pas révéler son existence. Un PROGRAMME ou une FICHE qui existe hors du périmètre de l'appelant répond 403. */
             404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Erreur"];
-                };
-            };
-            /** @description Conflit avec l'état existant (unicité, ou dépendance qui empêche). */
-            409: {
                 headers: {
                     [name: string]: unknown;
                 };
