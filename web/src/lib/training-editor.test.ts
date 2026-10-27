@@ -29,7 +29,7 @@ import type { MacrocycleEditing } from '@/api/types';
  *  ils ont été vus rouges avant d'être verts.
  */
 
-vi.mock('@/firebase', () => ({ isFirebaseConfigured: true }));
+vi.mock('@/firebase', () => ({ isFirebaseConfigured: true, auth: null }));
 
 // ⚠️ LA SIGNATURE EST DONNÉE EN PARAMÈTRE DE TYPE, pas par des arguments nommés
 // et inutilisés : sans elle, `vi.fn(async () => …)` déduit une fonction SANS

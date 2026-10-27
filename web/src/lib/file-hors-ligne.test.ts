@@ -11,6 +11,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  *  n'arrivait jamais. Le rejeu est donc au niveau de l'APPLICATION, et il se
  *  teste ici sans monter le moindre composant.
  */
+const compte = vi.hoisted(() => ({ currentUser: null as { uid: string } | null }));
+vi.mock('@/firebase', () => ({ auth: compte }));
+
 const { ApiError } = await vi.importActual<typeof import('@/api/client')>('@/api/client');
 type Appel = (url: string, corps?: unknown) => Promise<unknown>;
 const api = {
@@ -20,6 +23,7 @@ const api = {
 vi.mock('@/api/client', async () => ({
   api, ApiError: (await vi.importActual<typeof import('@/api/client')>('@/api/client')).ApiError,
 }));
+
 
 const disque = new Map<string, unknown>();
 vi.mock('idb-keyval', () => ({
@@ -310,6 +314,33 @@ const arbre = (exercices: { id?: string; weight?: string; repsDone?: string }[])
 
 const lignes = (m: ReturnType<typeof appliquerLaFile>) =>
   m[0].blocks[0].weeks[0].sessions![0].exercises;
+
+describe('⚠️ un geste appartient au compte qui l’a fait (FRE-262)', () => {
+  afterEach(() => { compte.currentUser = null; });
+
+  it('le geste de A ne part PAS sous le jeton de B, et attend le retour de A', async () => {
+    compte.currentUser = { uid: 'paul' };
+    await garderPourPlusTard(frappe('ex-1', { actualReps: 5 }));
+    compte.currentUser = { uid: 'lea' };
+    expect(await lireLaFile()).toEqual([]);
+    expect(await rejouerLaFile()).toBe(0);
+    expect(api.patch).not.toHaveBeenCalled();
+    compte.currentUser = { uid: 'paul' };
+    expect(await rejouerLaFile()).toBe(1);
+    expect(api.patch).toHaveBeenCalledWith('/programs/prog-1/exercises/ex-1', { actualReps: 5 });
+  });
+
+  it('un geste de B ne fusionne pas sur celui de A, et ne l’efface pas', async () => {
+    compte.currentUser = { uid: 'paul' };
+    await garderPourPlusTard(frappe('ex-1', { actualReps: 5 }));
+    compte.currentUser = { uid: 'lea' };
+    await garderPourPlusTard(frappe('ex-1', { actualLoad: 80 }));
+    await rejouerLaFile();
+    expect(api.patch).toHaveBeenCalledWith('/programs/prog-1/exercises/ex-1', { actualLoad: 80 });
+    compte.currentUser = { uid: 'paul' };
+    expect((await lireLaFile()).map(e => (e as { patch?: unknown }).patch)).toEqual([{ actualReps: 5 }]);
+  });
+});
 
 describe('la surcouche des frappes en attente', () => {
   it('pose la valeur gardée par-dessus celle du serveur', () => {

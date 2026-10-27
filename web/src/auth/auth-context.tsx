@@ -80,9 +80,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  /** ⚠️ LA DÉCONNEXION RECHARGE LA PAGE (FRE-259). Le cache des requêtes vit en
+   *  mémoire : sans rechargement, le compte suivant, dans le même onglet, voyait
+   *  le profil, la fiche et les écrans du précédent. Le cache sur disque, lui,
+   *  est jeté au changement d'uid (`buster`). */
   const logout = async () => {
     if (auth) await signOut(auth);
     setUser(null);
+    window.location.replace('/');
   };
 
   return (

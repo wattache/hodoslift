@@ -22,7 +22,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  *  en silence et la suite entière passerait au vert sans rien éprouver.
  */
 
-vi.mock('@/firebase', () => ({ isFirebaseConfigured: true }));
+vi.mock('@/firebase', () => ({ isFirebaseConfigured: true, auth: null }));
 
 type Appel = (url: string, corps?: unknown) => Promise<unknown>;
 const api = {

@@ -3,6 +3,7 @@ import { del, get, set } from 'idb-keyval';
 import { useEffect, useState } from 'react';
 
 import { api } from '@/api/client';
+import { auth } from '@/firebase';
 import type { BaseReplace, BlockBase, BlockCreate, ExerciseLineCreate, ExerciseMove, ExerciseOrder, MacroCreate, MacrocycleEditing, SessionCreate, SessionOrder } from '@/api/types';
 import { createEmptyBlockBase, createEmptyExercise } from '@/lib/exercise';
 import { jamaisParvenueAuServeur } from '@/lib/save-error';
@@ -108,7 +109,15 @@ export type Geste = PatchEnAttente | BaseEnAttente | SuppressionEnAttente | Ordr
  *  dit rien. Or pendant qu'un geste part, une frappe peut le fusionner — et la
  *  fusion est un geste NEUF, avec une clé neuve : ce que le rejeu a envoyé
  *  s'efface, ce qui s'est ajouté reste, même sur le même objet. */
-export type EcritureEnAttente = Geste & { cle: string };
+export type EcritureEnAttente = Geste & { cle: string; uid?: string };
+
+/** ⚠️ UN GESTE APPARTIENT AU COMPTE QUI L'A FAIT (FRE-262). Un téléphone se
+ *  partage : rejoué sous le jeton du compte suivant, le geste de A s'écrirait au
+ *  nom de B — ou serait refusé et perdu. Le rejeu et l'affichage ne voient que
+ *  ceux du compte connecté ; ceux d'un autre attendent son retour. Un geste sans
+ *  `uid` (rangé avant cette règle) reste à qui est connecté. */
+const compteCourant = () => auth?.currentUser?.uid;
+const estAMoi = (e: EcritureEnAttente) => !e.uid || e.uid === compteCourant();
 
 let compteur = 0;
 const cleNeuve = () => `${Date.now().toString(36)}-${(++compteur).toString(36)}`;
@@ -118,9 +127,15 @@ const cleNeuve = () => `${Date.now().toString(36)}-${(++compteur).toString(36)}`
  *  même à chaque lecture, sinon le rejeu ne saurait jamais l'effacer. */
 type EntreeSurLeDisque = EcritureEnAttente | Omit<PatchEnAttente, 'genre'>;
 
-export async function lireLaFile(): Promise<EcritureEnAttente[]> {
+/** Tout le disque, tous comptes confondus : ce que les écritures réécrivent. */
+async function lireTout(): Promise<EcritureEnAttente[]> {
   const brut = (await get<EntreeSurLeDisque[]>(CLE)) ?? [];
   return brut.map(e => ('genre' in e ? e : { genre: 'patch', cle: `avant:${e.cible}/${e.id}`, ...e }));
+}
+
+/** Les gestes du compte connecté. */
+export async function lireLaFile(): Promise<EcritureEnAttente[]> {
+  return (await lireTout()).filter(estAMoi);
 }
 
 /** ⚠️ LA FILE EST AUSSI UNE SOURCE D'AFFICHAGE, PAS SEULEMENT D'ENVOI (FRE-120).
@@ -331,28 +346,31 @@ export function garderPourPlusTard(geste: Geste, emporte: Iterable<string> = [])
 
 async function garder(geste: Geste, emporte: Iterable<string>): Promise<void> {
   const disparus = new Set(emporte);
-  const avant = await lireLaFile();
+  const avant = await lireTout();
   const file = avant.filter(e => !vise(e, disparus));
   // ⚠️ SUPPRIMER CE QU'ON VENAIT DE CRÉER, SANS RÉSEAU : les deux gestes
   // s'annulent. La création est déjà sortie avec `emporte` ; envoyer la
   // suppression seule ne serait qu'un 404 sur un objet que le serveur n'a
   // jamais vu.
-  if (geste.genre === 'suppression' && avant.some(e => e.genre === 'creation' && e.id === geste.id)) {
+  if (geste.genre === 'suppression' && avant.some(e => estAMoi(e) && e.genre === 'creation' && e.id === geste.id)) {
     await ecrire(file);
     return;
   }
-  const ancienne = file.find(e => memeGeste(e, geste));
+  const meme = (e: EcritureEnAttente) => estAMoi(e) && memeGeste(e, geste);
+  const ancienne = file.find(meme);
+  const uid = compteCourant();
+  const auteur = uid ? { uid } : {};
   const fusion: EcritureEnAttente = geste.genre === 'patch' && ancienne?.genre === 'patch'
-    ? { ...geste, cle: cleNeuve(), patch: { ...ancienne.patch, ...geste.patch } }
-    : { ...geste, cle: cleNeuve() };
-  await ecrire([...file.filter(e => !memeGeste(e, geste)), fusion]);
+    ? { ...geste, cle: cleNeuve(), ...auteur, patch: { ...ancienne.patch, ...geste.patch } }
+    : { ...geste, cle: cleNeuve(), ...auteur };
+  await ecrire([...file.filter(e => !meme(e)), fusion]);
 }
 
 /** Retire tout ce qui visait ces objets. */
 export function oublier(ids: Iterable<string>): Promise<void> {
   const vises = new Set(ids);
   return enSerie(async () => {
-    const file = await lireLaFile();
+    const file = await lireTout();
     const reste = file.filter(e => !vise(e, vises));
     if (reste.length !== file.length) await ecrire(reste);
   });
@@ -445,7 +463,7 @@ async function rejouer(): Promise<number> {
   // ⚠️ RELUE, PAS REPRISE DE MÉMOIRE : un geste a pu s'ajouter — ou fusionner
   // sur l'un de ceux-ci, sous une clé neuve — pendant l'envoi. Il reste.
   await enSerie(async () => {
-    const maintenant = await lireLaFile();
+    const maintenant = await lireTout();
     await ecrire(maintenant.filter(e => !traitees.has(e.cle)));
   });
   return ecrites;
