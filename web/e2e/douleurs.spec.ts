@@ -125,12 +125,21 @@ test('une zone DÉJÀ suivie peut porter une NOUVELLE douleur — un claquage n�
   await expect(page.getByRole('heading', { name: /Nouvelle douleur|New pain/ })).toBeVisible();
 });
 
-test('une zone touchée en plus S’AJOUTE à la douleur ouverte', async ({ page }) => {
+test('les zones se corrigent DEPUIS la douleur : on la choisit, puis la figure ajoute ou retire', async ({ page }) => {
+  /** ⚠️ LE GESTE PART DE LA DOULEUR (FRE-196). Le partir de la figure obligeait
+   *  à toucher l'épaule PUIS le biceps — « pas intuitif du tout ». */
   await ouvrir(page);
-  await zone(page, 'Deltoïde antérieur droite — déjà suivie').click();
+  await carteDe(page, 'Mon épaule').getByRole('button', { name: /Modifier les zones|Edit areas/ }).click();
+  const edition = page.locator('[data-edition-zones]');
   await zone(page, 'Pectoraux droite').click();
-  await expect(carteDe(page, 'Mon épaule').getByRole('button', { name: /Ajouter Pectoraux droite|Add Chest right/ }))
-    .toBeVisible();
+  await expect(edition).toContainText('Deltoïde antérieur droite + Pectoraux droite');
+  // Toutes retirées : l'enregistrement se ferme — sans zone, la douleur
+  // disparaîtrait de la figure sans être close.
+  await zone(page, 'Pectoraux droite').click();
+  await zone(page, 'Deltoïde antérieur droite — déjà suivie').click();
+  await expect(edition.getByRole('button', { name: /^(Enregistrer|Save)$/ })).toBeDisabled();
+  // Et la figure n'ouvre aucune déclaration pendant ce temps.
+  await expect(page.getByRole('heading', { name: /Nouvelle douleur|New pain/ })).toHaveCount(0);
 });
 
 test('noter une douleur propose ZÉRO comme réponse', async ({ page }) => {

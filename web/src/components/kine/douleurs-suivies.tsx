@@ -8,7 +8,7 @@ import { HistoireDeLaDouleur } from '@/components/kine/histoire-douleur';
 import { SelecteurDIntensite } from '@/components/kine/selecteur-intensite';
 import { SurLaLigne } from '@/components/kine/sur-la-ligne';
 import { couleurDIntensite } from '@/lib/douleurs/intensite';
-import { nomDeZone, nomDesZones } from '@/lib/douleurs/libelles';
+import { nomDesZones } from '@/lib/douleurs/libelles';
 import { basculer, douleursTouchees, intensitesParZone } from '@/lib/douleurs/selection';
 import { todayIso } from '@/lib/dates';
 import { cn } from '@/lib/utils';
@@ -41,6 +41,10 @@ export function DouleursSuivies({ athleteId, canWrite }: Props) {
   /** Une zone déjà suivie propose d'abord sa douleur ; « nouvelle » est le
    *  geste explicite — un claquage du biceps n'est pas la vieille épaule. */
   const [nouvelle, setNouvelle] = useState(false);
+  /** ⚠️ LES ZONES D'UNE DOULEUR SE CORRIGENT DEPUIS LA DOULEUR (FRE-196) : on
+   *  choisit la douleur, puis la figure ajoute ou retire ses zones. Partir de la
+   *  figure obligeait à toucher l'épaule PUIS le biceps pour trouver le geste. */
+  const [edition, setEdition] = useState<{ id: string; nom: string; zones: string[] } | null>(null);
   const [nom, setNom] = useState('');
   const [intensiteNeuve, setIntensiteNeuve] = useState(3);
   const [entraineNeuve, setEntraineNeuve] = useState<boolean | undefined>(undefined);
@@ -57,8 +61,15 @@ export function DouleursSuivies({ athleteId, canWrite }: Props) {
   const touchees = douleursTouchees(vivantes, selection);
 
   const toucher = (code: string) => {
+    if (edition) { setEdition({ ...edition, zones: basculer(edition.zones, code) }); return; }
     setSelection(basculer(selection, code));
     setNouvelle(false);
+  };
+
+  const enregistrerLesZones = async () => {
+    if (!edition?.zones.length) return;
+    await modifier.mutateAsync({ id: edition.id, zones: edition.zones });
+    setEdition(null);
   };
 
   const fermer = () => { setSelection([]); setNouvelle(false); setNom(''); setErreurNote(null); };
@@ -78,7 +89,8 @@ export function DouleursSuivies({ athleteId, canWrite }: Props) {
 
   if (isLoading) return <p className="text-sm text-muted-foreground">{t('suiviKine.chargement')}</p>;
 
-  const feuilleOuverte = canWrite && selection.length > 0 && (touchees.length === 0 || nouvelle);
+  const feuilleOuverte = canWrite && !edition && selection.length > 0 && (touchees.length === 0 || nouvelle);
+  const zonesMontrees = edition ? edition.zones : selection;
 
   return (
     /* ⚠️ LA FEUILLE EST HORS FLUX, DONC RIEN NE POUSSE LA PAGE — et sans cette
@@ -106,10 +118,34 @@ export function DouleursSuivies({ athleteId, canWrite }: Props) {
                   téléphone, chaque ligne gardée ici est une ligne de moins pour
                   le corps — et la consigne « touche la zone » n'a plus d'objet
                   une fois qu'on vient de le faire. */}
-              {canWrite && !feuilleOuverte && (
+              {canWrite && !feuilleOuverte && !edition && (
                 <p className="text-sm text-muted-foreground lg:block">{t('douleurs.toucheLaZone')}</p>
               )}
             </header>
+
+            {/* ⚠️ AU-DESSUS DE LA FIGURE, ET PAS DANS LA CARTE : sur téléphone la
+                carte est sous le corps, et c'est le corps qu'on touche. */}
+            {edition && (
+              <div className="flex flex-col gap-2 rounded-xl border border-gold p-3" data-edition-zones>
+                <p className="text-sm font-semibold">{t('douleurs.zonesDe', { nom: edition.nom })}</p>
+                <p className="text-[11px] uppercase tracking-wider text-gold">
+                  {edition.zones.length ? nomDesZones(edition.zones, t) : '—'}
+                </p>
+                <p className="text-xs text-muted-foreground">{t('douleurs.toucheLaFigurePourLesZones')}</p>
+                <div className="flex flex-wrap gap-2">
+                  {/* Sans zone, la douleur disparaîtrait de la figure sans être close. */}
+                  <button type="button" onClick={() => void enregistrerLesZones()}
+                          disabled={!edition.zones.length || modifier.isPending}
+                          className="h-11 rounded-lg bg-gold px-4 text-sm font-semibold text-[#131316] disabled:opacity-40">
+                    {t('suiviKine.enregistrer')}
+                  </button>
+                  <button type="button" onClick={() => setEdition(null)}
+                          className="h-11 rounded-lg border border-border px-4 text-sm text-muted-foreground">
+                    {t('suiviKine.annuler')}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* ⚠️ LA RANGÉE N'EXISTE QUE SUR TÉLÉPHONE, où les cartes sont
                 reléguées sous la figure : sans elle, on ne sait pas ce qu'on
@@ -147,10 +183,10 @@ export function DouleursSuivies({ athleteId, canWrite }: Props) {
             {/* ⚠️ LES MUSCLES DÉJÀ SUIVIS SONT MARQUÉS D'EMBLÉE. Sans ça, on
                 retouchait l'épaule qu'on suit déjà — la réponse (« c'est la
                 même, la voici ») arrivait après le geste au lieu d'avant. */}
-            <FigureDuCorps choisies={selection}
+            <FigureDuCorps choisies={zonesMontrees}
                            suivies={intensitesParZone(vivantes)}
                            onChoisir={canWrite ? toucher : undefined}
-                           nomChoisi={selection.length ? nomDesZones(selection, t) : null}
+                           nomChoisi={zonesMontrees.length ? nomDesZones(zonesMontrees, t) : null}
                            compacte={selection.length > 0} />
           </div>
 
@@ -207,7 +243,7 @@ export function DouleursSuivies({ athleteId, canWrite }: Props) {
               <>
                 {/* Les zones touchées portent déjà une douleur : la noter, ou
                     en déclarer une autre — l'athlète tranche. */}
-                {canWrite && touchees.length > 0 && (
+                {canWrite && !edition && touchees.length > 0 && (
                   <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gold/60 p-3"
                        data-deja-suivie>
                     <span className="text-xs text-muted-foreground">
@@ -238,8 +274,10 @@ export function DouleursSuivies({ athleteId, canWrite }: Props) {
                   <CarteDouleur key={d.id} douleur={d} canWrite={canWrite}
                                 athleteId={athleteId}
                                 surligne={touchees.includes(d)}
-                                selection={selection}
-                                onZones={zones => modifier.mutateAsync({ id: d.id, zones })}
+                                onModifierLesZones={() => {
+                                  setSelection([]); setNouvelle(false);
+                                  setEdition({ id: d.id, nom: d.nom, zones: d.zones });
+                                }}
                                 onNoter={(intensite, commentaire, entrainement) =>
                                   noter.mutateAsync({ id: d.id, jour: todayIso(), intensite,
                                                       commentaire, entrainement })}
@@ -284,9 +322,9 @@ function aRelancer(derniere?: string): boolean {
   return Date.parse(todayIso()) - Date.parse(derniere) >= 7 * 86_400_000;
 }
 
-function CarteDouleur({ douleur, canWrite, athleteId, surligne, selection, onZones, onNoter, onClore }: {
+function CarteDouleur({ douleur, canWrite, athleteId, surligne, onModifierLesZones, onNoter, onClore }: {
   douleur: Douleur; canWrite: boolean; athleteId: string; surligne: boolean;
-  selection: string[]; onZones: (zones: string[]) => Promise<unknown>;
+  onModifierLesZones: () => void;
   onNoter: (intensite: number, commentaire: string | null,
             entrainement: boolean | undefined) => Promise<unknown>;
   onClore: () => Promise<unknown>;
@@ -377,6 +415,12 @@ function CarteDouleur({ douleur, canWrite, athleteId, surligne, selection, onZon
             {dejaAujourdhui ? t('douleurs.corrigerAujourdhui') : t('douleurs.noterAujourdhui')}
           </button>
         )}
+        {canWrite && (
+          <button type="button" onClick={onModifierLesZones}
+                  className="h-11 rounded-lg border border-border px-4 text-sm text-muted-foreground hover:text-foreground">
+            {t('douleurs.modifierLesZones')}
+          </button>
+        )}
 
         {/* ⚠️ L'HISTOIRE A SON PROPRE BOUTON, et il porte le COMPTE : sans lui,
             rien ne dit qu'il y a quelque chose à déplier. Il n'apparaît qu'à
@@ -393,28 +437,6 @@ function CarteDouleur({ douleur, canWrite, athleteId, surligne, selection, onZon
 
       {canWrite && ouvert && (
         <div className="mt-3 flex flex-col gap-3 border-t border-border pt-3">
-          {/* ⚠️ LES ZONES SE CORRIGENT ICI (FRE-196) : l'épaule qui tire jusqu'au
-              biceps. La dernière ne se retire pas — sans zone, la douleur
-              disparaîtrait de la figure sans être close. */}
-          <div className="flex flex-wrap gap-2" data-zones-de-la-douleur>
-            {douleur.zones.map(z => (
-              <button key={z} type="button" disabled={douleur.zones.length === 1}
-                      onClick={() => void onZones(douleur.zones.filter(x => x !== z))}
-                      aria-label={t('douleurs.retirerLaZone', { zone: nomDeZone(z, t) })}
-                      className="h-11 rounded-lg border border-border px-3 text-xs text-muted-foreground disabled:opacity-60">
-                {nomDeZone(z, t)}{douleur.zones.length > 1 && ' ×'}
-              </button>
-            ))}
-            {selection.some(z => !douleur.zones.includes(z)) && (
-              <button type="button"
-                      onClick={() => void onZones([...douleur.zones,
-                                                   ...selection.filter(z => !douleur.zones.includes(z))])}
-                      className="h-11 rounded-lg border border-gold px-3 text-xs text-gold">
-                {t('douleurs.ajouterLesZones', {
-                  zones: nomDesZones(selection.filter(z => !douleur.zones.includes(z)), t) })}
-              </button>
-            )}
-          </div>
           <SelecteurDIntensite id={idSel} valeur={intensite} onChange={setIntensite}
                                entrainement={entraine} onEntrainement={setEntraine} />
           <input value={commentaire} onChange={e => setCommentaire(e.target.value)}
