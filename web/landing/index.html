@@ -456,9 +456,15 @@
       var zl = carte.querySelector('[data-live="langues"]');
       if (zl && d.langues && d.langues.length) {
         var noms = {"fr":"🇫🇷 Français","en":"🇬🇧 Anglais","es":"🇪🇸 Espagnol","de":"🇩🇪 Allemand","it":"🇮🇹 Italien","pt":"🇵🇹 Portugais","nl":"🇳🇱 Néerlandais","pl":"🇵🇱 Polonais","ru":"🇷🇺 Russe","uk":"🇺🇦 Ukrainien","ar":"🇸🇦 Arabe","tr":"🇹🇷 Turc"};
-        zl.innerHTML = d.langues.map(function (c) {
-          return '<span class="langue">' + (noms[c] || c) + '</span>';
-        }).join('');
+        // ⚠️ textContent, JAMAIS innerHTML (FRE-260) : le code vient d'un coach,
+        // et un code inconnu s'affiche tel quel.
+        zl.textContent = '';
+        d.langues.forEach(function (c) {
+          var s = document.createElement('span');
+          s.className = 'langue';
+          s.textContent = noms[c] || c;
+          zl.appendChild(s);
+        });
         zl.hidden = false;
       }
         var img = carte.querySelector('[data-live="photo"]');
