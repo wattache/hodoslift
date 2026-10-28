@@ -39,6 +39,11 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
+  // ⚠️ L'API ET L'AUTH NE SE METTENT JAMAIS EN CACHE (FRE-263), même servies
+  // depuis la même origine : une réponse de brokkr porte des données de santé
+  // d'UN compte, et la resservir hors ligne la donnerait au compte suivant.
+  if (/^\/(api\/|hodos\.|__\/)/.test(url.pathname)) return;
+
   event.respondWith(
     fetch(request)
       .then((response) => {
