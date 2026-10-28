@@ -4,6 +4,7 @@ Le PATCH ne porte que ce que le coach écrit : `one_rm` est une PROJECTION et
 `photo_url` est posée par l'endpoint d'upload — aucun des deux n'est patchable.
 """
 
+import re
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -24,7 +25,11 @@ class CoachProfilePatch(BaseModel):
     slug: str | None = Field(default=None, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=80)
     accroche: str | None = Field(default=None, max_length=200)
     bio: str | None = Field(default=None, max_length=2000)
-    instagram: str | None = Field(default=None, max_length=300)
+    # ⚠️ UN PROFIL INSTAGRAM EN https, ET RIEN D'AUTRE (FRE-260) : la vitrine
+    # publique le pose en `href`, où `javascript:…` s'exécuterait au clic d'un
+    # visiteur de french-forge.com.
+    instagram: str | None = Field(default=None, max_length=300,
+                                  pattern=r"^https://(www\.)?instagram\.com/[A-Za-z0-9_.]+/?$")
 
     # Codes ISO 639-1 ('fr', 'en', 'pl'…). PAS de Literal : ce champ ne pilote QUE
     # de l'affichage, et un Literal obligerait à redéployer brokkr pour ajouter une
@@ -40,6 +45,9 @@ class CoachProfilePatch(BaseModel):
         Le coach range ses langues par aisance, pas par alphabet :
         ['FR','fr','EN'] → ['fr','en'].
 
+        ⚠️ Un CODE de deux ou trois lettres, rien d'autre (FRE-260) : la vitrine
+        publique l'affiche tel quel quand elle ne le connaît pas.
+
         ⚠️ Une liste vide (ou vidée par ce nettoyage) devient None, donc NULL en
         base : sinon la vitrine afficherait une section « Langues » sans langue.
         """
@@ -48,6 +56,8 @@ class CoachProfilePatch(BaseModel):
         vus: dict[str, None] = {}
         for code in v:
             propre = code.strip().lower()
+            if propre and not re.fullmatch(r"[a-z]{2,3}", propre):
+                raise ValueError(f"code de langue invalide : {propre!r}")
             if propre:
                 vus.setdefault(propre, None)
         return list(vus) or None

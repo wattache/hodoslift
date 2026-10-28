@@ -13108,7 +13108,8 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 300
+                "maxLength": 300,
+                "pattern": "^https://(www\\.)?instagram\\.com/[A-Za-z0-9_.]+/?$"
               },
               {
                 "type": "null"

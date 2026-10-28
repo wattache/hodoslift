@@ -246,6 +246,14 @@ ${script}
  *  Il n'écrit donc un champ que si la réponse en contient un — d'où les tests
  *  sur `!= null` plutôt qu'un simple `if (data.bio)`, qui laisserait passer une
  *  chaîne vide et effacerait le texte de secours. */
+/** Un lien de contact ne part que vers https (FRE-260) : `javascript:…` dans un
+ *  `href` s'exécute au clic d'un visiteur. Même règle au build et dans le script
+ *  de la page — une seule écriture, injectée. */
+function estHttps(u) {
+  try { return new URL(u).protocol === 'https:'; } catch (e) { return false; }
+}
+const ESTHTTPS_SRC = `(${estHttps.toString()})`;
+
 /** Le rendu des langues, ÉCRIT UNE FOIS et injecté dans les DEUX scripts.
  *
  *  ⚠️ IL N'EXISTAIT QUE DANS `scriptCartes` (la liste /coachs). La page d'UN
@@ -265,9 +273,15 @@ const rendreLangues = (racine) => `
       var zl = ${racine}.querySelector('[data-live="langues"]');
       if (zl && d.langues && d.langues.length) {
         var noms = ${JSON.stringify(Object.fromEntries(LANGUES.map(l => [l.code, l.drapeau + ' ' + l.nom])))};
-        zl.innerHTML = d.langues.map(function (c) {
-          return '<span class="langue">' + (noms[c] || c) + '</span>';
-        }).join('');
+        // ⚠️ textContent, JAMAIS innerHTML (FRE-260) : le code vient d'un coach,
+        // et un code inconnu s'affiche tel quel.
+        zl.textContent = '';
+        d.langues.forEach(function (c) {
+          var s = document.createElement('span');
+          s.className = 'langue';
+          s.textContent = noms[c] || c;
+          zl.appendChild(s);
+        });
         zl.hidden = false;
       }`;
 
@@ -299,7 +313,8 @@ ${rendreLangues("document")}
       if (img && d.photoUrl) img.src = d.photoUrl + '?v=' + Date.now();
 
       var cta = q('contact');
-      if (cta && d.instagram) cta.href = d.instagram;
+      // ⚠️ https SEULEMENT (FRE-260) : « javascript:… » dans un href s'exécute au clic.
+      if (cta && d.instagram && ${ESTHTTPS_SRC}(d.instagram)) cta.href = d.instagram;
 
       // Records : un 0 n'est pas un record, c'est un chiffre non communiqué —
       // l'afficher dirait le contraire de la vérité sur le coach.
@@ -336,7 +351,7 @@ function pageCoach(c) {
   // Le contact passe par Instagram (décision de William, 2026-08-12) : c'est là
   // que les athlètes écrivent déjà. Sans lien renseigné, on ne laisse pas la
   // page sans issue — repli sur l'app, qui est l'autre porte d'entrée.
-  const contact = c.instagram
+  const contact = c.instagram && estHttps(c.instagram)
     ? `<a class="cta" href="${esc(c.instagram)}" rel="noopener" data-live="contact">Être coaché par ${esc(prenom)} →</a>`
     : `<a class="cta" href="${APP}" data-live="contact">Découvrir l'app →</a>`;
 

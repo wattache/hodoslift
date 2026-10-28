@@ -268,10 +268,33 @@ def test_patch_sans_langues_ne_les_touche_pas(auth_as, db):
     assert _val(db, "coach-1", "langues") == ["fr"]
 
 
+@pytest.mark.parametrize("corps", [
+    {"langues": ["<img src=x onerror=alert(1)>"]},
+    {"langues": ["fr", "français"]},
+    {"instagram": "javascript:alert(1)"},
+    {"instagram": "https://evil.example/instagram.com/x"},
+    {"instagram": "http://www.instagram.com/x/"},
+])
+def test_la_vitrine_ne_recoit_que_des_codes_et_un_lien_instagram_https(auth_as, db, corps):
+    """⚠️ La vitrine publique pose ces champs dans sa page (FRE-260) : un code de
+    langue y est affiché tel quel, le lien Instagram y devient un `href`.
+    MUTATION QUI ROUGIT : retirer le motif d'`instagram` ou le contrôle des codes."""
+    _seed_profile(db, slug="aubin")
+    r = auth_as(uid="coach-1").patch("/coach-profiles/me", json=corps, headers=_AUTH)
+    assert r.status_code == 422
+
+
+def test_un_vrai_lien_instagram_passe(auth_as, db):
+    _seed_profile(db, slug="aubin")
+    r = auth_as(uid="coach-1").patch(
+        "/coach-profiles/me", json={"instagram": "https://www.instagram.com/obin.cd/"}, headers=_AUTH)
+    assert r.status_code == 200
+
+
 def test_patch_trop_de_langues_422(auth_as, db):
     r = auth_as(uid="coach-1").patch(
         "/coach-profiles/me",
-        json={"slug": "aubin", "langues": [f"l{i}" for i in range(21)]},
+        json={"slug": "aubin", "langues": [f"l{chr(97 + i)}" for i in range(21)]},
         headers=_AUTH,
     )
     assert r.status_code == 422
