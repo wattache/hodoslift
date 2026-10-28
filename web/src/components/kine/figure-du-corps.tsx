@@ -168,7 +168,7 @@ export function FigureDuCorps({ choisies, suivies = {}, onChoisir, nomChoisi, co
                          : intensite != null ? couleurDIntensite(intensite)
                          : suivie ? OR_SELECTION
                          : GRIS_LIBRE,
-                       opacity: prise ? 1 : sourde ? 0.3 : suivie ? 0.6 : 0.72,
+                       opacity: prise ? 1 : sourde ? 0.35 : suivie ? 0.6 : 0.72,
                      }}>
                     {/* ⚠️ LE CONTOUR TRANSPARENT ÉLARGIT LA PRISE. Un doigt vise
                         moins bien qu'un curseur, et un muscle fin — l'anconé, le
@@ -285,10 +285,19 @@ export function FigureDuCorps({ choisies, suivies = {}, onChoisir, nomChoisi, co
               est la réponse : ×2 en laisse 37, ×3 en laisse 12, ×4 les fait
               toutes passer. S'arrêter à ×3 aurait laissé l'anconé et le droit
               interne intouchables au pouce. */}
+          <button type="button" onClick={() => setZoom(z => Math.max(1, z - 0.5))} disabled={zoom <= 1}
+                  aria-label={`${t('anatomie.zoom')} −`}
+                  className="h-11 w-11 shrink-0 rounded-lg border border-border text-lg text-muted-foreground disabled:opacity-40">−</button>
           <input id={idZoom} type="range" min="1" max="4" step="0.25" value={zoom}
                  onChange={e => setZoom(Number(e.target.value))}
                  aria-label={t('anatomie.zoom')}
                  className="h-11 min-w-0 flex-1 accent-gold" />
+          <span className="w-10 shrink-0 text-center font-mono text-xs tabular-nums text-muted-foreground">
+            {zoom.toFixed(1)}×
+          </span>
+          <button type="button" onClick={() => setZoom(z => Math.min(4, z + 0.5))} disabled={zoom >= 4}
+                  aria-label={`${t('anatomie.zoom')} +`}
+                  className="h-11 w-11 shrink-0 rounded-lg border border-border text-lg text-muted-foreground disabled:opacity-40">+</button>
         </div>
       {/* ⚠️ SANS LÉGENDE, LES COULEURS NE DISENT RIEN. Un muscle orange se lit
           « il se passe quelque chose », pas « 4 à 6 sur 10 » — et l'écart entre

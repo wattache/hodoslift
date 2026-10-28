@@ -160,11 +160,11 @@ test('noter une douleur propose ZÉRO comme réponse', async ({ page }) => {
   await expect(zero.locator('span')).toHaveCSS('background-color', 'rgb(127, 165, 140)');
 });
 
-test('la carte se lit d’un coup d’œil : chiffre, jauge, fraîcheur', async ({ page }) => {
+test('la carte se lit d’un coup d’œil : dernier relevé, fraîcheur', async ({ page }) => {
   await ouvrir(page);
   const carte = carteDe(page, 'Mon épaule');
-  // Le gros chiffre et son « /10 » : « Mon épaule » est notée 3.
-  await expect(carte.getByText(/^3\/10$/)).toBeVisible();
+  // Le dernier relevé en grand : « Mon épaule » est notée 3.
+  await expect(carte.locator('[data-dernier-releve]')).toHaveText(/3\s*\/10/);
   // ⚠️ LE BADGE DIT L'ANCIENNETÉ, pas la gravité : une douleur qu'on suit et
   // qu'on ne note plus depuis cinq semaines n'est pas suivie, elle est oubliée.
   await expect(carte.getByText(/Il y a|ago|Noté aujourd'hui|Logged today/)).toBeVisible();
@@ -398,7 +398,7 @@ test('la courbe porte le TEMPS RÉEL, et ne comble pas les trous', async ({ page
 
   // ⚠️ LA COURBE EST `aria-hidden` : elle ne se lit pas à voix haute. C'est la
   // liste datée qui porte le contenu, commentaires compris.
-  await expect(carte.locator('ul').filter({ hasText: /\d\/10/ }).locator('li')).toHaveCount(4);
+  await expect(carte.locator('ol').filter({ hasText: /\d\/10/ }).locator('li')).toHaveCount(4);
 });
 
 test('le jour se déclare ENTRAÎNÉ ou non, et peut rester sans réponse', async ({ page }) => {
@@ -451,7 +451,7 @@ test('l’historique dit « repos » ou « entraînement » — et rien quand on
   await carte.getByRole('button', { name: /Voir l'historique|See history/ }).click();
   await expect(carte.getByRole('heading', { level: 4 })).toBeVisible();
 
-  const lignes = carte.locator('ul').filter({ hasText: /\d\/10/ }).locator('li');
+  const lignes = carte.locator('ol').filter({ hasText: /\d\/10/ }).locator('li');
   await expect(lignes).toHaveCount(4);
   // Quatre relevés, mais seulement deux réponses : les deux plus anciens sont
   // d'avant la question.
@@ -519,7 +519,7 @@ test('pendant l’édition, les zones des AUTRES douleurs s’éteignent', async
   await expect(zone(page, 'Genoux gauche — déjà suivie')).toHaveCSS('opacity', '0.6');
   await carteDe(page, 'Mon épaule').getByRole('button', { name: /Modifier les zones|Edit areas/ }).click();
   // Plus « déjà suivie » : ce n'est pas le sujet, et sa couleur s'éteint.
-  await expect(zone(page, 'Genoux gauche')).toHaveCSS('opacity', '0.3');
+  await expect(zone(page, 'Genoux gauche')).toHaveCSS('opacity', '0.35');
 });
 
 test.describe('téléphone', () => {

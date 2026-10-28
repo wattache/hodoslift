@@ -243,7 +243,9 @@ export function DeclarerOuNoter({ athleteId, zones, vivantes, jour, exercice, pr
 
       {erreur && <p role="alert" className="text-xs text-destructive">{erreur}</p>}
 
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-2">
+      {/* ⚠️ COLLÉS AU BAS DE LA FEUILLE AU TÉLÉPHONE : on valide sous le pouce,
+          sans redescendre au bout du formulaire. */}
+      <div className="sticky bottom-0 -mx-4 -mb-4 grid grid-cols-[auto_minmax(0,1fr)] gap-2 border-t border-border bg-card px-4 py-3 lg:static lg:m-0 lg:border-0 lg:bg-transparent lg:p-0">
         <button type="button" onClick={onAnnuler}
                 className="h-12 rounded-lg border border-border px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {t('suiviKine.annuler')}

@@ -1,3 +1,4 @@
+import { History, Pencil, Plus } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -8,7 +9,7 @@ import type { Douleur } from '@/api/types';
 import { HistoireDeLaDouleur } from '@/components/kine/histoire-douleur';
 import { SelecteurDIntensite } from '@/components/kine/selecteur-intensite';
 import { SurLaLigne } from '@/components/kine/sur-la-ligne';
-import { couleurDIntensite } from '@/lib/douleurs/intensite';
+import { cleDIntensite, couleurDIntensite } from '@/lib/douleurs/intensite';
 import { nomDeZoneCourt, nomDesZones } from '@/lib/douleurs/libelles';
 import { basculer, intensitesParZone } from '@/lib/douleurs/selection';
 import { todayIso } from '@/lib/dates';
@@ -317,15 +318,23 @@ function CarteDouleur({ douleur, canWrite, athleteId, edition, onModifierLesZone
     /* ⚠️ L'OR RELIE LA CARTE ET LA FIGURE : la douleur éditée prend le même
        cadre que le bandeau au-dessus du corps — on voit ce qu'on modifie. */
     <section data-edition={edition ? '' : undefined}
-             className={cn('rounded-xl border p-4 transition-colors',
+             className={cn('rounded-xl border p-4 lg:p-5 transition-colors',
                            edition ? 'border-2 border-gold bg-gold/5' : 'border-border bg-card')}>
-      <header className="flex flex-wrap items-start justify-between gap-2">
-        <div className="flex items-start gap-2">
-          {/* La pastille dit l'intensité avant qu'on ait lu quoi que ce soit. */}
-          <span aria-hidden className="mt-1 inline-block h-3 w-3 shrink-0 rounded-sm"
-                style={{ backgroundColor: couleur ?? 'var(--muted-foreground)' }} />
-          <div>
-            <h3 className="text-sm font-semibold">{douleur.nom}</h3>
+      <header className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className="rounded border border-gold/60 bg-gold/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gold">
+            {t('douleurs.enCoursBadge')}
+          </span>
+          <BadgeDeFraicheur derniere={douleur.derniere?.date} />
+        </div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="flex items-center gap-2 text-xl font-semibold uppercase tracking-tight">
+              <span className="truncate">{douleur.nom}</span>
+              {/* La pastille dit l'intensité avant qu'on ait lu quoi que ce soit. */}
+              <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: couleur ?? 'var(--muted-foreground)' }} />
+            </h3>
             <p className="font-mono text-[11px] text-muted-foreground" title={nomDesZones(douleur.zones, t)}>
               {douleur.zones.map(z => nomDeZoneCourt(z, t)).join(' · ')}
               {/* ⚠️ « ÇA REVIENT » VIENT DU SERVEUR, où ça se déduit du nombre
@@ -333,34 +342,28 @@ function CarteDouleur({ douleur, canWrite, athleteId, edition, onModifierLesZone
               {douleur.recurrente && ` · ${t('douleurs.recurrente', { count: douleur.logs })}`}
             </p>
           </div>
+          {valeur != null && (
+            <div className="shrink-0 text-right" data-dernier-releve>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {t('douleurs.dernierReleve')}
+              </p>
+              <p className="flex items-baseline justify-end gap-1" style={{ color: couleur }}>
+                <span className="font-mono text-3xl font-semibold leading-none tabular-nums">{valeur}</span>
+                <span className="font-mono text-xs text-muted-foreground">/10</span>
+                <span className="text-[11px] font-semibold uppercase">{t(cleDIntensite(valeur))}</span>
+              </p>
+            </div>
+          )}
         </div>
-        <BadgeDeFraicheur derniere={douleur.derniere?.date} />
       </header>
 
-      {valeur != null && (
-        <div className="mt-3 flex items-center gap-3">
-          <p className="text-3xl font-semibold leading-none tabular-nums" style={{ color: couleur }}>
-            {valeur}<span className="text-sm text-muted-foreground">/10</span>
-          </p>
-          {/* ⚠️ CHAQUE CASE PREND LA COULEUR DE SON PROPRE NIVEAU, pas celle de
-              la note : la jauge montre alors où l'on se situe SUR l'échelle, et
-              pas seulement combien de cases sont pleines. */}
-          <div aria-hidden className="flex flex-1 gap-1">
-            {Array.from({ length: 10 }, (_, i) => (
-              <span key={i} className="h-1.5 flex-1 rounded-full"
-                    style={{ backgroundColor: i < valeur ? couleurDIntensite(i + 1) : 'var(--muted)' }} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {douleur.derniere?.commentaire && (
-        <p className="mt-2 text-xs italic text-muted-foreground">
+      {!histoire && douleur.derniere?.commentaire && (
+        <p className="mt-3 border-l-2 border-gold/40 pl-3 text-xs italic text-muted-foreground">
           « {douleur.derniere.commentaire} »
         </p>
       )}
       {/* Sur quelle ligne de séance ça a fait mal — quand la note vient de là. */}
-      {douleur.derniere && douleur.derniere.exercices.length > 0 && (
+      {!histoire && douleur.derniere && douleur.derniere.exercices.length > 0 && (
         <SurLaLigne exercices={douleur.derniere.exercices} className="mt-2" />
       )}
 
@@ -387,16 +390,19 @@ function CarteDouleur({ douleur, canWrite, athleteId, edition, onModifierLesZone
         </div>
       )}
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
         {canWrite && !ouvert && !edition && (
           <button type="button" onClick={() => setOuvert(true)}
-                  className="h-11 rounded-lg border border-gold px-4 text-sm font-semibold text-gold">
+                  className="flex h-12 items-center justify-center gap-2 rounded-lg bg-gold px-4 text-sm font-semibold uppercase tracking-wider text-[#131316]">
+            <Plus className="h-4 w-4" aria-hidden />
             {dejaAujourdhui ? t('douleurs.corrigerAujourdhui') : t('douleurs.noterAujourdhui')}
           </button>
         )}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {canWrite && onModifierLesZones && (
           <button type="button" onClick={onModifierLesZones}
-                  className="h-11 rounded-lg border border-border px-4 text-sm text-muted-foreground hover:text-foreground">
+                  className="flex h-11 items-center justify-center gap-2 rounded-lg border border-border px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground">
+            <Pencil className="h-3.5 w-3.5" aria-hidden />
             {t('douleurs.modifierLesZones')}
           </button>
         )}
@@ -407,11 +413,13 @@ function CarteDouleur({ douleur, canWrite, athleteId, edition, onModifierLesZone
         {douleur.logs > 1 && (
           <button type="button" onClick={() => setHistoire(h => !h)}
                   aria-expanded={histoire}
-                  className="h-11 rounded-lg border border-border px-4 text-sm text-muted-foreground hover:text-foreground">
+                  className="flex h-11 items-center justify-center gap-2 rounded-lg border border-border px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground">
+            <History className="h-3.5 w-3.5" aria-hidden />
             {histoire ? t('douleurs.masquerHistoire')
                       : t('douleurs.voirHistoire', { count: douleur.logs })}
           </button>
         )}
+        </div>
       </div>
 
       {canWrite && ouvert && (

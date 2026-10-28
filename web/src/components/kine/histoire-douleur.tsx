@@ -1,9 +1,13 @@
+import { CalendarDays } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { useLogsDeDouleur } from '@/api/hooks/use-douleurs';
 import { cheminAdouci, cheminDroit, suitesEtPonts } from '@/lib/courbe';
 import { SurLaLigne } from '@/components/kine/sur-la-ligne';
 import { cleDIntensite, couleurDIntensite } from '@/lib/douleurs/intensite';
+import { todayIso } from '@/lib/dates';
+import { formatShort } from '@/lib/dates-ui';
+import { cn } from '@/lib/utils';
 
 type Props = { athleteId: string; douleurId: string };
 
@@ -64,16 +68,27 @@ export function HistoireDeLaDouleur({ athleteId, douleurId }: Props) {
   const traces = suites.filter(s => s.length > 1).map(s => cheminAdouci(s.map(pt)));
   const pontsTraces = ponts.map(([a, b]) => cheminDroit([pt(a), pt(b)]));
 
-  return (
-    <section className="mt-3 flex flex-col gap-3 border-t border-border pt-3">
-      <h4 className="text-xs uppercase tracking-wider text-muted-foreground">
-        {t('douleurs.histoire', { count: logs.length })}
-      </h4>
+  const quand = (d: string) => {
+    const ecart = Math.round((Date.parse(todayIso()) - Date.parse(d)) / 86_400_000);
+    const prefixe = ecart === 0 ? t('douleurs.aujourdhuiCourt') : ecart === 1 ? t('douleurs.hier') : null;
+    return prefixe ? `${prefixe} · ${formatShort(d)}` : formatShort(d);
+  };
+  const etiquette = 'text-[11px] font-semibold uppercase tracking-wider text-muted-foreground';
 
+  return (
+    <section className="mt-4 flex flex-col gap-4 border-t border-border pt-4">
+      <div className="flex flex-col gap-2 rounded-lg border border-border bg-background/40 p-3">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className={etiquette}>{t('douleurs.tendanceRecente')}</span>
+          {/* De la plus ancienne note à la plus récente de la fenêtre. */}
+          <span className="font-mono text-xs tabular-nums text-muted-foreground">
+            {suite[0].intensite} → {suite[suite.length - 1].intensite}
+          </span>
+        </div>
       {/* ⚠️ `aria-hidden` : UNE COURBE NE SE LIT PAS À VOIX HAUTE. C'est la
           liste datée, plus bas, qui porte le contenu — et elle porte en plus
           les commentaires, que le graphe ne peut pas montrer. */}
-      <svg viewBox={`0 0 ${W} ${H}`} aria-hidden className="h-32 w-full">
+      <svg viewBox={`0 0 ${W} ${H}`} aria-hidden className="h-24 w-full">
         {/* ⚠️ LE FOND D'ABORD, sous l'axe et sous la courbe — même convention
             que les phases du cycle sur le tracker.
 
@@ -143,33 +158,53 @@ export function HistoireDeLaDouleur({ athleteId, douleurId }: Props) {
         </p>
       )}
 
-      <ul className="flex flex-col gap-2">
+      </div>
+
+      <h4 className={`${etiquette} flex items-center gap-2`}>
+        <CalendarDays className="h-3.5 w-3.5" aria-hidden />
+        {t('douleurs.chronologie')} · {t('douleurs.histoire', { count: logs.length })}
+      </h4>
+
+      {/* La plus récente en tête : c'est elle qu'on vient lire. */}
+      <ol className="relative flex flex-col gap-3 pl-7 before:absolute before:bottom-4 before:left-[7px] before:top-4 before:w-px before:bg-border">
         {logs.map(l => (
-          <li key={l.date} className="flex flex-wrap gap-2 text-xs">
-            <span className="tabular-nums text-muted-foreground">{l.date}</span>
-            <span className="font-semibold tabular-nums"
-                  style={{ color: couleurDIntensite(l.intensite) }}>
-              {l.intensite}/10
+          <li key={l.date} className="relative">
+            <span aria-hidden className="absolute -left-7 top-4 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gold bg-card">
+              <span className="h-1.5 w-1.5 rounded-full bg-gold" />
             </span>
-            <span className="text-muted-foreground">· {t(cleDIntensite(l.intensite))}</span>
-            {/* ⚠️ RIEN QUAND LA QUESTION N'A PAS ÉTÉ POSÉE. `null` n'est pas
-                « repos » : les onze relevés d'avant cette colonne n'ont jamais
-                eu l'occasion de répondre, et les afficher « repos » inventerait
-                onze journées que personne n'a déclarées. */}
-            {l.entrainement != null && (
-              <span className="rounded-full border border-border px-2 text-[11px] text-muted-foreground">
-                {l.entrainement ? t('douleurs.jourEntraine') : t('douleurs.jourSans')}
-              </span>
-            )}
-            {l.commentaire && (
-              <span className="flex-1 italic text-muted-foreground">« {l.commentaire} »</span>
-            )}
-            {/* Sur quelle ligne de séance — c'est ce que le kiné vient croiser
-                avec l'intensité : « ça tire aux dips, pas au squat ». */}
-            <SurLaLigne exercices={l.exercices} className="basis-full" />
+            <div className="flex flex-col gap-2 rounded-lg border border-border bg-background/40 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-xs font-semibold tabular-nums">{quand(l.date)}</span>
+                  {/* ⚠️ RIEN QUAND LA QUESTION N'A PAS ÉTÉ POSÉE. `null` n'est
+                      pas « repos » : les relevés d'avant cette colonne n'ont
+                      jamais eu l'occasion de répondre. */}
+                  {l.entrainement != null && (
+                    <span className={cn('rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider',
+                                        l.entrainement ? 'border-gold/60 text-gold' : 'border-[#7FA58C]/60 text-[#7FA58C]')}>
+                      {l.entrainement ? t('douleurs.jourEntraine') : t('douleurs.jourSans')}
+                    </span>
+                  )}
+                </div>
+                <span className="flex items-baseline gap-1 rounded-md border border-border px-2 py-0.5"
+                      style={{ color: couleurDIntensite(l.intensite) }}>
+                  <span className="font-mono text-sm font-semibold tabular-nums">{l.intensite}</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">/10</span>
+                  <span className="text-[10px] font-semibold uppercase">{t(cleDIntensite(l.intensite))}</span>
+                </span>
+              </div>
+              {/* Sur quelle ligne de séance — c'est ce que le kiné vient croiser
+                  avec l'intensité : « ça tire aux dips, pas au squat ». */}
+              <SurLaLigne exercices={l.exercices} />
+              {l.commentaire && (
+                <p className="border-l-2 border-gold/40 pl-3 text-xs italic text-muted-foreground">
+                  « {l.commentaire} »
+                </p>
+              )}
+            </div>
           </li>
         ))}
-      </ul>
+      </ol>
     </section>
   );
 }
