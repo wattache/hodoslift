@@ -94,18 +94,18 @@ test('toucher un muscle LIBRE ouvre la déclaration, avec son intensité', async
   await expect(intensites.first()).toHaveAccessibleName(/^0\/10 · (pas mal|no pain)$/);
 });
 
-test('toucher un muscle DÉJÀ suivi ne propose pas de doublon', async ({ page }) => {
+test('toucher un muscle DÉJÀ suivi propose SA douleur d’abord, avec sa dernière note', async ({ page }) => {
   /** ⚠️ C'EST TOUT L'OBJET DE LA FEATURE. Sans ce rattachement, chaque
    *  signalement referait un îlot — l'état d'avant, où sept athlètes ont saisi
-   *  une fois chacun sans que rien ne se suive. Le serveur refuse le doublon
-   *  (409) ; l'écran n'y arrive même pas. */
+   *  une fois chacun sans que rien ne se suive. « À quelle douleur ? » propose
+   *  d'abord celle qui porte la zone. */
   await ouvrir(page);
   await zone(page, 'Deltoïde antérieur droite — déjà suivie').click();
 
-  await expect(page.getByRole('heading', { name: /Nouvelle douleur|New pain/ })).toHaveCount(0);
-  // La carte de la douleur existante ouvre sa saisie du jour.
-  const carte = carteDe(page, 'Mon épaule');
-  await expect(carte.getByRole('group', { name: /Intensité|Intensity/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /À quelle douleur|Which pain/ })).toBeVisible();
+  await expect(page.getByRole('radio', { name: /Mon épaule/ })).toHaveAttribute('aria-checked', 'true');
+  // La dernière note est reprise : 3/10.
+  await expect(page.getByRole('button', { name: /Enregistrer la note \(3\/10\)|Save the note \(3\/10\)/ })).toBeVisible();
 });
 
 test('une douleur se déclare sur PLUSIEURS zones (FRE-196)', async ({ page }) => {
@@ -121,8 +121,8 @@ test('une douleur se déclare sur PLUSIEURS zones (FRE-196)', async ({ page }) =
 test('une zone DÉJÀ suivie peut porter une NOUVELLE douleur — un claquage n’est pas la vieille épaule', async ({ page }) => {
   await ouvrir(page);
   await zone(page, 'Deltoïde antérieur droite — déjà suivie').click();
-  await page.locator('[data-deja-suivie]').getByRole('button', { name: /Nouvelle douleur|New pain/ }).click();
-  await expect(page.getByRole('heading', { name: /Nouvelle douleur|New pain/ })).toBeVisible();
+  await page.getByRole('radio', { name: /nouvelle douleur|new pain/i }).click();
+  await expect(page.getByLabel(/appeler cette douleur|call this/i)).toBeVisible();
 });
 
 test('les zones se corrigent DEPUIS la douleur : on la choisit, puis la figure ajoute ou retire', async ({ page }) => {
@@ -130,16 +130,19 @@ test('les zones se corrigent DEPUIS la douleur : on la choisit, puis la figure a
    *  à toucher l'épaule PUIS le biceps — « pas intuitif du tout ». */
   await ouvrir(page);
   await carteDe(page, 'Mon épaule').getByRole('button', { name: /Modifier les zones|Edit areas/ }).click();
-  const edition = page.locator('[data-edition-zones]');
+  // Le sujet est écrit au-dessus de la figure, et la carte éditée porte le même or.
+  await expect(page.locator('[data-sujet-figure]')).toContainText(/Zones de « Mon épaule »|Areas of “Mon épaule”/);
+  const carte = page.locator('section[data-edition]');
   await zone(page, 'Pectoraux droite').click();
-  await expect(edition).toContainText('Deltoïde antérieur droite + Pectoraux droite');
-  // Toutes retirées : l'enregistrement se ferme — sans zone, la douleur
+  await expect(page.locator('[data-sujet-figure]')).toContainText(/2 zones|2 areas/);
+  await expect(carte.getByRole('button', { name: /Retirer Pectoraux droite|Remove Chest right/ })).toBeVisible();
+  // Toutes retirées : « Terminé » se ferme — sans zone, la douleur
   // disparaîtrait de la figure sans être close.
   await zone(page, 'Pectoraux droite').click();
-  await zone(page, 'Deltoïde antérieur droite — déjà suivie').click();
-  await expect(edition.getByRole('button', { name: /^(Enregistrer|Save)$/ })).toBeDisabled();
+  await zone(page, 'Deltoïde antérieur droite').click();
+  await expect(carte.getByRole('button', { name: /^(Terminé|Done)$/ })).toBeDisabled();
   // Et la figure n'ouvre aucune déclaration pendant ce temps.
-  await expect(page.getByRole('heading', { name: /Nouvelle douleur|New pain/ })).toHaveCount(0);
+  await expect(page.locator('[data-formulaire-gene]')).toHaveCount(0);
 });
 
 test('noter une douleur propose ZÉRO comme réponse', async ({ page }) => {
@@ -154,7 +157,7 @@ test('noter une douleur propose ZÉRO comme réponse', async ({ page }) => {
   const zero = page.getByRole('group', { name: /Intensité|Intensity/ })
     .getByRole('button', { name: /^0\/10/ });
   await expect(zero).toBeVisible();
-  await expect(zero).toHaveCSS('border-bottom-color', 'rgb(127, 165, 140)');
+  await expect(zero.locator('span')).toHaveCSS('background-color', 'rgb(127, 165, 140)');
 });
 
 test('la carte se lit d’un coup d’œil : chiffre, jauge, fraîcheur', async ({ page }) => {
@@ -189,21 +192,20 @@ test('le clavier suffit : tabuler jusqu’à un muscle, Entrée, nommer, valider
   const cible = zone(page, 'Pectoraux droite');
   await cible.focus();
   await expect(cible).toBeFocused();
-  // Le nom du muscle s'annonce aussi au FOCUS, pas seulement au survol.
-  await expect(page.locator('p[aria-live="polite"]')).toHaveText(/Pectoraux droite/);
-
   await page.keyboard.press('Enter');
+  // Ce qui est SÉLECTIONNÉ s'annonce sous la figure — pas ce qu'on survole.
+  await expect(page.locator('p[aria-live="polite"]')).toHaveText(/Pectoraux droite/);
   await expect(page.getByRole('heading', { name: /Nouvelle douleur|New pain/ })).toBeVisible();
 
   await page.getByLabel(/appeler cette douleur|call this/i).fill('Mon pec');
-  const suivre = page.getByRole('button', { name: /^(Suivre|Track it)$/ });
+  const suivre = page.getByRole('button', { name: /Suivre cette douleur|Track this pain/ });
   await expect(suivre).toBeEnabled();
 });
 
 test('« Suivre » reste fermé tant que la douleur n’a pas de nom', async ({ page }) => {
   await ouvrir(page);
   await zone(page, 'Pectoraux droite').click();
-  const suivre = page.getByRole('button', { name: /^(Suivre|Track it)$/ });
+  const suivre = page.getByRole('button', { name: /Suivre cette douleur|Track this pain/ });
   await expect(suivre).toBeDisabled();
   await page.getByLabel(/appeler cette douleur|call this/i).fill('Mon pec');
   await expect(suivre).toBeEnabled();
@@ -493,4 +495,52 @@ test('la courbe marque les jours ENTRAÎNÉS, et rien d’autre', async ({ page 
   // ⚠️ UNE BANDE NE SE LIT PAS SEULE : sans ce mot, un fond doré derrière un
   // point n'est qu'une décoration.
   await expect(carte.getByText(/^(Entraînement|Training)$/).first()).toBeVisible();
+});
+
+test('l’échelle 0–10 tient le plancher du doigt : 44 px par cible (brief §12)', async ({ page }) => {
+  await ouvrir(page);
+  await zone(page, 'Pectoraux droite').click();
+  const boutons = page.locator('[data-formulaire-gene]').getByRole('group', { name: /Intensité|Intensity/ }).getByRole('button');
+  for (const b of await boutons.all()) {
+    const boite = await b.boundingBox();
+    expect(boite!.height).toBeGreaterThanOrEqual(44);
+    expect(boite!.width).toBeGreaterThanOrEqual(44);
+  }
+});
+
+test('le nom sous la figure dit la SÉLECTION, pas le survol', async ({ page }) => {
+  await ouvrir(page);
+  await zone(page, 'Pectoraux droite').hover();
+  await expect(page.locator('p[aria-live="polite"]')).toHaveText('');
+});
+
+test('pendant l’édition, les zones des AUTRES douleurs s’éteignent', async ({ page }) => {
+  await ouvrir(page);
+  await expect(zone(page, 'Genoux gauche — déjà suivie')).toHaveCSS('opacity', '0.6');
+  await carteDe(page, 'Mon épaule').getByRole('button', { name: /Modifier les zones|Edit areas/ }).click();
+  // Plus « déjà suivie » : ce n'est pas le sujet, et sa couleur s'éteint.
+  await expect(zone(page, 'Genoux gauche')).toHaveCSS('opacity', '0.3');
+});
+
+test.describe('téléphone', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('la rangée « en cours » porte le NOM de la douleur, et rien ne déborde à droite', async ({ page }) => {
+    await ouvrir(page);
+    await expect(page.locator('[data-ligne-en-cours]').first()).toContainText('Mon épaule');
+    const deborde = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+    expect(deborde).toBe(false);
+  });
+
+  test('en édition, « Terminé » vit EN BAS, et y reste quand on défile vers la figure', async ({ page }) => {
+    await ouvrir(page);
+    await carteDe(page, 'Mon épaule').getByRole('button', { name: /Modifier les zones|Edit areas/ }).click();
+    const barre = page.locator('[data-barre-edition]');
+    await page.mouse.wheel(0, 600);
+    await expect(barre.getByRole('button', { name: /^(Terminé|Done)$/ })).toBeInViewport();
+    const boite = await barre.boundingBox();
+    expect(boite!.y + boite!.height).toBeGreaterThan(844 - 140);
+    const deborde = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+    expect(deborde).toBe(false);
+  });
 });

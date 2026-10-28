@@ -15,6 +15,18 @@ export function nomDeZone(code: string, t: TFunction): string {
   return cote ? `${zone} ${t(`anatomie.${cote}`)}` : zone;
 }
 
+/** Le nom COURT d'une zone, pour l'affichage : « Deltoïde ant. D ».
+ *
+ *  ⚠️ DEUX FONCTIONS, PAS UNE : la forme longue (`nomDeZone`) reste celle des
+ *  lecteurs d'écran et des infobulles ; l'écran lit celle-ci. Le premier mot
+ *  reste entier, les suivants s'abrègent, le côté se réduit à sa lettre. */
+export function nomDeZoneCourt(code: string, t: TFunction): string {
+  const { slug, cote } = litLeCode(code);
+  const [tete, ...reste] = t(cleDuNom(slug), { defaultValue: slug }).split(' ');
+  const zone = [tete, ...reste.map(m => (m.length > 4 ? `${m.slice(0, 3)}.` : m))].join(' ');
+  return cote ? `${zone} ${t(`anatomie.${cote}Court`)}` : zone;
+}
+
 /** Les zones d'une douleur : « Épaule droite + Biceps droite ». */
 export function nomDesZones(codes: string[], t: TFunction): string {
   return codes.map(c => nomDeZone(c, t)).join(' + ');

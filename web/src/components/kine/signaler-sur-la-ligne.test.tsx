@@ -81,13 +81,17 @@ describe('ce que la note emporte', () => {
     // Le volet dit sur quelle ligne — avec le réalisé (7 kg), pas le prescrit.
     expect(screen.getByRole('dialog').textContent).toContain('MUSCLE UP Strict · 5×3 @ 7 kg');
     fireEvent.click(zone(/Deltoïde antérieur droite/));
-    expect(screen.getByRole('heading', { name: 'Noter « Mon épaule »' })).toBeTruthy();
+    // La même liste que dans l'onglet : « Mon épaule » proposée d'abord.
+    expect(screen.getByRole('heading', { name: 'À quelle douleur rattacher ?' })).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /Mon épaule/ }).getAttribute('aria-checked')).toBe('true');
     // La question « entraîné ? » n'est pas posée : aucun bouton Repos.
     expect(screen.queryByRole('button', { name: /^Repos$/ })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
+    fireEvent.click(screen.getByRole('button', { name: /Enregistrer la note/ }));
     await waitFor(() => expect(appels.noter).toHaveBeenCalledTimes(1));
     expect(appels.noter).toHaveBeenCalledWith({
-      id: 'dlr-1', jour: '2026-10-25', intensite: 3, commentaire: null, entrainement: true,
+      // ⚠️ LA DERNIÈRE NOTE EST REPRISE (6, la veille) : le cas courant est
+      // la même épaule qui gêne encore.
+      id: 'dlr-1', jour: '2026-10-25', intensite: 6, commentaire: null, entrainement: true,
       exercice: { exerciseId: 'ex-1' },
     });
     expect(appels.declarer).not.toHaveBeenCalled();
@@ -98,7 +102,7 @@ describe('ce que la note emporte', () => {
     fireEvent.click(container.querySelector('[data-signaler-gene]')!);
     fireEvent.click(zone(/^Pectoraux droite/));
     expect(screen.getByRole('heading', { name: 'Nouvelle douleur' })).toBeTruthy();
-    const suivre = screen.getByRole('button', { name: 'Suivre' });
+    const suivre = screen.getByRole('button', { name: /Suivre cette douleur/ });
     expect((suivre as HTMLButtonElement).disabled).toBe(true);
     fireEvent.change(screen.getByLabelText(/appeler cette douleur/), { target: { value: 'Petit pec' } });
     fireEvent.click(suivre);

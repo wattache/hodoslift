@@ -27,14 +27,20 @@ type Props = {
    *  qu'en `owner`. Un bouton qui ne fait rien trompe aussi la tabulation et le
    *  lecteur d'écran. */
   onChoisir?: (code: string) => void;
-  /** Ce qui reste affiché sous la figure quand la souris s'en va : le muscle
-   *  retenu. Sans lui, lâcher la souris efface la réponse qu'on vient d'avoir. */
+  /** Le nom de ce qui est SÉLECTIONNÉ, sous la figure. ⚠️ Il ne suit pas le
+   *  survol : le survol se dit par l'infobulle, sur la zone elle-même — c'est
+   *  l'information du pointeur, pas celle de l'écran. */
   nomChoisi?: string | null;
   /** ⚠️ LA FIGURE RAPETISSE QUAND LA FEUILLE MONTE, et seulement sur téléphone.
    *  Sans ça, une douleur au mollet se choisit derrière le formulaire : on
    *  touche à l'aveugle, ou on referme pour voir. Sur grand écran le formulaire
    *  prend la colonne de droite et ne recouvre rien. */
   compacte?: boolean;
+  /** Les zones des AUTRES douleurs pendant qu'on édite celles d'une douleur :
+   *  gris sourd, sans la couleur de leur note — la figure dit qu'elles ne sont
+   *  pas le sujet. Elles restent touchables : une zone peut appartenir à
+   *  plusieurs douleurs. */
+  eteintes?: readonly string[];
   className?: string;
 };
 
@@ -52,7 +58,7 @@ type Props = {
  *  ⚠️ ET ON PEUT Y ARRIVER SANS LA VUE. Une figure cliquable seule est
  *  inutilisable au lecteur d'écran : chaque zone est un bouton nommé, atteint
  *  par la tabulation, et la liste sous la figure dit ce qui est retenu. */
-export function FigureDuCorps({ choisies, suivies = {}, onChoisir, nomChoisi, compacte, className }: Props) {
+export function FigureDuCorps({ choisies, suivies = {}, onChoisir, nomChoisi, compacte, eteintes = [], className }: Props) {
   const { t } = useTranslation();
   const [vue, setVue] = useState<Vue>('face');
   const [zoom, setZoom] = useState(1);
@@ -78,6 +84,7 @@ export function FigureDuCorps({ choisies, suivies = {}, onChoisir, nomChoisi, co
   }, [compacte]);
 
   const retenues = new Set(choisies);
+  const sourdes = new Set(eteintes);
 
   const nom = (slug: string, cote: Cote | null) =>
     cote ? `${t(cleDuNom(slug), slug)} ${t(`anatomie.${cote}`)}` : t(cleDuNom(slug), slug);
@@ -120,6 +127,7 @@ export function FigureDuCorps({ choisies, suivies = {}, onChoisir, nomChoisi, co
                   const slug = slugDuTrace(v, zone, ecran, i);
                   const code = codeDeZone(slug, cote);
                   const prise = retenues.has(code);
+                  const sourde = !prise && sourdes.has(code);
                   const suivie = code in suivies;
                   const intensite = suivies[code];
                   const interactif = Boolean(onChoisir);
@@ -156,10 +164,11 @@ export function FigureDuCorps({ choisies, suivies = {}, onChoisir, nomChoisi, co
                        // comme un seul état plus ou moins sûr, pas comme deux
                        // faits différents.
                        fill: prise ? OR_SELECTION
+                         : sourde ? GRIS_LIBRE
                          : intensite != null ? couleurDIntensite(intensite)
                          : suivie ? OR_SELECTION
                          : GRIS_LIBRE,
-                       opacity: prise ? 1 : suivie ? 0.6 : 0.72,
+                       opacity: prise ? 1 : sourde ? 0.3 : suivie ? 0.6 : 0.72,
                      }}>
                     {/* ⚠️ LE CONTOUR TRANSPARENT ÉLARGIT LA PRISE. Un doigt vise
                         moins bien qu'un curseur, et un muscle fin — l'anconé, le
@@ -181,7 +190,7 @@ export function FigureDuCorps({ choisies, suivies = {}, onChoisir, nomChoisi, co
 
   return (
     <div className={cn('flex flex-col gap-3', className)}>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 lg:hidden">
         {/* ⚠️ CES ONGLETS DISPARAISSENT DÈS QU'IL Y A LA PLACE (`lg`). Au-delà,
             les deux planches sont côte à côte : une douleur au grand dorsal se
             montre sans avoir à deviner qu'elle est « de dos ». En dessous,
@@ -195,21 +204,6 @@ export function FigureDuCorps({ choisies, suivies = {}, onChoisir, nomChoisi, co
               {t(`anatomie.vue.${v}`)}
             </button>
           ))}
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          <label htmlFor={idZoom} className="text-[11px] uppercase tracking-wider text-muted-foreground">
-            {t('anatomie.zoom')}
-          </label>
-          {/* ⚠️ LE ZOOM VA JUSQU'À ×4, ET C'EST MESURÉ, PAS CHOISI. Au grain du
-              muscle, 61 cibles sur 87 passent sous les 44 px du plancher du
-              doigt à l'échelle 1 — médiane 27 px, la plus fine à 11. Le zoom
-              est la réponse : ×2 en laisse 37, ×3 en laisse 12, ×4 les fait
-              toutes passer. S'arrêter à ×3 aurait laissé l'anconé et le droit
-              interne intouchables au pouce. */}
-          <input id={idZoom} type="range" min="1" max="4" step="0.25" value={zoom}
-                 onChange={e => setZoom(Number(e.target.value))}
-                 aria-label={t('anatomie.zoom')}
-                 className="h-11 w-24 accent-gold" />
         </div>
       </div>
 
@@ -272,13 +266,30 @@ export function FigureDuCorps({ choisies, suivies = {}, onChoisir, nomChoisi, co
         </span>
         <p aria-live="polite"
            className="min-h-[1.25rem] flex-1 text-center text-[11px] uppercase tracking-[0.2em] text-gold">
-          {survole?.nom ?? nomChoisi ?? ''}
+          {nomChoisi ?? ''}
         </p>
         <span aria-hidden className="text-[11px] tracking-[0.2em] text-muted-foreground lg:hidden">
           {vue === 'face' ? t('anatomie.gaucheCourt') : t('anatomie.droiteCourt')}
         </span>
       </div>
 
+      {/* ⚠️ LE ZOOM SOUS LA FIGURE, PAS À CÔTÉ : à droite des onglets, il
+          poussait la page hors de l'écran au téléphone. */}
+        <div className="flex items-center gap-2">
+          <label htmlFor={idZoom} className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            {t('anatomie.zoom')}
+          </label>
+          {/* ⚠️ LE ZOOM VA JUSQU'À ×4, ET C'EST MESURÉ, PAS CHOISI. Au grain du
+              muscle, 61 cibles sur 87 passent sous les 44 px du plancher du
+              doigt à l'échelle 1 — médiane 27 px, la plus fine à 11. Le zoom
+              est la réponse : ×2 en laisse 37, ×3 en laisse 12, ×4 les fait
+              toutes passer. S'arrêter à ×3 aurait laissé l'anconé et le droit
+              interne intouchables au pouce. */}
+          <input id={idZoom} type="range" min="1" max="4" step="0.25" value={zoom}
+                 onChange={e => setZoom(Number(e.target.value))}
+                 aria-label={t('anatomie.zoom')}
+                 className="h-11 min-w-0 flex-1 accent-gold" />
+        </div>
       {/* ⚠️ SANS LÉGENDE, LES COULEURS NE DISENT RIEN. Un muscle orange se lit
           « il se passe quelque chose », pas « 4 à 6 sur 10 » — et l'écart entre
           l'or de la sélection et le jaune du palier 1–3 est justement ce qu'il

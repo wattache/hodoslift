@@ -1,19 +1,18 @@
 import { HeartPulse } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
-import { NoteEchouee, useDeclarerEtNoter, useDouleurs, useNoterDouleur } from '@/api/hooks/use-douleurs';
+import { useDouleurs } from '@/api/hooks/use-douleurs';
 import type { Douleur, ExerciseEditing } from '@/api/types';
+import { DeclarerOuNoter } from '@/components/kine/declarer-ou-noter';
 import { FigureDuCorps } from '@/components/kine/figure-du-corps';
-import { SelecteurDIntensite } from '@/components/kine/selecteur-intensite';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { todayIso } from '@/lib/dates';
 import { formatLong, formatShort } from '@/lib/dates-ui';
 import { couleurDIntensite } from '@/lib/douleurs/intensite';
 import { libelleDExercice, nomDesZones } from '@/lib/douleurs/libelles';
-import { basculer, douleursTouchees, intensitesParZone } from '@/lib/douleurs/selection';
-import { cn } from '@/lib/utils';
+import { basculer, intensitesParZone } from '@/lib/douleurs/selection';
 
 type Props = {
   /** `legacy_id` de l'athlète dont c'est la séance. */
@@ -114,46 +113,8 @@ function Volet({ athleteId, ligne, jour, douleurs, onFini }: {
   athleteId: string; ligne: ExerciseEditing; jour: string; douleurs: Douleur[]; onFini: () => void;
 }) {
   const { t } = useTranslation();
-  const declarer = useDeclarerEtNoter(athleteId);
-  const noter = useNoterDouleur(athleteId);
   const [zones, setZones] = useState<string[]>([]);
-  /** La douleur choisie parmi celles qui portent ces zones, ou `nouvelle`. */
-  const [choix, setChoix] = useState<string>('nouvelle');
-  const [nom, setNom] = useState('');
-  const [intensite, setIntensite] = useState(3);
-  const [commentaire, setCommentaire] = useState('');
-  const [erreur, setErreur] = useState<string | null>(null);
-  const idSel = useId();
-
   const vivantes = douleurs.filter(d => !d.fin);
-  const touchees = douleursTouchees(vivantes, zones);
-  const deja = touchees.find(d => d.id === choix);
-  const exercice = { exerciseId: ligne.id! };
-  const occupe = declarer.isPending || noter.isPending;
-
-  /** ⚠️ TOUCHER UNE ZONE SUIVIE PROPOSE D'ABORD SA DOULEUR (FRE-196) : c'est le
-   *  cas courant, la même épaule qui gêne encore. « Nouvelle » reste à un
-   *  geste — un claquage du biceps n'est pas la vieille épaule. */
-  const toucher = (code: string) => {
-    const suivantes = basculer(zones, code);
-    setZones(suivantes);
-    setChoix(douleursTouchees(vivantes, suivantes)[0]?.id ?? 'nouvelle');
-  };
-
-  const envoyer = async () => {
-    if (!zones.length) return;
-    setErreur(null);
-    const note = { intensite, commentaire: commentaire.trim() || null, entrainement: true as const, exercice };
-    try {
-      if (deja) await noter.mutateAsync({ id: deja.id, jour, ...note });
-      else await declarer.mutateAsync({ nom: nom.trim(), zones, jour, ...note });
-      onFini();
-    } catch (e) {
-      // La douleur est créée, c'est la note qui n'est pas passée : on le dit tel
-      // quel — recommencer créerait un doublon.
-      setErreur(t(e instanceof NoteEchouee ? 'douleurs.noteEchouee' : 'douleurs.envoiEchoue'));
-    }
-  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -165,84 +126,29 @@ function Volet({ athleteId, ligne, jour, douleurs, onFini }: {
       </SheetHeader>
 
       {/* ⚠️ DEUX COLONNES DÈS QU'IL Y A LA PLACE : le corps à gauche, ce qu'on
-          en dit à droite — la grammaire de l'onglet Douleurs. Sur téléphone,
-          une colonne : la figure se compacte quand une zone est choisie. */}
+          en dit à droite — la grammaire de l'onglet Douleurs. Le choix « à
+          quelle douleur ? » est le MÊME objet que dans l'onglet. */}
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,19rem)] sm:items-start">
-      <div className="flex flex-col gap-3">
-        <p className="text-sm text-muted-foreground">
-          {zones.length ? t('douleurs.toucheAutresZones') : t('douleurs.toucheLaZone')}
-        </p>
-
-        {/* ⚠️ LES MUSCLES DÉJÀ SUIVIS SONT MARQUÉS D'EMBLÉE : la figure dit
-            avant le geste qu'une douleur y vit déjà. */}
-        <FigureDuCorps choisies={zones}
-                       suivies={intensitesParZone(vivantes)}
-                       onChoisir={toucher}
-                       nomChoisi={zones.length ? nomDesZones(zones, t) : null}
-                       compacte={zones.length > 0} />
-      </div>
-
-      {zones.length > 0 && (
-        <div className="flex flex-col gap-3 rounded-xl border border-gold bg-card p-4" data-formulaire-gene>
-          <header>
-            <h4 className="text-sm font-semibold">
-              {deja ? t('douleurs.noterCetteDouleur', { nom: deja.nom }) : t('douleurs.nouvelleDouleur')}
-            </h4>
-            <p className="text-[11px] uppercase tracking-wider text-gold">
-              {nomDesZones(deja ? deja.zones : zones, t)}
-            </p>
-          </header>
-
-          {touchees.length > 0 && (
-            <div role="radiogroup" aria-label={t('douleurs.dejaSuivieIci')} className="flex flex-wrap gap-2">
-              {[...touchees.map(d => ({ id: d.id, libelle: d.nom })),
-                { id: 'nouvelle', libelle: t('douleurs.nouvelleDouleur') }].map(o => (
-                <button key={o.id} type="button" role="radio" aria-checked={choix === o.id}
-                        onClick={() => setChoix(o.id)} data-choix-douleur={o.id}
-                        className={cn('h-11 rounded-lg border px-3 text-sm',
-                                      choix === o.id ? 'border-gold text-gold' : 'border-border text-muted-foreground')}>
-                  {o.libelle}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {!deja && (
-            <>
-              <label htmlFor={`${idSel}-nom`} className="text-xs text-muted-foreground">
-                {t('douleurs.commentLAppeler', { zone: nomDesZones(zones, t) })}
-              </label>
-              <input id={`${idSel}-nom`} value={nom} onChange={e => setNom(e.target.value)}
-                     placeholder={t('douleurs.exempleNom')} maxLength={80}
-                     className="h-11 rounded-lg border border-border bg-background px-3 text-base" />
-            </>
-          )}
-
-          <SelecteurDIntensite id={idSel} valeur={intensite} onChange={setIntensite} />
-          <input value={commentaire} onChange={e => setCommentaire(e.target.value)}
-                 placeholder={t('douleurs.commentairePlaceholder')} maxLength={500}
-                 aria-label={t('douleurs.commentaire')}
-                 // 16 px minimum : en dessous, iOS zoome à la mise au point.
-                 className="h-11 rounded-lg border border-border bg-background px-3 text-base" />
-          {/* La question « entraîné ? » n'est pas posée : la ligne y répond. */}
-          <p className="text-[11px] text-muted-foreground">{t('douleurs.entraineImplicite')}</p>
-
-          {erreur && <p role="alert" className="text-xs text-destructive">{erreur}</p>}
-
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => void envoyer()}
-                    disabled={occupe || (!deja && !nom.trim())}
-                    className={cn('h-11 rounded-lg bg-gold px-4 text-sm font-semibold text-[#131316]',
-                                  'disabled:opacity-40')}>
-              {deja ? t('suiviKine.enregistrer') : t('douleurs.suivre')}
-            </button>
-            <button type="button" onClick={() => { setZones([]); setChoix('nouvelle'); setNom(''); setErreur(null); }}
-                    className="h-11 rounded-lg border border-border px-4 text-sm text-muted-foreground">
-              {t('suiviKine.annuler')}
-            </button>
-          </div>
+        <div className="flex flex-col gap-3">
+          <p className="rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground">
+            {zones.length ? t('douleurs.toucheAutresZones') : t('douleurs.toucheLaZone')}
+          </p>
+          {/* ⚠️ LES MUSCLES DÉJÀ SUIVIS SONT MARQUÉS D'EMBLÉE : la figure dit
+              avant le geste qu'une douleur y vit déjà. */}
+          <FigureDuCorps choisies={zones}
+                         suivies={intensitesParZone(vivantes)}
+                         onChoisir={code => setZones(z => basculer(z, code))}
+                         nomChoisi={zones.length ? nomDesZones(zones, t) : null}
+                         compacte={zones.length > 0} />
         </div>
-      )}
+
+        {zones.length > 0 && (
+          <div className="rounded-xl border border-gold bg-card p-4">
+            <DeclarerOuNoter athleteId={athleteId} zones={zones} vivantes={vivantes} jour={jour}
+                             exercice={{ exerciseId: ligne.id! }}
+                             onFini={onFini} onAnnuler={() => setZones([])} />
+          </div>
+        )}
       </div>
     </div>
   );

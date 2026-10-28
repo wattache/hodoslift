@@ -37,18 +37,26 @@ export function SelecteurDIntensite({ valeur, onChange, entrainement, onEntraine
 
   return (
     <div className={cn('flex flex-col gap-1', className)}>
-      <div className="flex items-baseline justify-between gap-2">
-        <span id={`${id}-titre`} className="text-xs text-muted-foreground">
+      <div className="flex items-center justify-between gap-3">
+        <span id={`${id}-titre`} className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
           {t('douleurs.intensiteAujourdhui')}
         </span>
-        <span className="text-sm font-semibold" style={{ color: couleurDIntensite(valeur) }}>
-          {valeur}/10 · {t(cleDIntensite(valeur))}
+        {/* La valeur en grand, dans sa couleur : c'est la réponse, on la relit
+            avant d'enregistrer. */}
+        <span className="flex items-baseline gap-1.5 rounded-lg border border-border bg-background/60 px-3 py-1.5"
+              style={{ color: couleurDIntensite(valeur) }}>
+          <span className="font-mono text-2xl font-semibold leading-none tabular-nums">{valeur}</span>
+          <span className="font-mono text-xs text-muted-foreground">/10</span>
+          <span className="text-xs font-semibold">{t(cleDIntensite(valeur))}</span>
         </span>
       </div>
 
       {/* ⚠️ UN `group` NOMMÉ, et pas onze boutons en vrac : au lecteur d'écran,
           « 7 » tout seul ne dit pas de quoi. */}
-      <div role="group" aria-labelledby={`${id}-titre`} className="flex gap-1">
+      {/* ⚠️ DEUX RANGÉES DE SIX, À 44 px : onze cibles sur une rangée faisaient
+          24 à 34 px, sous le plancher du doigt. Et la couleur passe SOUS le
+          chiffre, en filet, au lieu de le traverser. */}
+      <div role="group" aria-labelledby={`${id}-titre`} className="grid grid-cols-6 gap-1.5">
         {VALEURS.map(v => {
           const choisi = v === valeur;
           const couleur = couleurDIntensite(v);
@@ -57,16 +65,13 @@ export function SelecteurDIntensite({ valeur, onChange, entrainement, onEntraine
                     aria-pressed={choisi}
                     aria-label={`${v}/10 · ${t(cleDIntensite(v))}`}
                     className={cn(
-                      'h-11 flex-1 rounded-md border-b-[3px] text-sm font-semibold tabular-nums transition-colors',
-                      choisi ? 'text-[#131316]' : 'bg-card text-muted-foreground hover:text-foreground')}
-                    style={{
-                      // ⚠️ LE LISERÉ PORTE LA COULEUR MÊME QUAND LE BOUTON N'EST
-                      // PAS CHOISI : sans lui, l'échelle ne se lit qu'après avoir
-                      // cliqué, et on ne voit pas que 7 est rouge avant d'y aller.
-                      borderBottomColor: couleur,
-                      backgroundColor: choisi ? couleur : undefined,
-                    }}>
+                      'flex h-11 flex-col items-center justify-center gap-1 rounded-md border font-mono text-sm font-semibold tabular-nums transition-colors',
+                      choisi ? 'border-gold bg-gold/10 text-gold'
+                             : 'border-border bg-card text-muted-foreground hover:text-foreground')}>
               {v}
+              {/* ⚠️ LE FILET PORTE LA COULEUR MÊME NON CHOISI : sans lui,
+                  l'échelle ne se lit qu'après avoir cliqué. */}
+              <span aria-hidden className="h-0.5 w-5 rounded-full" style={{ backgroundColor: couleur }} />
             </button>
           );
         })}

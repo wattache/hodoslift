@@ -30,7 +30,9 @@ test('le volet nomme la ligne et le jour, et toucher la zone déjà suivie rouvr
 
   await volet.locator('svg[role="group"]').first()
     .getByRole('button', { name: /Deltoïde antérieur droite|Anterior deltoid right/ }).click();
-  await expect(volet.getByRole('heading', { name: /Noter « Mon épaule »|Log “Mon épaule”/ })).toBeVisible();
+  // La MÊME liste que dans l'onglet : « Mon épaule » proposée d'abord.
+  await expect(volet.getByRole('heading', { name: /À quelle douleur|Which pain/ })).toBeVisible();
+  await expect(volet.getByRole('radio', { name: /Mon épaule/ })).toHaveAttribute('aria-checked', 'true');
   // ⚠️ « ENTRAÎNÉ ? » N'EST PAS DEMANDÉ : la ligne y répond. Le sélecteur ne
   // montre donc ni Entraînement ni Repos, et le volet le dit.
   await expect(volet.getByText(/jour entraîné|training day/)).toBeVisible();
@@ -46,7 +48,7 @@ test('toucher une zone libre ouvre la déclaration, « Suivre » attend un nom',
   await volet.locator('svg[role="group"]').first()
     .getByRole('button', { name: /^(Pectoraux droite|Chest right)$/ }).click();
   await expect(volet.getByRole('heading', { name: /Nouvelle douleur|New pain/ })).toBeVisible();
-  await expect(volet.getByRole('button', { name: /^(Suivre|Track it)$/ })).toBeDisabled();
+  await expect(volet.getByRole('button', { name: /Suivre cette douleur|Track this pain/ })).toBeDisabled();
 });
 
 test('toucher une zone suivie propose SA douleur, ou une nouvelle', async ({ page }) => {
@@ -55,8 +57,8 @@ test('toucher une zone suivie propose SA douleur, ou une nouvelle', async ({ pag
   const volet = page.getByRole('dialog');
   await volet.locator('svg[role="group"]').first()
     .getByRole('button', { name: /Deltoïde antérieur droite|Anterior deltoid right/ }).click();
-  await expect(volet.getByRole('radio', { name: 'Mon épaule' })).toHaveAttribute('aria-checked', 'true');
-  await volet.getByRole('radio', { name: /Nouvelle douleur|New pain/ }).click();
-  await expect(volet.getByRole('heading', { name: /Nouvelle douleur|New pain/ })).toBeVisible();
-  await expect(volet.getByRole('button', { name: /^(Suivre|Track it)$/ })).toBeDisabled();
+  await expect(volet.getByRole('radio', { name: /Mon épaule/ })).toHaveAttribute('aria-checked', 'true');
+  await volet.getByRole('radio', { name: /nouvelle douleur|new pain/i }).click();
+  await expect(volet.getByLabel(/appeler cette douleur|call this/i)).toBeVisible();
+  await expect(volet.getByRole('button', { name: /Suivre cette douleur|Track this pain/ })).toBeDisabled();
 });

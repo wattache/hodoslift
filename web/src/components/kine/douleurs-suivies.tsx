@@ -1,15 +1,16 @@
-import { useEffect, useId, useState } from 'react';
+import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { DeclarerOuNoter, ZonesEnPuces } from '@/components/kine/declarer-ou-noter';
 import { FigureDuCorps } from '@/components/kine/figure-du-corps';
-import { useDeclarerEtNoter, useDouleurs, useModifierDouleur, useNoterDouleur } from '@/api/hooks/use-douleurs';
+import { useDouleurs, useModifierDouleur, useNoterDouleur } from '@/api/hooks/use-douleurs';
 import type { Douleur } from '@/api/types';
 import { HistoireDeLaDouleur } from '@/components/kine/histoire-douleur';
 import { SelecteurDIntensite } from '@/components/kine/selecteur-intensite';
 import { SurLaLigne } from '@/components/kine/sur-la-ligne';
 import { couleurDIntensite } from '@/lib/douleurs/intensite';
-import { nomDesZones } from '@/lib/douleurs/libelles';
-import { basculer, douleursTouchees, intensitesParZone } from '@/lib/douleurs/selection';
+import { nomDeZoneCourt, nomDesZones } from '@/lib/douleurs/libelles';
+import { basculer, intensitesParZone } from '@/lib/douleurs/selection';
 import { todayIso } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 
@@ -31,230 +32,119 @@ type Props = {
 export function DouleursSuivies({ athleteId, canWrite }: Props) {
   const { t } = useTranslation();
   const { data: douleurs = [], isLoading } = useDouleurs(athleteId);
-  const declarer = useDeclarerEtNoter(athleteId);
   const noter = useNoterDouleur(athleteId);
   const modifier = useModifierDouleur(athleteId);
 
-  /** Les zones touchées sur la figure — plusieurs pour une douleur qui en
-   *  porte plusieurs (FRE-196). */
+  /** Les zones touchées sur la figure, pour déclarer ou noter. */
   const [selection, setSelection] = useState<string[]>([]);
-  /** Une zone déjà suivie propose d'abord sa douleur ; « nouvelle » est le
-   *  geste explicite — un claquage du biceps n'est pas la vieille épaule. */
-  const [nouvelle, setNouvelle] = useState(false);
-  /** ⚠️ LES ZONES D'UNE DOULEUR SE CORRIGENT DEPUIS LA DOULEUR (FRE-196) : on
-   *  choisit la douleur, puis la figure ajoute ou retire ses zones. Partir de la
-   *  figure obligeait à toucher l'épaule PUIS le biceps pour trouver le geste. */
-  const [edition, setEdition] = useState<{ id: string; nom: string; zones: string[] } | null>(null);
-  const [nom, setNom] = useState('');
-  const [intensiteNeuve, setIntensiteNeuve] = useState(3);
-  const [entraineNeuve, setEntraineNeuve] = useState<boolean | undefined>(undefined);
-  // Voir `NoteEchouee` : la douleur est créée, c'est la note qui n'est pas passée.
-  const [erreurNote, setErreurNote] = useState<string | null>(null);
-  const idNeuve = useId();
+  /** La douleur à proposer d'abord, quand on part d'elle (la rangée « en cours »). */
+  const [prefere, setPrefere] = useState<string | null>(null);
+  /** ⚠️ LA FIGURE N'A PAS DE MODES, ELLE A UN SUJET. Aucun : un toucher
+   *  sélectionne. Une douleur : un toucher ajoute ou retire une zone DE CETTE
+   *  douleur. Le bandeau au-dessus de la figure le dit en permanence. */
+  const [sujet, setSujet] = useState<{ id: string; nom: string; zones: string[] } | null>(null);
 
   const vivantes = douleurs.filter(d => !d.fin);
   const closes = douleurs.filter(d => d.fin);
 
-  /** ⚠️ TOUCHER UNE ZONE DÉJÀ SUIVIE NE CRÉE RIEN D'EMBLÉE : les cartes des
-   *  douleurs qui la portent se surlignent, et c'est là qu'on note. Une zone
-   *  libre ouvre la déclaration. */
-  const touchees = douleursTouchees(vivantes, selection);
-
   const toucher = (code: string) => {
-    if (edition) { setEdition({ ...edition, zones: basculer(edition.zones, code) }); return; }
+    if (sujet) { setSujet({ ...sujet, zones: basculer(sujet.zones, code) }); return; }
     setSelection(basculer(selection, code));
-    setNouvelle(false);
+    setPrefere(null);
   };
+  const fermer = () => { setSelection([]); setPrefere(null); };
 
-  const enregistrerLesZones = async () => {
-    if (!edition?.zones.length) return;
-    await modifier.mutateAsync({ id: edition.id, zones: edition.zones });
-    setEdition(null);
+  const editer = (d: Douleur) => { fermer(); setSujet({ id: d.id, nom: d.nom, zones: d.zones }); };
+  const terminer = async () => {
+    if (!sujet?.zones.length) return;
+    await modifier.mutateAsync({ id: sujet.id, zones: sujet.zones });
+    setSujet(null);
   };
-
-  const fermer = () => { setSelection([]); setNouvelle(false); setNom(''); setErreurNote(null); };
-
-  const valider = async () => {
-    if (!selection.length || !nom.trim()) return;
-    setErreurNote(null);
-    try {
-      await declarer.mutateAsync({ nom: nom.trim(), zones: selection, intensite: intensiteNeuve,
-                                   commentaire: null, entrainement: entraineNeuve });
-    } catch {
-      setErreurNote(t('douleurs.noteEchouee'));
-      return;
-    }
-    fermer(); setIntensiteNeuve(3); setEntraineNeuve(undefined);
-  };
+  const retirer = (z: string) => sujet && setSujet({ ...sujet, zones: sujet.zones.filter(x => x !== z) });
 
   if (isLoading) return <p className="text-sm text-muted-foreground">{t('suiviKine.chargement')}</p>;
 
-  const feuilleOuverte = canWrite && !edition && selection.length > 0 && (touchees.length === 0 || nouvelle);
-  const zonesMontrees = edition ? edition.zones : selection;
+  const formulaire = canWrite && !sujet && selection.length > 0;
+  const choisies = sujet ? sujet.zones : selection;
+  const eteintes = sujet
+    ? vivantes.filter(d => d.id !== sujet.id).flatMap(d => d.zones).filter(z => !sujet.zones.includes(z))
+    : [];
 
   return (
-    /* ⚠️ LA FEUILLE EST HORS FLUX, DONC RIEN NE POUSSE LA PAGE — et sans cette
-       réserve en bas, le défilement s'arrête avant d'avoir pu remonter la
-       figure au-dessus d'elle. On touchait alors un mollet qu'on ne voyait
-       pas. Sur grand écran le formulaire est dans une colonne : aucune
-       réserve à prévoir. */
-    <div className={cn('flex flex-col gap-4', feuilleOuverte && 'pb-[64vh] lg:pb-0')}>
-      {/* ⚠️ DEUX COLONNES, ET C'EST LA FORME QUI PORTE LE GESTE : le corps à
-          gauche, ce qu'on en dit à droite. Empilés, la figure passait sous les
-          cartes et on ne voyait plus le lien entre toucher un muscle et ce qui
-          s'ouvre. En dessous de `lg`, une seule colonne — un téléphone ne tient
-          pas les deux de front. */}
+    /* ⚠️ LA FEUILLE ET LA BARRE SONT HORS FLUX, DONC RIEN NE POUSSE LA PAGE —
+       sans cette réserve en bas, le défilement s'arrête avant d'avoir pu
+       remonter la figure au-dessus d'elles. */
+    <div className={cn('flex flex-col gap-4', formulaire && 'pb-[64vh] lg:pb-0', sujet && 'pb-48 lg:pb-0')}>
       <section className="rounded-2xl border border-border bg-card p-4 lg:p-6">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
-          <div className="flex flex-col gap-3">
-            <header>
-              <h2 className="text-2xl font-semibold uppercase tracking-tight">
-                {/* ⚠️ LE TITRE DU STAFF NE PRÉSUME PAS DU GENRE de l'athlète —
-                    et il ne le pourrait pas : 26 fiches de production sur 69
-                    n'en portent aucun. */}
-                {canWrite ? t('douleurs.ouAsTuMal') : t('douleurs.ouIlAMal')}
-              </h2>
-              {/* ⚠️ CE QUI N'AIDE PLUS S'EFFACE QUAND LA FEUILLE MONTE. Sur un
-                  téléphone, chaque ligne gardée ici est une ligne de moins pour
-                  le corps — et la consigne « touche la zone » n'a plus d'objet
-                  une fois qu'on vient de le faire. */}
-              {canWrite && !feuilleOuverte && !edition && (
-                <p className="text-sm text-muted-foreground lg:block">{t('douleurs.toucheLaZone')}</p>
-              )}
-            </header>
+          <div className="flex min-w-0 flex-col gap-3">
+            <h2 className="text-2xl font-semibold uppercase tracking-tight">
+              {/* ⚠️ LE TITRE DU STAFF NE PRÉSUME PAS DU GENRE de l'athlète. */}
+              {canWrite ? t('douleurs.ouAsTuMal') : t('douleurs.ouIlAMal')}
+            </h2>
 
-            {/* ⚠️ AU-DESSUS DE LA FIGURE, ET PAS DANS LA CARTE : sur téléphone la
-                carte est sous le corps, et c'est le corps qu'on touche. */}
-            {edition && (
-              <div className="flex flex-col gap-2 rounded-xl border border-gold p-3" data-edition-zones>
-                <p className="text-sm font-semibold">{t('douleurs.zonesDe', { nom: edition.nom })}</p>
-                <p className="text-[11px] uppercase tracking-wider text-gold">
-                  {edition.zones.length ? nomDesZones(edition.zones, t) : '—'}
+            {/* ⚠️ LA RANGÉE « EN COURS » N'EXISTE QUE SUR TÉLÉPHONE, où les cartes
+                sont sous la figure. Elle porte le NOM que l'athlète a donné, et
+                elle EMPILE : une rangée qui défile faisait déborder la page. */}
+            {vivantes.length > 0 && !formulaire && !sujet && (
+              <div className="flex flex-col gap-2 lg:hidden">
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                  {t('douleurs.enCours', { count: vivantes.length })}
                 </p>
-                <p className="text-xs text-muted-foreground">{t('douleurs.toucheLaFigurePourLesZones')}</p>
-                <div className="flex flex-wrap gap-2">
-                  {/* Sans zone, la douleur disparaîtrait de la figure sans être close. */}
-                  <button type="button" onClick={() => void enregistrerLesZones()}
-                          disabled={!edition.zones.length || modifier.isPending}
-                          className="h-11 rounded-lg bg-gold px-4 text-sm font-semibold text-[#131316] disabled:opacity-40">
-                    {t('suiviKine.enregistrer')}
-                  </button>
-                  <button type="button" onClick={() => setEdition(null)}
-                          className="h-11 rounded-lg border border-border px-4 text-sm text-muted-foreground">
-                    {t('suiviKine.annuler')}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ⚠️ LA RANGÉE N'EXISTE QUE SUR TÉLÉPHONE, où les cartes sont
-                reléguées sous la figure : sans elle, on ne sait pas ce qu'on
-                suit déjà avant d'avoir fait défiler tout le corps. Sur grand
-                écran la colonne de droite le dit en permanence. */}
-            {vivantes.length > 0 && !feuilleOuverte && (
-              <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 lg:hidden">
                 {vivantes.map(d => (
-                  <button key={d.id} type="button"
-                          onClick={() => { setSelection(d.zones); setNouvelle(false); }}
-                          aria-pressed={touchees.includes(d)}
-                          className={cn('flex h-11 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm',
-                            touchees.includes(d) ? 'border-gold' : 'border-border')}>
-                    <span aria-hidden className="inline-block h-2.5 w-2.5 rounded-sm"
-                          style={{ backgroundColor: d.derniere
-                            ? couleurDIntensite(d.derniere.intensite) : 'var(--muted-foreground)' }} />
-                    <span className="whitespace-nowrap">{nomDesZones(d.zones, t)}</span>
-                    {d.derniere && (
-                      <span className="tabular-nums text-muted-foreground">
-                        {d.derniere.intensite}/10
-                      </span>
-                    )}
-                    {/* ⚠️ LE POINT DIT « ÇA FAIT UN MOMENT », pas « c'est
-                        grave » : une douleur qu'on suit et qu'on ne note plus
-                        depuis une semaine n'est pas suivie, elle est oubliée. */}
-                    {aRelancer(d.derniere?.date) && (
-                      <span aria-label={t('douleurs.aRelancer')}
-                            className="inline-block h-2 w-2 rounded-full bg-[#E08A3C]" />
-                    )}
-                  </button>
+                  <LigneEnCours key={d.id} douleur={d}
+                                onOuvrir={canWrite ? () => { setSelection(d.zones); setPrefere(d.id); } : undefined} />
                 ))}
               </div>
             )}
 
-            {/* ⚠️ LES MUSCLES DÉJÀ SUIVIS SONT MARQUÉS D'EMBLÉE. Sans ça, on
-                retouchait l'épaule qu'on suit déjà — la réponse (« c'est la
-                même, la voici ») arrivait après le geste au lieu d'avant. */}
-            <FigureDuCorps choisies={zonesMontrees}
-                           suivies={intensitesParZone(vivantes)}
-                           onChoisir={canWrite ? toucher : undefined}
-                           nomChoisi={zonesMontrees.length ? nomDesZones(zonesMontrees, t) : null}
-                           compacte={selection.length > 0} />
-          </div>
-
-          {/* LA COLONNE DE DROITE BASCULE : la liste des douleurs suivies, ou
-              le formulaire de déclaration quand on vient de toucher un muscle
-              libre. Les deux à la fois obligeraient à choisir où regarder. */}
-          <div className="flex flex-col gap-3">
-            {/* ⚠️ UNE FEUILLE SUR TÉLÉPHONE, UNE COLONNE SUR GRAND ÉCRAN — le
-                même formulaire, deux places. `fixed` sous `lg` pour qu'il reste
-                sous le pouce sans pousser la figure hors de l'écran ; `static`
-                au-dessus, où il prend la colonne de droite. Le `pb` laisse
-                passer la barre de navigation du bas et l'encoche. */}
-            {feuilleOuverte && (
-          <div className="fixed inset-x-0 bottom-0 z-40 flex max-h-[62vh] flex-col gap-3
-                          overflow-y-auto rounded-t-2xl border-t border-gold bg-card p-4
-                          pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl
-                          lg:static lg:max-h-none lg:rounded-xl lg:border lg:p-4
-                          lg:pb-4 lg:shadow-none">
-            <header>
-              <h4 className="text-sm font-semibold">{t('douleurs.nouvelleDouleur')}</h4>
-              <p className="text-[11px] uppercase tracking-wider text-gold">
-                {nomDesZones(selection, t)}
-              </p>
-            </header>
-            <p className="text-xs text-muted-foreground">{t('douleurs.toucheAutresZones')}</p>
-
-            <label htmlFor="nom-douleur" className="text-xs text-muted-foreground">
-              {t('douleurs.commentLAppeler', { zone: nomDesZones(selection, t) })}
-            </label>
-            <input id="nom-douleur" value={nom} onChange={e => setNom(e.target.value)}
-                   placeholder={t('douleurs.exempleNom')} maxLength={80}
-                   className="h-11 rounded-lg border border-border bg-background px-3 text-base" />
-
-            <SelecteurDIntensite id={idNeuve} valeur={intensiteNeuve} onChange={setIntensiteNeuve} />
-
-            {erreurNote && <p role="alert" className="text-xs text-destructive">{erreurNote}</p>}
-
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => void valider()}
-                      disabled={!nom.trim() || declarer.isPending}
-                      className="h-11 rounded-lg bg-gold px-4 text-sm font-semibold text-[#131316] disabled:opacity-40">
-                {t('douleurs.suivre')}
-              </button>
-              <button type="button"
-                      onClick={fermer}
-                      className="h-11 rounded-lg border border-border px-4 text-sm text-muted-foreground">
-                {t('suiviKine.annuler')}
-              </button>
-            </div>
-          </div>
-        )}
-
-            {!feuilleOuverte && (
-              <>
-                {/* Les zones touchées portent déjà une douleur : la noter, ou
-                    en déclarer une autre — l'athlète tranche. */}
-                {canWrite && !edition && touchees.length > 0 && (
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gold/60 p-3"
-                       data-deja-suivie>
-                    <span className="text-xs text-muted-foreground">
-                      {t('douleurs.dejaSuivieIci')} · {nomDesZones(selection, t)}
-                    </span>
-                    <button type="button" onClick={() => { setNouvelle(true); setNom(''); }}
-                            className="h-11 rounded-lg border border-border px-3 text-sm">
-                      {t('douleurs.nouvelleDouleur')}
-                    </button>
-                  </div>
+            {/* ⚠️ LE SUJET DE LA FIGURE, ÉCRIT AU-DESSUS D'ELLE, ET TOUJOURS LÀ :
+                sa présence constante est ce qui rend sa couleur lisible quand il
+                passe à l'or. */}
+            {canWrite && (
+              <div data-sujet-figure
+                   className={cn('flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm',
+                                 sujet ? 'border-gold bg-gold/10 font-semibold text-gold'
+                                       : 'border-border text-muted-foreground')}>
+                <span className="min-w-0 truncate">
+                  {sujet ? t('douleurs.zonesDe', { nom: sujet.nom }) : t('douleurs.toucheLaZone')}
+                </span>
+                {sujet && (
+                  <span className="shrink-0 font-mono text-xs">
+                    {t('douleurs.nbZones', { count: sujet.zones.length })}
+                  </span>
                 )}
+              </div>
+            )}
+
+            {/* ⚠️ LES MUSCLES DÉJÀ SUIVIS SONT MARQUÉS D'EMBLÉE. Pendant
+                l'édition, ceux des AUTRES douleurs s'éteignent : la figure dit
+                qu'ils ne sont pas le sujet. */}
+            <FigureDuCorps choisies={choisies}
+                           suivies={sujet ? {} : intensitesParZone(vivantes)}
+                           eteintes={eteintes}
+                           onChoisir={canWrite ? toucher : undefined}
+                           nomChoisi={choisies.length ? nomDesZones(choisies, t) : null}
+                           compacte={formulaire} />
+          </div>
+
+          <div className="flex min-w-0 flex-col gap-3">
+            {/* ⚠️ UNE FEUILLE SUR TÉLÉPHONE, UNE COLONNE SUR GRAND ÉCRAN — le même
+                formulaire, deux places, et le même que dans le volet de séance. */}
+            {formulaire && (
+              <div className="fixed inset-x-0 bottom-0 z-40 flex max-h-[62vh] flex-col gap-3
+                              overflow-y-auto rounded-t-2xl border-t border-gold bg-card p-4
+                              pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl
+                              lg:static lg:max-h-none lg:rounded-xl lg:border lg:p-4
+                              lg:z-auto lg:pb-4 lg:shadow-none">
+                <DeclarerOuNoter key={selection.join('|')} athleteId={athleteId} zones={selection}
+                                 vivantes={vivantes} jour={todayIso()} prefere={prefere}
+                                 onFini={fermer} onAnnuler={fermer} />
+              </div>
+            )}
+
+            {!formulaire && (
+              <>
                 <header className="flex items-baseline justify-between gap-2">
                   <h3 className="text-sm font-semibold uppercase tracking-wider">
                     {t('douleurs.suivies')}
@@ -273,11 +163,12 @@ export function DouleursSuivies({ athleteId, canWrite }: Props) {
                 {vivantes.map(d => (
                   <CarteDouleur key={d.id} douleur={d} canWrite={canWrite}
                                 athleteId={athleteId}
-                                surligne={touchees.includes(d)}
-                                onModifierLesZones={() => {
-                                  setSelection([]); setNouvelle(false);
-                                  setEdition({ id: d.id, nom: d.nom, zones: d.zones });
-                                }}
+                                edition={sujet?.id === d.id ? {
+                                  zones: sujet.zones, occupe: modifier.isPending,
+                                  onRetirer: retirer, onTerminer: () => void terminer(),
+                                  onAnnuler: () => setSujet(null),
+                                } : undefined}
+                                onModifierLesZones={sujet ? undefined : () => editer(d)}
                                 onNoter={(intensite, commentaire, entrainement) =>
                                   noter.mutateAsync({ id: d.id, jour: todayIso(), intensite,
                                                       commentaire, entrainement })}
@@ -289,11 +180,25 @@ export function DouleursSuivies({ athleteId, canWrite }: Props) {
         </div>
       </section>
 
+      {/* ⚠️ TÉLÉPHONE : LA BARRE D'ÉDITION EST EN BAS, au-dessus de la barre de
+          navigation. En haut, elle sortait du champ dès qu'on défilait vers la
+          figure — et « Enregistrer » avec elle. La consigne et les zones vivent
+          avec elle, au moment où l'on valide. */}
+      {sujet && (
+        <div data-barre-edition
+             className="fixed inset-x-0 z-40 flex flex-col gap-2 border-t border-gold bg-card p-3 shadow-2xl lg:hidden"
+             style={{ bottom: 'var(--barre-basse, 0px)' }}>
+          <ZonesEnPuces zones={sujet.zones} onRetirer={retirer} />
+          <BoutonsDEdition zones={sujet.zones} occupe={modifier.isPending}
+                           onTerminer={() => void terminer()} onAnnuler={() => setSujet(null)} />
+          <p className="text-center text-xs text-muted-foreground">{t('douleurs.toucheLaFigurePourLesZones')}</p>
+        </div>
+      )}
+
       {closes.length > 0 && (
         <details className="rounded-lg border border-border bg-card/40 p-3">
           {/* ⚠️ LES CLOSES RESTENT LISIBLES : une épaule qui a fait mal six mois
-              est un antécédent, et c'est ce que le kiné vient chercher. Repliées,
-              parce que ce n'est pas ce qu'on regarde en premier. */}
+              est un antécédent, et c'est ce que le kiné vient chercher. */}
           <summary className="cursor-pointer text-sm text-muted-foreground">
             {t('douleurs.anciennes', { count: closes.length })}
           </summary>
@@ -302,7 +207,7 @@ export function DouleursSuivies({ athleteId, canWrite }: Props) {
               <li key={d.id} className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
                 <span className="font-medium">{d.nom}</span>
                 <span className="text-xs text-muted-foreground">
-                  {nomDesZones(d.zones, t)} · {t('douleurs.closeLe', { date: d.fin })}
+                  {d.zones.map(z => nomDeZoneCourt(z, t)).join(' · ')} · {t('douleurs.closeLe', { date: d.fin })}
                   {d.recurrente && ` · ${t('douleurs.revenait', { count: d.logs })}`}
                 </span>
               </li>
@@ -310,6 +215,58 @@ export function DouleursSuivies({ athleteId, canWrite }: Props) {
           </ul>
         </details>
       )}
+    </div>
+  );
+}
+
+/** Une douleur en cours, sur la rangée du téléphone : son NOM, ses zones en
+ *  court, sa dernière note. */
+function LigneEnCours({ douleur, onOuvrir }: { douleur: Douleur; onOuvrir?: () => void }) {
+  const { t } = useTranslation();
+  const valeur = douleur.derniere?.intensite;
+  const contenu = (
+    <>
+      <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full"
+            style={{ backgroundColor: valeur != null ? couleurDIntensite(valeur) : 'var(--muted-foreground)' }} />
+      <span className="flex min-w-0 flex-1 flex-col text-left">
+        <span className="truncate text-sm font-semibold">{douleur.nom}</span>
+        <span className="truncate font-mono text-[11px] text-muted-foreground">
+          {douleur.zones.map(z => nomDeZoneCourt(z, t)).join(' · ')}
+        </span>
+      </span>
+      {/* ⚠️ LE POINT DIT « ÇA FAIT UN MOMENT », pas « c'est grave ». */}
+      {aRelancer(douleur.derniere?.date) && (
+        <span aria-label={t('douleurs.aRelancer')} className="h-2 w-2 shrink-0 rounded-full bg-[#E08A3C]" />
+      )}
+      {valeur != null && (
+        <span className="font-mono text-sm font-semibold tabular-nums" style={{ color: couleurDIntensite(valeur) }}>
+          {valeur}/10
+        </span>
+      )}
+    </>
+  );
+  const classes = 'flex min-h-12 w-full items-center gap-3 rounded-lg border border-border px-3 py-1.5';
+  return onOuvrir
+    ? <button type="button" onClick={onOuvrir} className={classes} data-ligne-en-cours>{contenu}</button>
+    : <div className={classes}>{contenu}</div>;
+}
+
+/** « Terminé » se ferme sans zone : la douleur disparaîtrait de la figure sans
+ *  être close. */
+function BoutonsDEdition({ zones, occupe, onTerminer, onAnnuler }: {
+  zones: string[]; occupe: boolean; onTerminer: () => void; onAnnuler: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex gap-2">
+      <button type="button" onClick={onTerminer} disabled={!zones.length || occupe}
+              className="h-11 flex-1 rounded-lg bg-gold px-4 text-sm font-semibold text-[#131316] disabled:opacity-40 lg:flex-none">
+        {t('douleurs.termine')}
+      </button>
+      <button type="button" onClick={onAnnuler}
+              className="h-11 rounded-lg border border-border px-4 text-sm text-muted-foreground">
+        {t('suiviKine.annuler')}
+      </button>
     </div>
   );
 }
@@ -322,9 +279,17 @@ function aRelancer(derniere?: string): boolean {
   return Date.parse(todayIso()) - Date.parse(derniere) >= 7 * 86_400_000;
 }
 
-function CarteDouleur({ douleur, canWrite, athleteId, surligne, onModifierLesZones, onNoter, onClore }: {
-  douleur: Douleur; canWrite: boolean; athleteId: string; surligne: boolean;
-  onModifierLesZones: () => void;
+type Edition = {
+  zones: string[]; occupe: boolean;
+  onRetirer: (zone: string) => void; onTerminer: () => void; onAnnuler: () => void;
+};
+
+function CarteDouleur({ douleur, canWrite, athleteId, edition, onModifierLesZones, onNoter, onClore }: {
+  douleur: Douleur; canWrite: boolean; athleteId: string;
+  /** Présente quand cette douleur est le SUJET de la figure. */
+  edition?: Edition;
+  /** Absent pendant qu'une autre douleur est éditée : un sujet à la fois. */
+  onModifierLesZones?: () => void;
   onNoter: (intensite: number, commentaire: string | null,
             entrainement: boolean | undefined) => Promise<unknown>;
   onClore: () => Promise<unknown>;
@@ -345,16 +310,15 @@ function CarteDouleur({ douleur, canWrite, athleteId, surligne, onModifierLesZon
     dejaAujourdhui ? (douleur.derniere?.entrainement ?? undefined) : undefined);
   const idSel = useId();
 
-  // ⚠️ RETOUCHER LE MUSCLE SUR LA FIGURE OUVRE LA SAISIE, et la retoucher la
-  // referme : c'est le même geste, et `surligne` est ce qui le transporte.
-  useEffect(() => { if (canWrite) setOuvert(surligne); }, [surligne, canWrite]);
-
   const valeur = douleur.derniere?.intensite;
   const couleur = valeur != null ? couleurDIntensite(valeur) : undefined;
 
   return (
-    <section className={cn('rounded-xl border bg-card p-4 transition-colors',
-                           surligne ? 'border-gold' : 'border-border')}>
+    /* ⚠️ L'OR RELIE LA CARTE ET LA FIGURE : la douleur éditée prend le même
+       cadre que le bandeau au-dessus du corps — on voit ce qu'on modifie. */
+    <section data-edition={edition ? '' : undefined}
+             className={cn('rounded-xl border p-4 transition-colors',
+                           edition ? 'border-2 border-gold bg-gold/5' : 'border-border bg-card')}>
       <header className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex items-start gap-2">
           {/* La pastille dit l'intensité avant qu'on ait lu quoi que ce soit. */}
@@ -362,8 +326,8 @@ function CarteDouleur({ douleur, canWrite, athleteId, surligne, onModifierLesZon
                 style={{ backgroundColor: couleur ?? 'var(--muted-foreground)' }} />
           <div>
             <h3 className="text-sm font-semibold">{douleur.nom}</h3>
-            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-              {nomDesZones(douleur.zones, t)}
+            <p className="font-mono text-[11px] text-muted-foreground" title={nomDesZones(douleur.zones, t)}>
+              {douleur.zones.map(z => nomDeZoneCourt(z, t)).join(' · ')}
               {/* ⚠️ « ÇA REVIENT » VIENT DU SERVEUR, où ça se déduit du nombre
                   de relevés. Le recalculer ici ferait une seconde définition. */}
               {douleur.recurrente && ` · ${t('douleurs.recurrente', { count: douleur.logs })}`}
@@ -408,14 +372,29 @@ function CarteDouleur({ douleur, canWrite, athleteId, surligne, onModifierLesZon
         <HistoireDeLaDouleur athleteId={athleteId} douleurId={douleur.id} />
       )}
 
+      {/* L'édition dans la carte, sur grand écran ; au téléphone, c'est la
+          barre du bas qui la porte. */}
+      {edition && (
+        <div className="mt-3 hidden flex-col gap-3 lg:flex">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <ZonesEnPuces zones={edition.zones} onRetirer={edition.onRetirer} />
+            <span className="rounded-full border border-dashed border-border px-2.5 py-0.5 font-mono text-xs text-muted-foreground">
+              {t('douleurs.toucheLaFigure')}
+            </span>
+          </div>
+          <BoutonsDEdition zones={edition.zones} occupe={edition.occupe}
+                           onTerminer={edition.onTerminer} onAnnuler={edition.onAnnuler} />
+        </div>
+      )}
+
       <div className="mt-3 flex flex-wrap gap-2">
-        {canWrite && !ouvert && (
+        {canWrite && !ouvert && !edition && (
           <button type="button" onClick={() => setOuvert(true)}
                   className="h-11 rounded-lg border border-gold px-4 text-sm font-semibold text-gold">
             {dejaAujourdhui ? t('douleurs.corrigerAujourdhui') : t('douleurs.noterAujourdhui')}
           </button>
         )}
-        {canWrite && (
+        {canWrite && onModifierLesZones && (
           <button type="button" onClick={onModifierLesZones}
                   className="h-11 rounded-lg border border-border px-4 text-sm text-muted-foreground hover:text-foreground">
             {t('douleurs.modifierLesZones')}
